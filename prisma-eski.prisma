@@ -1,0 +1,669 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              user    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
+
+  @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
+  @@index([userId], map: "Account_userId_fkey")
+}
+
+model business {
+  id                   String                @id
+  slug                 String                @unique(map: "Business_slug_key")
+  name                 String
+  description          String?               @db.Text
+  type                 business_type         @default(INDIVIDUAL)
+  category             String?
+  phone                String?
+  email                String?
+  website              String?
+  address              String?               @db.Text
+  city                 String?
+  district             String?
+  latitude             Float?
+  longitude            Float?
+  isVerified           Boolean               @default(false)
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  services             String?               @db.LongText
+  workingHours         String?               @db.LongText
+  rating               Float                 @default(0)
+  ratingSum            Int                   @default(0)
+  reviewCount          Int                   @default(0)
+  avgResponseMinutes   Float                 @default(0)
+  responseCount        Int                   @default(0)
+  referralCode         String?               @unique(map: "Business_referralCode_key")
+  businesscategory     businesscategory[]
+  businessevent        businessevent[]
+  businesssubscription businesssubscription?
+  emaillog             emaillog[]
+  lead                 lead[]
+  leadreminder         leadreminder[]
+  media                media[]
+  notification         notification[]
+  ownedbusiness        ownedbusiness[]
+  product              product[]
+  productcategory      productcategory[]
+  referral             referral[]
+  review               review[]
+  order                order[]
+  asset                asset[]
+  employee             employee[]
+  calendar_event       calendar_event[]
+  cash_account         cash_account[]
+  cash_transaction     cash_transaction[]
+  officialName         String?
+  taxId                String?
+  taxOffice            String?
+  representativeName   String?
+  vision               String?               @db.Text
+  cargoSettings        String?               @db.LongText
+  securitySettings     String?               @db.LongText
+  notificationSettings String?               @db.LongText
+
+  @@index([city, district], map: "Business_city_district_idx")
+  @@index([slug], map: "Business_slug_idx")
+}
+
+model businesscategory {
+  businessId String
+  categoryId String
+  business   business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessCategory_businessId_fkey")
+  category   category @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "BusinessCategory_categoryId_fkey")
+
+  @@id([businessId, categoryId])
+  @@index([categoryId], map: "BusinessCategory_categoryId_fkey")
+}
+
+model businessevent {
+  id         String             @id
+  businessId String
+  type       businessevent_type
+  productId  String?
+  createdAt  DateTime           @default(now())
+  ipHash     String?            @db.VarChar(64)
+  userAgent  String?            @db.VarChar(255)
+  business   business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessEvent_businessId_fkey")
+
+  @@index([businessId, type, createdAt], map: "BusinessEvent_businessId_type_createdAt_idx")
+  @@index([ipHash, createdAt], map: "BusinessEvent_ipHash_createdAt_idx")
+}
+
+model businesssubscription {
+  id         String                      @id
+  businessId String                      @unique(map: "BusinessSubscription_businessId_key")
+  status     businesssubscription_status
+  plan       businesssubscription_plan   @default(BASIC)
+  startedAt  DateTime
+  expiresAt  DateTime
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime
+  business   business                    @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessSubscription_businessId_fkey")
+
+  @@index([businessId], map: "BusinessSubscription_businessId_idx")
+}
+
+model category {
+  id               String             @id
+  name             String             @unique(map: "Category_name_key")
+  slug             String             @unique(map: "Category_slug_key")
+  icon             String?
+  color            String?
+  parentId         String?
+  businesscategory businesscategory[]
+  category         category?          @relation("categoryTocategory", fields: [parentId], references: [id], map: "Category_parentId_fkey")
+  other_category   category[]         @relation("categoryTocategory")
+
+  @@index([parentId], map: "Category_parentId_fkey")
+}
+
+model emaillog {
+  id         String    @id
+  businessId String?
+  userId     String?
+  type       String
+  uniqueKey  String    @unique(map: "EmailLog_uniqueKey_key")
+  createdAt  DateTime  @default(now())
+  business   business? @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmailLog_businessId_fkey")
+  user       user?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "EmailLog_userId_fkey")
+
+  @@index([businessId], map: "EmailLog_businessId_fkey")
+  @@index([userId], map: "EmailLog_userId_fkey")
+}
+
+model errorlog {
+  id        String   @id
+  service   String
+  level     String   @default("ERROR")
+  message   String   @db.Text
+  stack     String?  @db.Text
+  metadata  String?  @db.LongText
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt], map: "ErrorLog_service_createdAt_idx")
+}
+
+model eventthrottle {
+  id        String   @id
+  key       String   @unique(map: "EventThrottle_key_key")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt], map: "EventThrottle_expiresAt_idx")
+}
+
+model lead {
+  id                  String        @id
+  businessId          String
+  name                String
+  phone               String?
+  email               String?
+  message             String        @db.Text
+  category            String?
+  productId           String?
+  productNameSnapshot String?
+  source              lead_source   @default(BUSINESS_PAGE)
+  status              lead_status   @default(NEW)
+  adminNote           String?       @db.Text
+  replyText           String?       @db.Text
+  quotedPrice         Float?
+  repliedAt           DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime
+  ipHash              String?       @db.VarChar(64)
+  userAgent           String?       @db.VarChar(512)
+  fingerprint         String?       @db.VarChar(128)
+  sourcePage          String?       @db.VarChar(255)
+  isSuspicious        Boolean       @default(false)
+  spamReason          String?       @db.VarChar(255)
+  city                String?
+  district            String?
+  isDistributed       Boolean       @default(false)
+  latitude            Float?
+  longitude           Float?
+  business            business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Lead_businessId_fkey")
+  product             product?      @relation(fields: [productId], references: [id], map: "Lead_productId_fkey")
+  leadreminder        leadreminder?
+
+  @@index([businessId, createdAt], map: "Lead_businessId_createdAt_idx")
+  @@index([businessId, productId], map: "Lead_businessId_productId_idx")
+  @@index([businessId, status], map: "Lead_businessId_status_idx")
+  @@index([productId], map: "Lead_productId_fkey")
+}
+
+model leadreminder {
+  id              String    @id
+  leadId          String    @unique(map: "LeadReminder_leadId_key")
+  businessId      String
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  attempts        Int       @default(0)
+  lastError       String?   @db.Text
+  processingClaim String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  business        business  @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "LeadReminder_businessId_fkey")
+  lead            lead      @relation(fields: [leadId], references: [id], onDelete: Cascade, map: "LeadReminder_leadId_fkey")
+
+  @@index([businessId], map: "LeadReminder_businessId_fkey")
+  @@index([scheduledAt, sentAt], map: "LeadReminder_scheduledAt_sentAt_idx")
+}
+
+model media {
+  id         String    @id
+  url        String    @unique(map: "Media_url_key")
+  fileId     String
+  type       String
+  createdAt  DateTime  @default(now())
+  businessId String?
+  business   business? @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Media_businessId_fkey")
+
+  @@index([businessId], map: "Media_businessId_fkey")
+}
+
+model notification {
+  id         String   @id
+  businessId String
+  title      String
+  body       String?  @db.Text
+  type       String   @default("LEAD")
+  isRead     Boolean  @default(false)
+  linkUrl    String?
+  createdAt  DateTime @default(now())
+  business   business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Notification_businessId_fkey")
+
+  @@index([businessId, createdAt], map: "Notification_businessId_createdAt_idx")
+  @@index([businessId, isRead], map: "Notification_businessId_isRead_idx")
+}
+
+model ownedbusiness {
+  userId     String
+  businessId String
+  isPrimary  Boolean  @default(false)
+  business   business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "OwnedBusiness_businessId_fkey")
+  user       user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "OwnedBusiness_userId_fkey")
+
+  @@id([userId, businessId])
+  @@index([businessId], map: "OwnedBusiness_businessId_fkey")
+}
+
+model product {
+  id              String           @id
+  businessId      String
+  categoryId      String?
+  name            String
+  slug            String
+  description     String?          @db.Text
+  price           Float?
+  discountPrice   Float?
+  imageUrl        String?
+  isActive        Boolean          @default(true)
+  order           Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime
+  lead            lead[]
+  business        business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Product_businessId_fkey")
+  productcategory productcategory? @relation(fields: [categoryId], references: [id], map: "Product_categoryId_fkey")
+
+  @@unique([businessId, slug], map: "Product_businessId_slug_key")
+  @@index([businessId], map: "Product_businessId_idx")
+  @@index([categoryId], map: "Product_categoryId_fkey")
+}
+
+model productcategory {
+  id         String    @id
+  businessId String
+  name       String
+  order      Int       @default(0)
+  product    product[]
+  business   business  @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ProductCategory_businessId_fkey")
+
+  @@unique([businessId, name], map: "ProductCategory_businessId_name_key")
+}
+
+model referral {
+  id           String   @id
+  referrerId   String
+  invitedBizId String?
+  invitedEmail String?
+  referralCode String
+  createdAt    DateTime @default(now())
+  business     business @relation(fields: [referrerId], references: [id], onDelete: Cascade, map: "Referral_referrerId_fkey")
+
+  @@unique([referrerId, invitedBizId], map: "Referral_referrerId_invitedBizId_key")
+  @@index([referrerId], map: "Referral_referrerId_idx")
+}
+
+model review {
+  id            String   @id
+  rating        Int      @default(0)
+  content       String?  @db.Text
+  replyContent  String?  @db.Text
+  repliedAt     DateTime?
+  metrics       String?  @db.LongText
+  likes         Int      @default(0)
+  status        review_status @default(PENDING)
+  isApproved    Boolean  @default(false)
+  reviewerName  String?
+  reviewerEmail String?
+  reviewerPhone String?
+  ipHash        String?
+  createdAt     DateTime @default(now())
+  userId        String?
+  businessId    String
+  business      business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Review_businessId_fkey")
+  user          user?    @relation(fields: [userId], references: [id], map: "Review_userId_fkey")
+
+  @@index([businessId, isApproved], map: "Review_businessId_isApproved_idx")
+  @@index([userId], map: "Review_userId_fkey")
+}
+
+model session {
+  id           String   @id
+  sessionToken String   @unique(map: "Session_sessionToken_key")
+  userId       String
+  expires      DateTime
+  user         user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
+
+  @@index([userId], map: "Session_userId_fkey")
+}
+
+model systemstatus {
+  id            String   @id
+  key           String   @unique(map: "SystemStatus_key_key")
+  value         String?
+  lastHeartbeat DateTime @default(now())
+  metadata      String?  @db.LongText
+
+  @@index([key], map: "SystemStatus_key_idx")
+}
+
+model user {
+  id            String          @id
+  name          String?
+  email         String?         @unique(map: "User_email_key")
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          user_role       @default(USER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  account       account[]
+  emaillog      emaillog[]
+  ownedbusiness ownedbusiness[]
+  review        review[]
+  session       session[]
+}
+
+model verificationtoken {
+  identifier String
+  token      String   @unique(map: "VerificationToken_token_key")
+  expires    DateTime
+
+  @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
+}
+
+model asset {
+  id              String          @id
+  businessId      String
+  assetCode       String
+  name            String
+  category        asset_category  @default(EQUIPMENT)
+  purchasePrice   Float           @default(0)
+  currentValue    Float           @default(0)
+  purchaseDate    DateTime        @default(now())
+  location        String?
+  assignedTo      String?
+  status          asset_status    @default(ACTIVE)
+  condition       asset_condition @default(EXCELLENT)
+  nextMaintenance DateTime?
+  isListed        Boolean         @default(false)
+  listingType     String?         @default("sale")
+  listingPrice    Float?
+  description     String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  business        business        @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Asset_businessId_fkey")
+
+  @@index([businessId], map: "Asset_businessId_idx")
+}
+
+model employee {
+  id          String          @id
+  businessId  String
+  name        String
+  position    String
+  email       String?
+  phone       String?
+  salary      Float           @default(0)
+  startDate   DateTime        @default(now())
+  status      employee_status @default(ACTIVE)
+  performance Int             @default(100)
+  leaves      Int             @default(0)
+  department  String?
+  avatar      String?
+  tcNo        String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  business    business        @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Employee_businessId_fkey")
+
+  @@index([businessId], map: "Employee_businessId_idx")
+}
+
+model calendar_event {
+  id           String         @id
+  businessId   String
+  title        String
+  customerName String?
+  startTime    DateTime
+  endTime      DateTime
+  category     event_category @default(APPOINTMENT)
+  status       event_status   @default(CONFIRMED)
+  priority     event_priority @default(MEDIUM)
+  description  String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  business     business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CalendarEvent_businessId_fkey")
+
+  @@index([businessId, startTime], map: "CalendarEvent_businessId_startTime_idx")
+}
+
+model cash_account {
+  id               String             @id
+  businessId       String
+  name             String
+  type             account_type       @default(CASH)
+  balance          Float              @default(0)
+  currency         String             @default("TRY")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  business         business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashAccount_businessId_fkey")
+  transactions     cash_transaction[] @relation("accountTransactions")
+  to_transactions  cash_transaction[] @relation("toAccountTransactions")
+
+  @@index([businessId], map: "CashAccount_businessId_idx")
+}
+
+model cash_transaction {
+  id          String           @id
+  businessId  String
+  accountId   String
+  toAccountId String?
+  type        transaction_type
+  amount      Float
+  category    String
+  description String?          @db.Text
+  date        DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  business    business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashTransaction_businessId_fkey")
+  account     cash_account     @relation("accountTransactions", fields: [accountId], references: [id], onDelete: Cascade, map: "CashTransaction_accountId_fkey")
+  toAccount   cash_account?    @relation("toAccountTransactions", fields: [toAccountId], references: [id], onDelete: Cascade, map: "CashTransaction_toAccountId_fkey")
+
+  @@index([businessId], map: "CashTransaction_businessId_idx")
+  @@index([accountId], map: "CashTransaction_accountId_idx")
+  @@index([date], map: "CashTransaction_date_idx")
+}
+
+model order {
+  id              String        @id
+  businessId      String
+  orderNumber     String        @unique(map: "Order_orderNumber_key")
+  customerName    String
+  customerAvatar  String?
+  customerLoc     String?
+  customerNote    String?       @db.Text
+  type            order_type    @default(PRODUCT)
+  status          order_status  @default(PENDING)
+  deliveryType    String?
+  paymentMethod   String?
+  subtotal        Float         @default(0)
+  total           Float         @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime
+  items           orderitem[]
+  business        business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Order_businessId_fkey")
+
+  @@index([businessId, status], map: "Order_businessId_status_idx")
+  @@index([businessId, createdAt], map: "Order_businessId_createdAt_idx")
+}
+
+model orderitem {
+  id      String @id
+  orderId String
+  name    String
+  qty     Int    @default(1)
+  price   Float  @default(0)
+  order   order  @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
+
+  @@index([orderId], map: "OrderItem_orderId_fkey")
+}
+
+enum businessevent_type {
+  VIEW_PROFILE
+  VIEW_PRODUCT
+  CLICK_PHONE
+  CLICK_WHATSAPP
+  SUBMIT_LEAD
+  CLICK_CTA_PRIMARY
+  CLICK_PHONE_STICKY
+  SCROLL_75
+  CLICK_SHARE_PROFILE
+  CLICK_SHARE_REFERRAL
+  CLICK_REQUEST_REVIEW
+  CLICK_BILLING_PAY
+  SUBSCRIPTION_STARTED
+  SUBSCRIPTION_RENEWED
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFIED
+  EMAIL_VERIFICATION_RESENT
+  EMAIL_SENT_TRIAL_WARNING
+  EMAIL_SENT_PAYMENT_SUCCESS
+  EMAIL_SENT_SUBSCRIPTION_EXPIRED
+  EMAIL_SENT_NEW_LEAD
+  EMAIL_SENT_NEW_REVIEW
+  EMAIL_SENT_REFERRAL_SUCCESS
+  CLICK_QUICK_REGISTER
+  SUBMIT_QUICK_REGISTER
+  QUICK_REGISTER_SUCCESS
+  CLICK_SWITCH_TO_DETAILED_REGISTER
+  CLICK_SWITCH_TO_QUICK_REGISTER
+}
+
+enum businesssubscription_status {
+  TRIAL
+  ACTIVE
+  EXPIRED
+}
+
+enum businesssubscription_plan {
+  BASIC
+  PREMIUM
+}
+
+enum business_type {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum user_role {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+enum lead_source {
+  BUSINESS_PAGE
+  PRODUCT
+  CATEGORY_PAGE
+}
+
+enum lead_status {
+  NEW
+  CONTACTED
+  QUOTED
+  REPLIED
+  CLOSED
+  LOST
+}
+
+enum order_status {
+  PENDING
+  CONFIRMED
+  PREPARING
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+enum order_type {
+  PRODUCT
+  SERVICE
+}
+
+enum review_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum asset_category {
+  VEHICLE
+  EQUIPMENT
+  TECHNOLOGY
+  OFFICE
+  OTHER
+}
+
+enum asset_status {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+  SOLD
+}
+
+enum asset_condition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum employee_status {
+  ACTIVE
+  ON_LEAVE
+  REMOTE
+  TERMINATED
+}
+
+enum event_category {
+  RESERVATION
+  TASK
+  APPOINTMENT
+  SUPPLIER
+}
+
+enum event_status {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum event_priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum account_type {
+  CASH
+  BANK
+  ESCROW
+}
+
+enum transaction_type {
+  INCOME
+  EXPENSE
+  TRANSFER
+}

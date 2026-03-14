@@ -1,0 +1,1954 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH MODELS
+// ============================================================================
+
+model user {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String?     @unique(map: "User_email_key")
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  phone         String?
+  role          user_role   @default(USER)
+  status        user_status @default(ACTIVE)
+  lastLoginAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  account               account[]
+  emaillog              emaillog[]
+  ownedbusiness         ownedbusiness[]
+  review                review[]
+  session               session[]
+  financial_transaction financial_transaction[]
+
+  neighborhoodPosts    neighborhood_post[]
+  neighborhoodComments neighborhood_post_comment[]
+  neighborhoodLikes    neighborhood_post_like[]
+
+  order                  order[]
+  reservation            reservation[]
+  user_address           user_address[]
+  user_favorite_business user_favorite_business[]
+  user_profile_settings  user_profile_settings?
+  businessadminnote      businessadminnote[]
+  businessNotes          business_note[]        @relation("BusinessNoteAuthor")
+  requestedLeaveRequests employee_leave_request[] @relation("EmployeeLeaveRequestedBy")
+  approvedLeaveRequests  employee_leave_request[] @relation("EmployeeLeaveApprovedBy")
+  useradminnote          useradminnote[]         @relation("UserAdminNoteSubject")
+  authoredUseradminnote  useradminnote[]         @relation("UserAdminNoteAuthor")
+  createdAds             ad[]                   @relation("AdCreatedBy")
+  createdBroadcasts      broadcast[]            @relation("BroadcastCreatedBy")
+  supportTickets           support_ticket[]           @relation("SupportTicketUser")
+  supportTicketMessages   support_ticket_message[]   @relation("SupportTicketMessageUser")
+
+  @@map("user")
+}
+
+model user_address {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  line1     String   @db.Text
+  line2     String?  @db.Text
+  city      String
+  district  String?
+  mahalle   String?
+  phone     String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade, map: "UserAddress_userId_fkey")
+
+  @@index([userId], map: "UserAddress_userId_idx")
+  @@map("user_address")
+}
+
+model user_favorite_business {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  createdAt  DateTime @default(now())
+
+  user     user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "UserFavoriteBusiness_userId_fkey")
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "UserFavoriteBusiness_businessId_fkey")
+
+  @@unique([userId, businessId], map: "UserFavoriteBusiness_userId_businessId_key")
+  @@index([userId], map: "UserFavoriteBusiness_userId_idx")
+  @@index([businessId], map: "UserFavoriteBusiness_businessId_idx")
+  @@map("user_favorite_business")
+}
+
+model user_profile_settings {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique(map: "UserProfileSettings_userId_key")
+  language               String   @default("tr-TR")
+  campaignNotifications  Boolean  @default(true)
+  smsOrderNotifications  Boolean  @default(true)
+  newsletterNotifications Boolean @default(true)
+  profileVisibility      String   @default("PRIVATE")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade, map: "UserProfileSettings_userId_fkey")
+
+  @@index([userId], map: "UserProfileSettings_userId_idx")
+  @@map("user_profile_settings")
+}
+
+model account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Account_userId_fkey")
+
+  @@unique([provider, providerAccountId], map: "Account_provider_providerAccountId_key")
+  @@index([userId], map: "Account_userId_fkey")
+  @@map("account")
+}
+
+model session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique(map: "Session_sessionToken_key")
+  userId       String
+  expires      DateTime
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Session_userId_fkey")
+
+  @@index([userId], map: "Session_userId_fkey")
+  @@map("session")
+}
+
+model verificationtoken {
+  identifier String
+  token      String   @unique(map: "VerificationToken_token_key")
+  expires    DateTime
+
+  @@unique([identifier, token], map: "VerificationToken_identifier_token_key")
+  @@map("verificationtoken")
+}
+
+// ============================================================================
+// BUSINESS MODELS
+// ============================================================================
+
+model business {
+  id          String        @id @default(cuid())
+  slug        String        @unique(map: "Business_slug_key")
+  name        String
+  description String?       @db.Text
+  type        business_type @default(INDIVIDUAL)
+  category    String?
+  phone       String?
+  email       String?
+  website     String?
+  address     String?       @db.Text
+  city        String?
+  district    String?
+  latitude    Float?
+  longitude   Float?
+  isVerified  Boolean       @default(false)
+  isActive    Boolean       @default(true)
+  isOpen      Boolean       @default(true)
+  reservationEnabled Boolean @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  primaryCategoryId String?
+
+  services           String? @db.LongText
+  workingHours       String? @db.LongText
+  rating             Float   @default(0)
+  ratingSum          Int     @default(0)
+  reviewCount        Int     @default(0)
+  avgResponseMinutes Float   @default(0)
+  responseCount      Int     @default(0)
+  referralCode       String? @unique(map: "Business_referralCode_key")
+
+  officialName       String?
+  taxId              String?
+  taxOffice          String?
+  representativeName String?
+  vision             String? @db.Text
+
+  cargoSettings        String? @db.LongText
+  securitySettings     String? @db.LongText
+  notificationSettings String? @db.LongText
+
+  primaryCategory       category?                   @relation("BusinessPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  businesscategory      businesscategory[]
+  businessevent         businessevent[]
+  businesssubscription  businesssubscription?
+  subscription_payment  subscription_payment[]
+  invoice               invoice[]
+  emaillog              emaillog[]
+  lead                  lead[]
+  leadreminder          leadreminder[]
+  media                 media[]
+  notification          notification[]
+  ownedbusiness         ownedbusiness[]
+  product               product[]
+  ecommerceProductMatch ecommerce_product_match[]
+  productcategory       productcategory[]
+  catalog               catalog[]
+  pricelist             pricelist[]
+  production_run        production_run[]
+  warehouse             warehouse[]
+  referral              referral[]
+  review                review[]
+  order                 order[]
+  quotes                quote[]
+  reservations          reservation[]
+  reservationSettings   business_reservation_settings?
+  asset                 asset[]
+  employee              employee[]
+  employeeDepartments   employee_department[]
+  employeeLeaveRequests employee_leave_request[]
+  calendar_event        calendar_event[]
+  cash_account          cash_account[]
+  cash_transaction      cash_transaction[]
+  financial_transaction financial_transaction[]
+  neighborhoodPosts     neighborhood_post[]
+  neighborhoodComments  neighborhood_post_comment[]
+  neighborhoodLikes     neighborhood_post_like[]
+  user_favorite_business user_favorite_business[]
+  businessadminnote     businessadminnote[]
+  businessNotes         business_note[]
+  supportTickets          support_ticket[]           @relation("SupportTicketBusiness")
+  supportTicketMessages   support_ticket_message[]   @relation("SupportTicketMessageBusiness")
+  planningProjects        planning_project[]
+  planningTasks           planning_task[]
+
+  @@index([city, district], map: "Business_city_district_idx")
+  @@index([slug], map: "Business_slug_idx")
+  @@index([primaryCategoryId], map: "Business_primaryCategoryId_idx")
+  @@map("business")
+}
+
+model ownedbusiness {
+  userId     String
+  businessId String
+  isPrimary  Boolean @default(false)
+
+  user     user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "OwnedBusiness_userId_fkey")
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "OwnedBusiness_businessId_fkey")
+
+  @@id([userId, businessId])
+  @@index([businessId], map: "OwnedBusiness_businessId_idx")
+  @@map("ownedbusiness")
+}
+
+model businesscategory {
+  businessId String
+  categoryId String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessCategory_businessId_fkey")
+  category category @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "BusinessCategory_categoryId_fkey")
+
+  @@id([businessId, categoryId])
+  @@index([categoryId], map: "BusinessCategory_categoryId_fkey")
+  @@index([businessId, isPrimary], map: "BusinessCategory_businessId_isPrimary_idx")
+  @@index([categoryId, isPrimary], map: "BusinessCategory_categoryId_isPrimary_idx")
+  @@map("businesscategory")
+}
+
+model businessevent {
+  id         String             @id @default(cuid())
+  businessId String
+  type       businessevent_type
+  productId  String?
+  createdAt  DateTime           @default(now())
+  ipHash     String?            @db.VarChar(64)
+  userAgent  String?            @db.VarChar(255)
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessEvent_businessId_fkey")
+
+  @@index([businessId, type, createdAt], map: "BusinessEvent_businessId_type_createdAt_idx")
+  @@index([ipHash, createdAt], map: "BusinessEvent_ipHash_createdAt_idx")
+  @@map("businessevent")
+}
+
+model businesssubscription {
+  id         String                      @id @default(cuid())
+  businessId String                      @unique(map: "BusinessSubscription_businessId_key")
+  status     businesssubscription_status
+  plan       businesssubscription_plan   @default(BASIC)
+  startedAt  DateTime
+  expiresAt  DateTime
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+
+  business  business             @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessSubscription_businessId_fkey")
+  subscription_payment subscription_payment[]
+
+  @@index([businessId], map: "BusinessSubscription_businessId_idx")
+  @@map("businesssubscription")
+}
+
+model subscription_payment {
+  id                 String                     @id @default(cuid())
+  businessId         String
+  subscriptionId     String?
+  amount             Float
+  currency           String                     @default("TRY")
+  status             subscription_payment_status @default(PENDING)
+  provider           String?
+  providerReference  String?
+  paidAt             DateTime?
+  metadata           Json?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  business     business              @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "SubscriptionPayment_businessId_fkey")
+  subscription businesssubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull, map: "SubscriptionPayment_subscriptionId_fkey")
+  invoice      invoice[]
+
+  @@index([businessId], map: "SubscriptionPayment_businessId_idx")
+  @@index([subscriptionId], map: "SubscriptionPayment_subscriptionId_idx")
+  @@index([status], map: "SubscriptionPayment_status_idx")
+  @@index([providerReference], map: "SubscriptionPayment_providerReference_idx")
+  @@index([createdAt], map: "SubscriptionPayment_createdAt_idx")
+  @@map("subscription_payment")
+}
+
+model invoice {
+  id                    String         @id @default(cuid())
+  businessId            String
+  subscriptionPaymentId String?
+  invoiceNumber         String         @unique(map: "Invoice_invoiceNumber_key")
+  type                  invoice_type   @default(MANUAL)
+  status                invoice_status @default(DRAFT)
+  amount                Float
+  currency              String         @default("TRY")
+  issueDate             DateTime
+  dueDate               DateTime
+  description           String?        @db.Text
+  pdfUrl                String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  business             business              @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Invoice_businessId_fkey")
+  subscriptionPayment  subscription_payment? @relation(fields: [subscriptionPaymentId], references: [id], onDelete: SetNull, map: "Invoice_subscriptionPaymentId_fkey")
+
+  @@index([businessId], map: "Invoice_businessId_idx")
+  @@index([subscriptionPaymentId], map: "Invoice_subscriptionPaymentId_idx")
+  @@index([status], map: "Invoice_status_idx")
+  @@index([issueDate], map: "Invoice_issueDate_idx")
+  @@map("invoice")
+}
+
+model businessadminnote {
+  id         String   @id @default(cuid())
+  businessId String
+  authorId   String?
+  note       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessAdminNote_businessId_fkey")
+  author   user?    @relation(fields: [authorId], references: [id], onDelete: SetNull, map: "BusinessAdminNote_authorId_fkey")
+
+  @@index([businessId], map: "BusinessAdminNote_businessId_idx")
+  @@map("business_admin_note")
+}
+
+model useradminnote {
+  id        String   @id @default(cuid())
+  userId    String
+  authorId  String?
+  note      String   @db.Text
+  createdAt DateTime @default(now())
+
+  user   user  @relation("UserAdminNoteSubject", fields: [userId], references: [id], onDelete: Cascade, map: "UserAdminNote_userId_fkey")
+  author user? @relation("UserAdminNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull, map: "UserAdminNote_authorId_fkey")
+
+  @@index([userId], map: "UserAdminNote_userId_idx")
+  @@map("user_admin_note")
+}
+
+model business_note {
+  id           String    @id @default(cuid())
+  businessId   String
+  authorUserId String?
+  title        String
+  content      String    @db.Text
+  category     String    @default("Genel")
+  color        String    @default("blue")
+  tags         Json?
+  isPinned     Boolean   @default(false)
+  archivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessNote_businessId_fkey")
+  author   user?    @relation("BusinessNoteAuthor", fields: [authorUserId], references: [id], onDelete: SetNull, map: "BusinessNote_authorUserId_fkey")
+
+  @@index([businessId, createdAt], map: "BusinessNote_businessId_createdAt_idx")
+  @@index([businessId, category], map: "BusinessNote_businessId_category_idx")
+  @@index([businessId, isPinned], map: "BusinessNote_businessId_isPinned_idx")
+  @@index([businessId, archivedAt], map: "BusinessNote_businessId_archivedAt_idx")
+  @@map("business_note")
+}
+
+// ============================================================================
+// ADS (Reklamlar)
+// ============================================================================
+
+model ad {
+  id          String        @id @default(cuid())
+  title       String
+  description String?       @db.Text
+  imageUrl    String?
+  linkUrl     String?
+  placement   ad_placement
+  status      ad_status     @default(DRAFT)
+  startAt     DateTime?
+  endAt       DateTime?
+  sortOrder   Int           @default(0)
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  createdBy user? @relation("AdCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, map: "Ad_createdById_fkey")
+
+  @@index([placement, status], map: "Ad_placement_status_idx")
+  @@index([status, startAt, endAt], map: "Ad_status_dates_idx")
+  @@map("ad")
+}
+
+// ============================================================================
+// BROADCASTS (Duyurular)
+// ============================================================================
+
+model broadcast {
+  id          String              @id @default(cuid())
+  title       String
+  body        String?             @db.Text
+  imageUrl    String?
+  linkUrl     String?
+  linkLabel   String?
+  layout      broadcast_layout
+  audience    broadcast_audience
+  status      broadcast_status    @default(DRAFT)
+  startAt     DateTime?
+  endAt       DateTime?
+  sortOrder   Int                 @default(0)
+  createdById String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  createdBy user? @relation("BroadcastCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, map: "Broadcast_createdById_fkey")
+
+  @@index([layout, audience, status], map: "Broadcast_layout_audience_status_idx")
+  @@index([status, startAt, endAt], map: "Broadcast_status_dates_idx")
+  @@map("broadcast")
+}
+
+// ============================================================================
+// SUPPORT TICKETS (Destek Talepleri)
+// ============================================================================
+
+model support_ticket {
+  id          String               @id @default(cuid())
+  subject     String
+  body        String                @db.Text
+  creatorType ticket_creator_type
+  userId      String?
+  businessId  String?
+  status      ticket_status         @default(OPEN)
+  priority    ticket_priority       @default(MEDIUM)
+  category    ticket_category       @default(GENERAL)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  user     user?                    @relation("SupportTicketUser", fields: [userId], references: [id], onDelete: SetNull, map: "SupportTicket_userId_fkey")
+  business business?                @relation("SupportTicketBusiness", fields: [businessId], references: [id], onDelete: SetNull, map: "SupportTicket_businessId_fkey")
+  messages support_ticket_message[]
+
+  @@index([status, createdAt], map: "SupportTicket_status_createdAt_idx")
+  @@index([userId], map: "SupportTicket_userId_idx")
+  @@index([businessId], map: "SupportTicket_businessId_idx")
+  @@map("support_ticket")
+}
+
+model support_ticket_message {
+  id               String                     @id @default(cuid())
+  supportTicketId  String
+  body             String                     @db.Text
+  authorType       ticket_message_author_type
+  authorUserId     String?
+  authorBusinessId String?
+  createdAt        DateTime                   @default(now())
+
+  supportTicket support_ticket @relation(fields: [supportTicketId], references: [id], onDelete: Cascade, map: "SupportTicketMessage_supportTicketId_fkey")
+  user          user?          @relation("SupportTicketMessageUser", fields: [authorUserId], references: [id], onDelete: SetNull, map: "SupportTicketMessage_authorUserId_fkey")
+  business      business?     @relation("SupportTicketMessageBusiness", fields: [authorBusinessId], references: [id], onDelete: SetNull, map: "SupportTicketMessage_authorBusinessId_fkey")
+
+  @@index([supportTicketId], map: "SupportTicketMessage_supportTicketId_idx")
+  @@map("support_ticket_message")
+}
+
+// ============================================================================
+// CATEGORY MODELS
+// ============================================================================
+
+model category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique(map: "Category_slug_key")
+  description String?  @db.Text
+  icon        String?
+  color       String?
+  imageUrl    String?
+  parentId    String?
+  level       Int      @default(0)
+  path        String?  @db.VarChar(500)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  keywords    String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent            category?          @relation("category_children", fields: [parentId], references: [id], onDelete: Cascade, map: "Category_parentId_fkey")
+  children          category[]         @relation("category_children")
+  businesscategory  businesscategory[]
+  primaryBusinesses business[]         @relation("BusinessPrimaryCategory")
+
+  @@unique([parentId, name], map: "Category_parentId_name_key")
+  @@index([parentId, sortOrder], map: "Category_parentId_sortOrder_idx")
+  @@index([level, isActive], map: "Category_level_isActive_idx")
+  @@index([isActive, isFeatured], map: "Category_isActive_isFeatured_idx")
+  @@map("category")
+}
+
+// ============================================================================
+// PRODUCT & INVENTORY MODELS
+// ============================================================================
+
+model product {
+  id            String   @id @default(cuid())
+  businessId    String
+  categoryId    String?
+  name          String
+  slug          String
+  description   String?  @db.Text
+  price         Float?
+  discountPrice Float?
+  imageUrl      String?
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  stock         Int?     // Stok (varyasyon yoksa ürün bazlı)
+  maxOrderQty   Int?     // Maksimum sipariş adedi (null = sınırsız)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business        business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Product_businessId_fkey")
+  productcategory productcategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "Product_categoryId_fkey")
+  productvariant  productvariant[]
+  catalogitem     catalogitem[]
+  pricelistitem   pricelistitem[]
+  production_run  production_run[]
+  lead            lead[]
+  ecommerceMatches ecommerce_product_match[]
+
+  @@unique([businessId, slug], map: "Product_businessId_slug_key")
+  @@index([businessId], map: "Product_businessId_idx")
+  @@index([categoryId], map: "Product_categoryId_fkey")
+  @@map("product")
+}
+
+model ecommerce_product_match {
+  id                  String                @id @default(cuid())
+  businessId          String
+  productId           String
+  platform            String
+  platformProductId   String?
+  platformProductName String?
+  matchStatus         ecommerce_match_status @default(NOT_LISTED)
+  lastSyncedAt        DateTime?
+  notes               String?               @db.Text
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EcommerceProductMatch_businessId_fkey")
+  product  product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "EcommerceProductMatch_productId_fkey")
+
+  @@unique([businessId, productId, platform], map: "EcommerceProductMatch_businessId_productId_platform_key")
+  @@index([businessId, platform], map: "EcommerceProductMatch_businessId_platform_idx")
+  @@index([businessId, matchStatus], map: "EcommerceProductMatch_businessId_matchStatus_idx")
+  @@index([productId], map: "EcommerceProductMatch_productId_idx")
+  @@map("ecommerce_product_match")
+}
+
+model productvariant {
+  id            String   @id @default(cuid())
+  productId     String
+  name          String   // Örn: Büyük Boy, Kırmızı
+  sku           String?
+  price         Float?   // Varyasyon fiyatı (boşsa ürün fiyatı)
+  discountPrice Float?
+  stock         Int      @default(0)
+  maxOrderQty   Int?     // Maksimum sipariş adedi (null = sınırsız)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  product product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductVariant_productId_fkey")
+
+  @@index([productId], map: "ProductVariant_productId_idx")
+  @@map("productvariant")
+}
+
+model productcategory {
+  id         String @id @default(cuid())
+  businessId String
+  name       String
+  order      Int    @default(0)
+
+  business business  @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ProductCategory_businessId_fkey")
+  product  product[]
+
+  @@unique([businessId, name], map: "ProductCategory_businessId_name_key")
+  @@map("productcategory")
+}
+
+model catalog {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  description String?  @db.Text
+  isPublished Boolean @default(false)
+  pdfUrl      String?
+  shareUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Catalog_businessId_fkey")
+  items    catalogitem[]
+
+  @@index([businessId], map: "Catalog_businessId_idx")
+  @@map("catalog")
+}
+
+model catalogitem {
+  id        String  @id @default(cuid())
+  catalogId String
+  productId String
+  order     Int     @default(0)
+
+  catalog catalog @relation(fields: [catalogId], references: [id], onDelete: Cascade, map: "CatalogItem_catalogId_fkey")
+  product product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "CatalogItem_productId_fkey")
+
+  @@unique([catalogId, productId], map: "CatalogItem_catalogId_productId_key")
+  @@index([catalogId], map: "CatalogItem_catalogId_idx")
+  @@index([productId], map: "CatalogItem_productId_idx")
+  @@map("catalogitem")
+}
+
+model pricelist {
+  id           String    @id @default(cuid())
+  businessId   String
+  name         String
+  description  String?   @db.Text
+  customerGroup String   @default("ALL") // ALL, VIP, BULK, NEW, CORPORATE
+  discountRate Float    @default(0)
+  validFrom    DateTime
+  validUntil   DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business business        @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Pricelist_businessId_fkey")
+  items    pricelistitem[]
+
+  @@index([businessId], map: "Pricelist_businessId_idx")
+  @@map("pricelist")
+}
+
+model pricelistitem {
+  id         String  @id @default(cuid())
+  pricelistId String
+  productId  String
+  order      Int     @default(0)
+
+  pricelist pricelist @relation(fields: [pricelistId], references: [id], onDelete: Cascade, map: "PricelistItem_pricelistId_fkey")
+  product   product   @relation(fields: [productId], references: [id], onDelete: Cascade, map: "PricelistItem_productId_fkey")
+
+  @@unique([pricelistId, productId], map: "PricelistItem_pricelistId_productId_key")
+  @@index([pricelistId], map: "PricelistItem_pricelistId_idx")
+  @@index([productId], map: "PricelistItem_productId_idx")
+  @@map("pricelistitem")
+}
+
+model production_run {
+  id        String   @id @default(cuid())
+  businessId String
+  productId  String
+  quantity   Float   @default(0)
+  unit       String  @default("kg") // kg, adet, litre, vb.
+  recipe     String? @db.Text
+  startDate  DateTime
+  endDate    DateTime
+  status     String  @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
+  cost       Float   @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ProductionRun_businessId_fkey")
+  product  product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductionRun_productId_fkey")
+
+  @@index([businessId], map: "ProductionRun_businessId_idx")
+  @@index([productId], map: "ProductionRun_productId_idx")
+  @@map("production_run")
+}
+
+model warehouse {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String
+  address      String?  @db.Text
+  capacity     Int?     // toplam kapasite (birim serbest)
+  currentStock Int      @default(0)
+  manager      String?
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Warehouse_businessId_fkey")
+
+  @@index([businessId], map: "Warehouse_businessId_idx")
+  @@map("warehouse")
+}
+
+// ============================================================================
+// ORDER MODELS
+// ============================================================================
+
+model order {
+  id             String       @id @default(cuid())
+  businessId     String
+  userId         String?
+  orderNumber    String       @unique(map: "Order_orderNumber_key")
+  customerName   String
+  customerAvatar String?
+  customerLoc    String?
+  customerNote   String?      @db.Text
+  type           order_type   @default(PRODUCT)
+  status         order_status @default(PENDING)
+  deliveryType   String?
+  paymentMethod  String?
+  subtotal       Float        @default(0)
+  total          Float        @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  business business    @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Order_businessId_fkey")
+  user     user?       @relation(fields: [userId], references: [id], onDelete: SetNull, map: "Order_userId_fkey")
+  items    orderitem[]
+
+  @@index([businessId, status], map: "Order_businessId_status_idx")
+  @@index([businessId, createdAt], map: "Order_businessId_createdAt_idx")
+  @@index([userId], map: "Order_userId_idx")
+  @@map("order")
+}
+
+model reservation {
+  id           String             @id @default(cuid())
+  businessId   String
+  userId       String?
+  customerName String
+  customerPhone String?
+  customerEmail String?
+  serviceName  String
+  notes        String?            @db.Text
+  source       reservation_source @default(PUBLIC_LISTING)
+  status       reservation_status @default(PENDING)
+  startAt      DateTime
+  endAt        DateTime
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Reservation_businessId_fkey")
+  user     user?    @relation(fields: [userId], references: [id], onDelete: SetNull, map: "Reservation_userId_fkey")
+  answers  reservation_answer[]
+
+  @@index([businessId, startAt], map: "Reservation_businessId_startAt_idx")
+  @@index([businessId, status], map: "Reservation_businessId_status_idx")
+  @@index([userId, startAt], map: "Reservation_userId_startAt_idx")
+  @@map("reservation")
+}
+
+model quote {
+  id                String         @id @default(cuid())
+  businessId        String
+  quoteNumber       String
+  customerName      String
+  customerCompany   String?
+  customerEmail     String?
+  customerPhone     String?
+  quoteDate         DateTime
+  validUntil        DateTime
+  sentDate          DateTime?
+  acceptedDate      DateTime?
+  followUpDate      DateTime?
+  expectedCloseDate DateTime?
+  subtotal          Float          @default(0)
+  discount          Float          @default(0)
+  tax               Float          @default(0)
+  total             Float          @default(0)
+  status            quote_status   @default(DRAFT)
+  priority          quote_priority @default(NORMAL)
+  probability       Int            @default(0)
+  convertedToSale   Boolean        @default(false)
+  template          String?        @default("Standard")
+  termsAndConditions String?       @db.Text
+  notes             String?        @db.Text
+  tags              Json?
+  budget            Float?
+  timeline          String?
+  requirements      String?        @db.Text
+  objections        String?        @db.Text
+  nextSteps         String?        @db.Text
+  competitor        String?
+  decisionMaker     String?
+  createdBy         String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  business business    @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Quote_businessId_fkey")
+  items    quote_item[]
+
+  @@unique([businessId, quoteNumber], map: "Quote_businessId_quoteNumber_key")
+  @@index([businessId, status], map: "Quote_businessId_status_idx")
+  @@index([businessId, createdAt], map: "Quote_businessId_createdAt_idx")
+  @@index([businessId, validUntil], map: "Quote_businessId_validUntil_idx")
+  @@map("quote")
+}
+
+model quote_item {
+  id          String   @id @default(cuid())
+  quoteId     String
+  title       String
+  isService   Boolean  @default(true)
+  quantity    Float    @default(1)
+  unitPrice   Float    @default(0)
+  discount    Float    @default(0)
+  lineTotal   Float    @default(0)
+  description String?  @db.Text
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  quote quote @relation(fields: [quoteId], references: [id], onDelete: Cascade, map: "QuoteItem_quoteId_fkey")
+
+  @@index([quoteId], map: "QuoteItem_quoteId_idx")
+  @@index([quoteId, sortOrder], map: "QuoteItem_quoteId_sortOrder_idx")
+  @@map("quote_item")
+}
+
+model business_reservation_settings {
+  id               String   @id @default(cuid())
+  businessId       String   @unique(map: "BusinessReservationSettings_businessId_key")
+  timezone         String   @default("Europe/Istanbul")
+  slotDurationMin  Int      @default(60)
+  minNoticeMinutes Int      @default(60)
+  maxAdvanceDays   Int      @default(60)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  business     business                          @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessReservationSettings_businessId_fkey")
+  availability business_reservation_availability[]
+  questions    business_reservation_question[]
+
+  @@index([businessId], map: "BusinessReservationSettings_businessId_idx")
+  @@map("business_reservation_settings")
+}
+
+model business_reservation_availability {
+  id          String               @id @default(cuid())
+  settingsId  String
+  dayOfWeek   reservation_weekday
+  startTime   String
+  endTime     String
+  isEnabled   Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  settings business_reservation_settings @relation(fields: [settingsId], references: [id], onDelete: Cascade, map: "BusinessReservationAvailability_settingsId_fkey")
+
+  @@index([settingsId], map: "BusinessReservationAvailability_settingsId_idx")
+  @@index([settingsId, dayOfWeek], map: "BusinessReservationAvailability_settingsId_dayOfWeek_idx")
+  @@map("business_reservation_availability")
+}
+
+model business_reservation_question {
+  id         String                    @id @default(cuid())
+  settingsId String
+  label      String
+  type       reservation_question_type
+  isRequired Boolean                   @default(false)
+  isActive   Boolean                   @default(true)
+  sortOrder  Int                       @default(0)
+  createdAt  DateTime                  @default(now())
+  updatedAt  DateTime                  @updatedAt
+
+  settings business_reservation_settings        @relation(fields: [settingsId], references: [id], onDelete: Cascade, map: "BusinessReservationQuestion_settingsId_fkey")
+  options  business_reservation_question_option[]
+  answers  reservation_answer[]
+
+  @@index([settingsId], map: "BusinessReservationQuestion_settingsId_idx")
+  @@index([settingsId, sortOrder], map: "BusinessReservationQuestion_settingsId_sortOrder_idx")
+  @@map("business_reservation_question")
+}
+
+model business_reservation_question_option {
+  id         String   @id @default(cuid())
+  questionId String
+  label      String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question business_reservation_question @relation(fields: [questionId], references: [id], onDelete: Cascade, map: "BusinessReservationQuestionOption_questionId_fkey")
+
+  @@index([questionId], map: "BusinessReservationQuestionOption_questionId_idx")
+  @@index([questionId, sortOrder], map: "BusinessReservationQuestionOption_questionId_sortOrder_idx")
+  @@map("business_reservation_question_option")
+}
+
+model reservation_answer {
+  id           String   @id @default(cuid())
+  reservationId String
+  questionId    String
+  valueText     String? @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  reservation reservation                 @relation(fields: [reservationId], references: [id], onDelete: Cascade, map: "ReservationAnswer_reservationId_fkey")
+  question    business_reservation_question @relation(fields: [questionId], references: [id], onDelete: Cascade, map: "ReservationAnswer_questionId_fkey")
+
+  @@index([reservationId], map: "ReservationAnswer_reservationId_idx")
+  @@index([questionId], map: "ReservationAnswer_questionId_idx")
+  @@map("reservation_answer")
+}
+
+model orderitem {
+  id        String  @id @default(cuid())
+  orderId   String
+  name      String
+  qty       Int     @default(1)
+  price     Float   @default(0)
+  productId String?
+  variantId String?
+
+  order order @relation(fields: [orderId], references: [id], onDelete: Cascade, map: "OrderItem_orderId_fkey")
+
+  @@index([orderId], map: "OrderItem_orderId_fkey")
+  @@map("orderitem")
+}
+
+// ============================================================================
+// LEAD & SALES MODELS
+// ============================================================================
+
+model lead {
+  id                  String      @id @default(cuid())
+  businessId          String
+  name                String
+  phone               String?
+  email               String?
+  message             String      @db.Text
+  category            String?
+  productId           String?
+  productNameSnapshot String?
+  source              lead_source @default(BUSINESS_PAGE)
+  status              lead_status @default(NEW)
+  adminNote           String?     @db.Text
+  replyText           String?     @db.Text
+  quotedPrice         Float?
+  repliedAt           DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  // Fraud Detection
+  ipHash       String? @db.VarChar(64)
+  userAgent    String? @db.VarChar(512)
+  fingerprint  String? @db.VarChar(128)
+  sourcePage   String? @db.VarChar(255)
+  isSuspicious Boolean @default(false)
+  spamReason   String? @db.VarChar(255)
+
+  // Location
+  city          String?
+  district      String?
+  isDistributed Boolean @default(false)
+  latitude      Float?
+  longitude     Float?
+
+  business     business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Lead_businessId_fkey")
+  product      product?      @relation(fields: [productId], references: [id], onDelete: SetNull, map: "Lead_productId_fkey")
+  leadreminder leadreminder?
+
+  @@index([businessId, createdAt], map: "Lead_businessId_createdAt_idx")
+  @@index([businessId, productId], map: "Lead_businessId_productId_idx")
+  @@index([businessId, status], map: "Lead_businessId_status_idx")
+  @@index([productId], map: "Lead_productId_fkey")
+  @@map("lead")
+}
+
+model leadreminder {
+  id              String    @id @default(cuid())
+  leadId          String    @unique(map: "LeadReminder_leadId_key")
+  businessId      String
+  scheduledAt     DateTime
+  sentAt          DateTime?
+  attempts        Int       @default(0)
+  lastError       String?   @db.Text
+  processingClaim String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "LeadReminder_businessId_fkey")
+  lead     lead     @relation(fields: [leadId], references: [id], onDelete: Cascade, map: "LeadReminder_leadId_fkey")
+
+  @@index([businessId], map: "LeadReminder_businessId_fkey")
+  @@index([scheduledAt, sentAt], map: "LeadReminder_scheduledAt_sentAt_idx")
+  @@map("leadreminder")
+}
+
+// ============================================================================
+// REVIEW & RATING MODELS
+// ============================================================================
+
+model review {
+  id           String        @id @default(cuid())
+  rating       Int           @default(0)
+  content      String?       @db.Text
+  replyContent String?       @db.Text
+  repliedAt    DateTime?
+  metrics      String?       @db.LongText
+  likes        Int           @default(0)
+  status       review_status @default(PENDING)
+  isApproved   Boolean       @default(false)
+  reportedAt   DateTime?
+  reportedByBusinessId String?
+
+  reviewerName  String?
+  reviewerEmail String?
+  reviewerPhone String?
+  ipHash        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId     String?
+  businessId String
+
+  user     user?    @relation(fields: [userId], references: [id], onDelete: SetNull, map: "Review_userId_fkey")
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Review_businessId_fkey")
+
+  @@index([businessId, isApproved], map: "Review_businessId_isApproved_idx")
+  @@index([userId], map: "Review_userId_fkey")
+  @@map("review")
+}
+
+// ============================================================================
+// NOTIFICATION & COMMUNICATION MODELS
+// ============================================================================
+
+model notification {
+  id         String   @id @default(cuid())
+  businessId String
+  title      String
+  body       String?  @db.Text
+  type       String   @default("LEAD")
+  isRead     Boolean  @default(false)
+  linkUrl    String?
+  createdAt  DateTime @default(now())
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Notification_businessId_fkey")
+
+  @@index([businessId, createdAt], map: "Notification_businessId_createdAt_idx")
+  @@index([businessId, isRead], map: "Notification_businessId_isRead_idx")
+  @@map("notification")
+}
+
+model emaillog {
+  id         String   @id @default(cuid())
+  businessId String?
+  userId     String?
+  type       String
+  uniqueKey  String   @unique(map: "EmailLog_uniqueKey_key")
+  createdAt  DateTime @default(now())
+
+  business business? @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmailLog_businessId_fkey")
+  user     user?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "EmailLog_userId_fkey")
+
+  @@index([businessId], map: "EmailLog_businessId_fkey")
+  @@index([userId], map: "EmailLog_userId_fkey")
+  @@map("emaillog")
+}
+
+// ============================================================================
+// MEDIA & ASSETS MODELS
+// ============================================================================
+
+model media {
+  id         String   @id @default(cuid())
+  url        String   @unique(map: "Media_url_key")
+  fileId     String
+  type       String
+  createdAt  DateTime @default(now())
+  businessId String?
+
+  business business? @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Media_businessId_fkey")
+
+  @@index([businessId], map: "Media_businessId_fkey")
+  @@map("media")
+}
+
+model asset {
+  id              String          @id @default(cuid())
+  businessId      String
+  assetCode       String
+  name            String
+  category        asset_category  @default(EQUIPMENT)
+  purchasePrice   Float           @default(0)
+  currentValue    Float           @default(0)
+  purchaseDate    DateTime        @default(now())
+  location        String?
+  assignedTo      String?
+  status          asset_status    @default(ACTIVE)
+  condition       asset_condition @default(EXCELLENT)
+  nextMaintenance DateTime?
+  isListed        Boolean         @default(false)
+  listingType     String?         @default("sale")
+  listingPrice    Float?
+  description     String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Asset_businessId_fkey")
+
+  @@index([businessId], map: "Asset_businessId_idx")
+  @@map("asset")
+}
+
+// ============================================================================
+// HR & EMPLOYEE MODELS
+// ============================================================================
+
+model employee {
+  id          String          @id @default(cuid())
+  businessId  String
+  name        String
+  position    String
+  email       String?
+  phone       String?
+  salary      Float           @default(0)
+  startDate   DateTime        @default(now())
+  status      employee_status @default(ACTIVE)
+  performance Int             @default(100)
+  leaves      Int             @default(0)
+  department  String?
+  departmentId String?
+  avatar      String?
+  tcNo        String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Employee_businessId_fkey")
+  departmentRef employee_department? @relation(fields: [departmentId], references: [id], onDelete: SetNull, map: "Employee_departmentId_fkey")
+  leaveRequests employee_leave_request[]
+
+  @@index([businessId], map: "Employee_businessId_idx")
+  @@index([departmentId], map: "Employee_departmentId_idx")
+  @@map("employee")
+}
+
+model employee_department {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business  @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmployeeDepartment_businessId_fkey")
+  employees employee[]
+
+  @@unique([businessId, name], map: "EmployeeDepartment_businessId_name_key")
+  @@index([businessId, isActive], map: "EmployeeDepartment_businessId_isActive_idx")
+  @@map("employee_department")
+}
+
+model employee_leave_request {
+  id               String                @id @default(cuid())
+  businessId       String
+  employeeId       String
+  leaveType        employee_leave_type
+  startDate        DateTime
+  endDate          DateTime
+  days             Int
+  reason           String                @db.Text
+  notes            String?               @db.Text
+  status           employee_leave_status @default(PENDING)
+  requestedByUserId String?
+  approvedByUserId  String?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?               @db.Text
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  business    business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmployeeLeaveRequest_businessId_fkey")
+  employee    employee @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeeLeaveRequest_employeeId_fkey")
+  requestedBy user?    @relation("EmployeeLeaveRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull, map: "EmployeeLeaveRequest_requestedByUserId_fkey")
+  approvedBy  user?    @relation("EmployeeLeaveApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull, map: "EmployeeLeaveRequest_approvedByUserId_fkey")
+
+  @@index([businessId, status], map: "EmployeeLeaveRequest_businessId_status_idx")
+  @@index([businessId, startDate], map: "EmployeeLeaveRequest_businessId_startDate_idx")
+  @@index([employeeId, status], map: "EmployeeLeaveRequest_employeeId_status_idx")
+  @@map("employee_leave_request")
+}
+
+// ============================================================================
+// CALENDAR & SCHEDULING MODELS
+// ============================================================================
+
+model calendar_event {
+  id           String         @id @default(cuid())
+  businessId   String
+  title        String
+  customerName String?
+  startTime    DateTime
+  endTime      DateTime
+  category     event_category @default(APPOINTMENT)
+  status       event_status   @default(CONFIRMED)
+  priority     event_priority @default(MEDIUM)
+  description  String?        @db.Text
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CalendarEvent_businessId_fkey")
+
+  @@index([businessId, startTime], map: "CalendarEvent_businessId_startTime_idx")
+  @@map("calendar_event")
+}
+
+model planning_project {
+  id          String                @id @default(cuid())
+  businessId  String
+  name        String
+  description String?               @db.Text
+  status      planning_project_status @default(ACTIVE)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  business business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "PlanningProject_businessId_fkey")
+  tasks    planning_task[]
+
+  @@index([businessId, status], map: "PlanningProject_businessId_status_idx")
+  @@index([businessId, createdAt], map: "PlanningProject_businessId_createdAt_idx")
+  @@map("planning_project")
+}
+
+model planning_task {
+  id             String               @id @default(cuid())
+  businessId     String
+  projectId      String?
+  title          String
+  description    String?              @db.Text
+  taskType       planning_task_type   @default(TASK)
+  priority       planning_task_priority @default(MEDIUM)
+  status         planning_task_status @default(TODO)
+  progress       Int                  @default(0)
+  assignedTo     String?
+  dueDate        DateTime?
+  budget         Float                @default(0)
+  estimatedHours Int?
+  spentHours     Int?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  business business          @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "PlanningTask_businessId_fkey")
+  project  planning_project? @relation(fields: [projectId], references: [id], onDelete: SetNull, map: "PlanningTask_projectId_fkey")
+
+  @@index([businessId, status], map: "PlanningTask_businessId_status_idx")
+  @@index([businessId, dueDate], map: "PlanningTask_businessId_dueDate_idx")
+  @@index([businessId, taskType], map: "PlanningTask_businessId_taskType_idx")
+  @@index([projectId], map: "PlanningTask_projectId_idx")
+  @@map("planning_task")
+}
+
+// ============================================================================
+// FINANCIAL TRANSACTION MODELS
+// ============================================================================
+
+enum transaction_type {
+  INCOME
+  EXPENSE
+  DEBT
+  LOAN
+  CREDIT_CARD
+  TRANSFER
+}
+
+enum transaction_status {
+  PENDING
+  COMPLETED
+  OVERDUE
+}
+
+model financial_transaction {
+  id          String           @id @default(cuid())
+  businessId  String?
+  userId      String?
+  type        transaction_type
+  title       String
+  amount      Float
+  category    String
+  description String?          @db.Text
+  date        DateTime         @default(now())
+
+  // Özel alanlar
+  dueDate     DateTime?
+  totalAmount Float?
+  creditLimit Float?
+
+  status transaction_status @default(COMPLETED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business business? @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "FinancialTransaction_businessId_fkey")
+  user     user?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FinancialTransaction_userId_fkey")
+
+  @@index([businessId], map: "FinancialTransaction_businessId_idx")
+  @@index([userId], map: "FinancialTransaction_userId_idx")
+  @@index([date], map: "FinancialTransaction_date_idx")
+  @@index([type, date], map: "FinancialTransaction_type_date_idx")
+  @@map("financial_transaction")
+}
+
+// ============================================================================
+// LEGACY CASH ACCOUNT MODELS (Keeping for backward compatibility)
+// ============================================================================
+
+model cash_account {
+  id         String       @id @default(cuid())
+  businessId String
+  name       String
+  type       account_type @default(CASH)
+  balance    Float        @default(0)
+  currency   String       @default("TRY")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  business        business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashAccount_businessId_fkey")
+  transactions    cash_transaction[] @relation("accountTransactions")
+  to_transactions cash_transaction[] @relation("toAccountTransactions")
+
+  @@index([businessId], map: "CashAccount_businessId_idx")
+  @@map("cash_account")
+}
+
+model cash_transaction {
+  id          String           @id @default(cuid())
+  businessId  String
+  accountId   String
+  toAccountId String?
+  type        transaction_type
+  amount      Float
+  category    String
+  description String?          @db.Text
+  date        DateTime         @default(now())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  business  business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashTransaction_businessId_fkey")
+  account   cash_account  @relation("accountTransactions", fields: [accountId], references: [id], onDelete: Cascade, map: "CashTransaction_accountId_fkey")
+  toAccount cash_account? @relation("toAccountTransactions", fields: [toAccountId], references: [id], onDelete: Cascade, map: "CashTransaction_toAccountId_fkey")
+
+  @@index([businessId], map: "CashTransaction_businessId_idx")
+  @@index([accountId], map: "CashTransaction_accountId_idx")
+  @@index([date], map: "CashTransaction_date_idx")
+  @@map("cash_transaction")
+}
+
+// ============================================================================
+// REFERRAL MODELS
+// ============================================================================
+
+model referral {
+  id           String   @id @default(cuid())
+  referrerId   String
+  invitedBizId String?
+  invitedEmail String?
+  referralCode String
+  createdAt    DateTime @default(now())
+
+  business business @relation(fields: [referrerId], references: [id], onDelete: Cascade, map: "Referral_referrerId_fkey")
+
+  @@unique([referrerId, invitedBizId], map: "Referral_referrerId_invitedBizId_key")
+  @@index([referrerId], map: "Referral_referrerId_idx")
+  @@map("referral")
+}
+
+// ============================================================================
+// SYSTEM & LOGGING MODELS
+// ============================================================================
+
+model errorlog {
+  id        String   @id @default(cuid())
+  service   String
+  level     String   @default("ERROR")
+  message   String   @db.Text
+  stack     String?  @db.Text
+  metadata  String?  @db.LongText
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt], map: "ErrorLog_service_createdAt_idx")
+  @@map("errorlog")
+}
+
+model eventthrottle {
+  id        String   @id @default(cuid())
+  key       String   @unique(map: "EventThrottle_key_key")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt], map: "EventThrottle_expiresAt_idx")
+  @@map("eventthrottle")
+}
+
+model systemstatus {
+  id            String   @id @default(cuid())
+  key           String   @unique(map: "SystemStatus_key_key")
+  value         String?
+  lastHeartbeat DateTime @default(now())
+  metadata      String?  @db.LongText
+
+  @@index([key], map: "SystemStatus_key_idx")
+  @@map("systemstatus")
+}
+
+model platformsetting {
+  id            String   @id @default(cuid())
+  general       Json
+  security      Json
+  notifications Json
+  api           Json
+  design        Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("platform_setting")
+}
+
+model neighborhood_post {
+  id                  String                             @id @default(cuid())
+  slug                String                             @unique
+  tab                 neighborhood_tab
+  type                neighborhood_post_type
+  marketplaceCategory neighborhood_marketplace_category?
+  status              neighborhood_post_status           @default(PUBLISHED)
+
+  title       String
+  content     String? @db.Text
+  description String? @db.Text
+
+  price    Float?
+  currency String? @default("TL")
+  location String?
+  city     String?
+  district String?
+
+  eventStartAt  DateTime?
+  eventEndAt    DateTime?
+  eventLocation String?
+
+  isPinned     Boolean @default(false)
+  isFeatured   Boolean @default(false)
+  viewCount    Int     @default(0)
+  likeCount    Int     @default(0)
+  commentCount Int     @default(0)
+  shareCount   Int     @default(0)
+
+  authorUserId     String?
+  authorBusinessId String?
+
+  contactPhone    String?
+  contactWhatsapp String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authorUser     user?     @relation(fields: [authorUserId], references: [id], onDelete: SetNull, map: "NeighborhoodPost_authorUserId_fkey")
+  authorBusiness business? @relation(fields: [authorBusinessId], references: [id], onDelete: SetNull, map: "NeighborhoodPost_authorBusinessId_fkey")
+
+  images     neighborhood_post_image[]
+  attributes neighborhood_post_attribute[]
+  comments   neighborhood_post_comment[]
+  likes      neighborhood_post_like[]
+
+  @@index([tab, status, createdAt], map: "NeighborhoodPost_tab_status_createdAt_idx")
+  @@index([marketplaceCategory, status], map: "NeighborhoodPost_marketplaceCategory_status_idx")
+  @@index([authorUserId], map: "NeighborhoodPost_authorUserId_idx")
+  @@index([authorBusinessId], map: "NeighborhoodPost_authorBusinessId_idx")
+  @@map("neighborhood_post")
+}
+
+model neighborhood_post_image {
+  id        String   @id @default(cuid())
+  postId    String
+  url       String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  post neighborhood_post @relation(fields: [postId], references: [id], onDelete: Cascade, map: "NeighborhoodPostImage_postId_fkey")
+
+  @@index([postId, sortOrder], map: "NeighborhoodPostImage_postId_sortOrder_idx")
+  @@map("neighborhood_post_image")
+}
+
+model neighborhood_post_attribute {
+  id        String @id @default(cuid())
+  postId    String
+  label     String
+  value     String
+  sortOrder Int    @default(0)
+
+  post neighborhood_post @relation(fields: [postId], references: [id], onDelete: Cascade, map: "NeighborhoodPostAttribute_postId_fkey")
+
+  @@index([postId, sortOrder], map: "NeighborhoodPostAttribute_postId_sortOrder_idx")
+  @@map("neighborhood_post_attribute")
+}
+
+model neighborhood_post_comment {
+  id         String   @id @default(cuid())
+  postId     String
+  userId     String?
+  businessId String?
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  post     neighborhood_post @relation(fields: [postId], references: [id], onDelete: Cascade, map: "NeighborhoodPostComment_postId_fkey")
+  user     user?             @relation(fields: [userId], references: [id], onDelete: SetNull, map: "NeighborhoodPostComment_userId_fkey")
+  business business?         @relation(fields: [businessId], references: [id], onDelete: SetNull, map: "NeighborhoodPostComment_businessId_fkey")
+
+  @@index([postId, createdAt], map: "NeighborhoodPostComment_postId_createdAt_idx")
+  @@index([userId], map: "NeighborhoodPostComment_userId_idx")
+  @@index([businessId], map: "NeighborhoodPostComment_businessId_idx")
+  @@map("neighborhood_post_comment")
+}
+
+model neighborhood_post_like {
+  id         String   @id @default(cuid())
+  postId     String
+  userId     String?
+  businessId String?
+  createdAt  DateTime @default(now())
+
+  post     neighborhood_post @relation(fields: [postId], references: [id], onDelete: Cascade, map: "NeighborhoodPostLike_postId_fkey")
+  user     user?             @relation(fields: [userId], references: [id], onDelete: SetNull, map: "NeighborhoodPostLike_userId_fkey")
+  business business?         @relation(fields: [businessId], references: [id], onDelete: SetNull, map: "NeighborhoodPostLike_businessId_fkey")
+
+  @@unique([postId, userId], map: "NeighborhoodPostLike_postId_userId_key")
+  @@unique([postId, businessId], map: "NeighborhoodPostLike_postId_businessId_key")
+  @@index([postId], map: "NeighborhoodPostLike_postId_idx")
+  @@map("neighborhood_post_like")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum user_role {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+enum user_status {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING
+}
+
+enum business_type {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum businesssubscription_status {
+  TRIAL
+  ACTIVE
+  EXPIRED
+}
+
+enum businesssubscription_plan {
+  BASIC
+  PREMIUM
+}
+
+enum subscription_payment_status {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum invoice_type {
+  SUBSCRIPTION
+  MANUAL
+  OTHER
+}
+
+enum invoice_status {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+enum ad_placement {
+  BANNER
+  SIDEBAR
+  LISTING_TOP
+  LISTING_INLINE
+  FOOTER
+  POPUP
+}
+
+enum ad_status {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum broadcast_layout {
+  BANNER
+  MODAL
+  SIDEBAR
+  INLINE
+}
+
+enum broadcast_audience {
+  ALL
+  USER
+  BUSINESS
+}
+
+enum broadcast_status {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ticket_creator_type {
+  USER
+  BUSINESS
+}
+
+enum ticket_status {
+  OPEN
+  IN_PROGRESS
+  WAITING_REPLY
+  RESOLVED
+  CLOSED
+}
+
+enum ticket_priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ticket_category {
+  GENERAL
+  BILLING
+  TECHNICAL
+  ACCOUNT
+  OTHER
+}
+
+enum ticket_message_author_type {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+enum businessevent_type {
+  VIEW_PROFILE
+  VIEW_PRODUCT
+  CLICK_PHONE
+  CLICK_WHATSAPP
+  SUBMIT_LEAD
+  CLICK_CTA_PRIMARY
+  CLICK_PHONE_STICKY
+  SCROLL_75
+  CLICK_SHARE_PROFILE
+  CLICK_SHARE_REFERRAL
+  CLICK_REQUEST_REVIEW
+  CLICK_BILLING_PAY
+  SUBSCRIPTION_STARTED
+  SUBSCRIPTION_RENEWED
+  EMAIL_VERIFICATION_SENT
+  EMAIL_VERIFIED
+  EMAIL_VERIFICATION_RESENT
+  EMAIL_SENT_TRIAL_WARNING
+  EMAIL_SENT_PAYMENT_SUCCESS
+  EMAIL_SENT_SUBSCRIPTION_EXPIRED
+  EMAIL_SENT_NEW_LEAD
+  EMAIL_SENT_NEW_REVIEW
+  EMAIL_SENT_REFERRAL_SUCCESS
+  CLICK_QUICK_REGISTER
+  SUBMIT_QUICK_REGISTER
+  QUICK_REGISTER_SUCCESS
+  CLICK_SWITCH_TO_DETAILED_REGISTER
+  CLICK_SWITCH_TO_QUICK_REGISTER
+  CLICK_WEBSITE
+  FAVORITE_ADD
+  FAVORITE_REMOVE
+  START_RESERVATION
+  COMPLETE_RESERVATION
+  ADD_TO_CART
+}
+
+enum lead_source {
+  BUSINESS_PAGE
+  PRODUCT
+  CATEGORY_PAGE
+}
+
+enum lead_status {
+  NEW
+  CONTACTED
+  QUOTED
+  REPLIED
+  CLOSED
+  LOST
+}
+
+enum quote_status {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum quote_priority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+enum ecommerce_match_status {
+  MATCHED
+  PENDING
+  NOT_LISTED
+}
+
+enum review_status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum order_type {
+  PRODUCT
+  SERVICE
+}
+
+enum order_status {
+  PENDING
+  CONFIRMED
+  PREPARING
+  ON_THE_WAY
+  DELIVERED
+  CANCELLED
+}
+
+enum reservation_status {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum reservation_source {
+  PUBLIC_LISTING
+  BUSINESS_PANEL
+}
+
+enum reservation_weekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum reservation_question_type {
+  TEXT
+  SHORT_ANSWER
+  SINGLE_CHOICE
+  MULTI_CHOICE
+}
+
+enum asset_category {
+  VEHICLE
+  EQUIPMENT
+  TECHNOLOGY
+  OFFICE
+  OTHER
+}
+
+enum asset_status {
+  ACTIVE
+  MAINTENANCE
+  INACTIVE
+  SOLD
+}
+
+enum asset_condition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum employee_status {
+  ACTIVE
+  ON_LEAVE
+  REMOTE
+  TERMINATED
+}
+
+enum employee_leave_status {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum employee_leave_type {
+  ANNUAL
+  SICK
+  UNPAID
+  MATERNITY
+  PATERNITY
+  OTHER
+}
+
+enum event_category {
+  RESERVATION
+  TASK
+  APPOINTMENT
+  SUPPLIER
+}
+
+enum event_status {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum event_priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum account_type {
+  CASH
+  BANK
+  ESCROW
+}
+
+enum neighborhood_tab {
+  AGENDA
+  MARKETPLACE
+  EVENTS
+  HELP
+}
+
+enum neighborhood_post_type {
+  ANNOUNCEMENT
+  SOCIAL
+  LISTING
+  EVENT
+  HELP_REQUEST
+}
+
+enum neighborhood_marketplace_category {
+  ALL
+  SECONDHAND
+  VEHICLE
+  REALESTATE
+  JOBS
+}
+
+enum neighborhood_post_status {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DELETED
+}
+
+enum planning_project_status {
+  ACTIVE
+  ARCHIVED
+}
+
+enum planning_task_status {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum planning_task_priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum planning_task_type {
+  TASK
+  PROJECT
+  SHIFT
+}

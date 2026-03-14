@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `business` ADD COLUMN `isOpen` BOOLEAN NOT NULL DEFAULT true;
