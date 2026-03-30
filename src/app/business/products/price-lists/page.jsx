@@ -1,41 +1,212 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  PlusIcon,
-  MagnifyingGlassIcon,
-  XMarkIcon,
-  TagIcon,
-  CalendarIcon,
-  UserGroupIcon,
-  PercentBadgeIcon,
-  PencilIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
-import { Badge } from "@/components/ui/badge";
-import { SkeletonStatCard } from "@/components/ui/skeleton";
+  Plus,
+  Copy,
+  BarChart3,
+  Check,
+  Pencil,
+  Trash2,
+  Undo2,
+  X,
+  Loader2,
+  AlertCircle,
+  Search,
+  Package,
+  Tags,
+  Boxes,
+  Percent,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 
-const defaultForm = () => ({
-  name: "",
-  description: "",
-  customerGroup: "ALL",
-  discountRate: 0,
-  validFrom: new Date().toISOString().split("T")[0],
-  validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-  selectedProducts: [],
-});
+function productCode(slug, id) {
+  const digits = String(slug || "").replace(/\D/g, "");
+  if (digits.length >= 4) return `DKV${digits.slice(-4)}`;
+  const alnum = String(id || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+  return `DKV${alnum.slice(-4).padStart(4, "0")}`;
+}
+
+function baseUnitPrice(price, discountPrice) {
+  const d =
+    discountPrice != null && Number.isFinite(Number(discountPrice))
+      ? Number(discountPrice)
+      : null;
+  const p = price != null && Number.isFinite(Number(price)) ? Number(price) : 0;
+  return d ?? p;
+}
+
+function listUnitPrice(base, discountRate) {
+  const r = Number(discountRate) || 0;
+  return base * (1 - Math.min(100, Math.max(0, r)) / 100);
+}
+
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-400 to-orange-500 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "white",
+  className = "",
+  type = "button",
+  disabled = false,
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    orange:
+      "bg-orange-500 hover:bg-orange-600 border-orange-500 text-white",
+    blue: "bg-sky-500 hover:bg-sky-600 border-sky-600 text-white",
+    dark: "bg-slate-900 hover:bg-slate-800 border-slate-900 text-white",
+    rose: "bg-rose-600 hover:bg-rose-700 border-rose-700 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function SectionCard({ title, subtitle, children, right }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        {right}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <tr key={i} className="border-b border-slate-100">
+          <td className="px-4 py-4 md:px-5">
+            <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
+          </td>
+          <td className="px-4 py-4 md:px-5">
+            <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
+          </td>
+          <td className="px-4 py-4 md:px-5">
+            <div className="h-4 w-56 rounded bg-slate-200 animate-pulse" />
+          </td>
+          <td className="px-4 py-4 md:px-5">
+            <div className="h-4 w-24 rounded bg-slate-200 animate-pulse" />
+          </td>
+          <td className="px-4 py-4 text-center md:px-5">
+            <div className="mx-auto h-8 w-8 rounded bg-slate-200 animate-pulse" />
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function ModalShell({ title, children, footer, onClose }) {
+  return (
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[100] bg-black/50"
+        aria-label="Kapat"
+        onClick={onClose}
+      />
+      <div className="fixed left-1/2 top-1/2 z-[101] w-[min(100%,28rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                Fiyat Listesi
+              </p>
+              <h2 className="mt-1 text-lg font-bold">{title}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+              aria-label="Kapat"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <div className="p-5">{children}</div>
+        {footer ? <div className="border-t border-slate-100 px-5 py-4">{footer}</div> : null}
+      </div>
+    </>
+  );
+}
 
 export default function PriceListsPage() {
+  const [view, setView] = useState("list");
   const [isLoading, setIsLoading] = useState(true);
   const [priceLists, setPriceLists] = useState([]);
   const [products, setProducts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isPriceListModalOpen, setIsPriceListModalOpen] = useState(false);
-  const [selectedPriceList, setSelectedPriceList] = useState(null);
-  const [priceListForm, setPriceListForm] = useState(defaultForm());
+  const [categories, setCategories] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  const [activeListId, setActiveListId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+
+  const [newListName, setNewListName] = useState("");
+  const [copySourceId, setCopySourceId] = useState("");
+  const [copyNewName, setCopyNewName] = useState("");
+  const [bulkCategoryId, setBulkCategoryId] = useState("");
+  const [bulkBrand, setBulkBrand] = useState("");
+
+  const [addProductSelectKey, setAddProductSelectKey] = useState(0);
 
   const fetchPriceLists = useCallback(() => {
     return fetch("/api/business/price-lists")
@@ -44,513 +215,862 @@ export default function PriceListsPage() {
       .catch(() => setPriceLists([]));
   }, []);
 
+  const loadDetail = useCallback(async (id) => {
+    if (!id) return;
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/business/price-lists/${id}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Yüklenemedi");
+      setDetail(data);
+      setNameDraft(data.name || "");
+    } catch (e) {
+      toast.error(e.message || "Detay yüklenemedi.");
+      setView("list");
+      setActiveListId(null);
+      setDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    fetch("/api/business/products?status=all&limit=100")
+    fetch("/api/business/products?status=all&limit=500")
       .then((r) => r.json())
       .then((data) => setProducts(data?.items ?? []))
       .catch(() => setProducts([]));
+
+    fetch("/api/business/product-categories")
+      .then((r) => r.json())
+      .then((data) => setCategories(data?.items ?? []))
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
     fetchPriceLists().finally(() => setIsLoading(false));
   }, [fetchPriceLists]);
 
-  const handleAddPriceList = async (e) => {
-    e.preventDefault();
-    if (!priceListForm.name.trim()) return toast.error("Liste adı girin.");
+  useEffect(() => {
+    if (view === "detail" && activeListId) loadDetail(activeListId);
+  }, [view, activeListId, loadDetail]);
+
+  const openList = (id) => {
+    setActiveListId(id);
+    setView("detail");
+  };
+
+  const backToList = () => {
+    setView("list");
+    setActiveListId(null);
+    setDetail(null);
+    fetchPriceLists();
+  };
+
+  const createList = async (e) => {
+    e?.preventDefault();
+    const name = newListName.trim();
+    if (name.length < 2) return toast.error("Liste adı en az 2 karakter olmalı.");
+
     setSaving(true);
     try {
       const res = await fetch("/api/business/price-lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: priceListForm.name.trim(),
-          description: priceListForm.description.trim() || null,
-          customerGroup: priceListForm.customerGroup,
-          discountRate: Number(priceListForm.discountRate) || 0,
-          validFrom: priceListForm.validFrom,
-          validUntil: priceListForm.validUntil,
-          productIds: priceListForm.selectedProducts,
-        }),
+        body: JSON.stringify({ name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Oluşturulamadı.");
+
       toast.success("Fiyat listesi oluşturuldu.");
-      setPriceListForm(defaultForm());
-      setIsPriceListModalOpen(false);
+      setCreateModalOpen(false);
+      setNewListName("");
       await fetchPriceLists();
+      openList(data.id);
     } catch (err) {
-      toast.error(err.message || "Fiyat listesi oluşturulamadı.");
+      toast.error(err.message || "Hata.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleEditPriceList = (list) => {
-    setSelectedPriceList(list);
-    setPriceListForm({
-      name: list.name,
-      description: list.description || "",
-      customerGroup: list.customerGroup || "ALL",
-      discountRate: list.discountRate ?? 0,
-      validFrom: new Date(list.validFrom).toISOString().split("T")[0],
-      validUntil: new Date(list.validUntil).toISOString().split("T")[0],
-      selectedProducts: [],
-    });
-    fetch(`/api/business/price-lists/${list.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.productIds) setPriceListForm((f) => ({ ...f, selectedProducts: data.productIds }));
-      })
-      .catch(() => {});
-    setIsPriceListModalOpen(true);
-  };
+  const copyList = async (e) => {
+    e?.preventDefault();
+    const name = copyNewName.trim();
+    if (!copySourceId) return toast.error("Kopyalanacak listeyi seçin.");
+    if (name.length < 2) return toast.error("Yeni liste adı girin.");
 
-  const handleUpdatePriceList = async (e) => {
-    e.preventDefault();
-    if (!selectedPriceList) return;
-    if (!priceListForm.name.trim()) return toast.error("Liste adı girin.");
     setSaving(true);
     try {
-      const res = await fetch(`/api/business/price-lists/${selectedPriceList.id}`, {
-        method: "PATCH",
+      const res = await fetch("/api/business/price-lists", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: priceListForm.name.trim(),
-          description: priceListForm.description.trim() || null,
-          customerGroup: priceListForm.customerGroup,
-          discountRate: Number(priceListForm.discountRate) || 0,
-          validFrom: priceListForm.validFrom,
-          validUntil: priceListForm.validUntil,
-          productIds: priceListForm.selectedProducts,
-        }),
+        body: JSON.stringify({ name, copyFromId: copySourceId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Güncellenemedi.");
-      toast.success("Fiyat listesi güncellendi.");
-      setSelectedPriceList(null);
-      setIsPriceListModalOpen(false);
+      if (!res.ok) throw new Error(data.message || "Kopyalanamadı.");
+
+      toast.success("Liste kopyalandı.");
+      setCopyModalOpen(false);
+      setCopyNewName("");
+      setCopySourceId("");
       await fetchPriceLists();
+      openList(data.id);
     } catch (err) {
-      toast.error(err.message || "Fiyat listesi güncellenemedi.");
+      toast.error(err.message || "Hata.");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeletePriceList = async (listId) => {
-    if (!confirm("Bu fiyat listesini silmek istediğinize emin misiniz?")) return;
+  const saveListName = async () => {
+    const name = nameDraft.trim();
+    if (name.length < 2) return toast.error("Liste adı en az 2 karakter olmalı.");
+    if (!activeListId || !detail) return;
+
+    setSaving(true);
     try {
-      const res = await fetch(`/api/business/price-lists/${listId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Silinemedi.");
-      toast.success("Fiyat listesi silindi.");
+      const res = await fetch(`/api/business/price-lists/${activeListId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Kaydedilemedi.");
+
+      toast.success("Kaydedildi.");
+      setDetail((d) => (d ? { ...d, name: data.name } : d));
       await fetchPriceLists();
-    } catch (err) {
-      toast.error(err.message || "Fiyat listesi silinemedi.");
+    } catch (e) {
+      toast.error(e.message || "Hata.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const toggleProductSelection = (productId) => {
-    if (priceListForm.selectedProducts.includes(productId)) {
-      setPriceListForm({
-        ...priceListForm,
-        selectedProducts: priceListForm.selectedProducts.filter((id) => id !== productId),
+  const reloadDetail = async () => {
+    if (activeListId) await loadDetail(activeListId);
+    await fetchPriceLists();
+    toast.success("Liste sunucudan yenilendi.");
+  };
+
+  const deleteActiveList = async () => {
+    if (!activeListId) return;
+    if (!confirm("Bu fiyat listesini silmek istediğinize emin misiniz?")) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/business/price-lists/${activeListId}`, {
+        method: "DELETE",
       });
-    } else {
-      setPriceListForm({
-        ...priceListForm,
-        selectedProducts: [...priceListForm.selectedProducts, productId],
-      });
+      if (!res.ok) throw new Error("Silinemedi.");
+
+      toast.success("Liste silindi.");
+      backToList();
+    } catch (e) {
+      toast.error(e.message || "Silinemedi.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const filteredPriceLists = priceLists.filter(
-    (pl) =>
-      pl.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (pl.description || "").toLowerCase().includes(searchTerm.toLowerCase())
+  const addProductToList = async (productId) => {
+    if (!productId || !activeListId) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/business/price-lists/${activeListId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addProductIds: [productId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Eklenemedi.");
+
+      await loadDetail(activeListId);
+      await fetchPriceLists();
+      toast.success("Ürün eklendi.");
+      setAddProductSelectKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e.message || "Hata.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeProductFromList = async (productId) => {
+    if (!activeListId) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/business/price-lists/${activeListId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ removeProductIds: [productId] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Kaldırılamadı.");
+
+      await loadDetail(activeListId);
+      await fetchPriceLists();
+      toast.success("Ürün listeden çıkarıldı.");
+    } catch (e) {
+      toast.error(e.message || "Hata.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bulkAddFiltered = async (e) => {
+    e?.preventDefault();
+    if (!bulkCategoryId && !bulkBrand) {
+      return toast.error("En az bir filtre seçin: kategori veya marka.");
+    }
+    if (!activeListId) return;
+
+    setSaving(true);
+    try {
+      const body = {};
+      if (bulkCategoryId) body.addByCategoryId = bulkCategoryId;
+      if (bulkBrand) body.addByBrand = bulkBrand;
+
+      const res = await fetch(`/api/business/price-lists/${activeListId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Eklenemedi.");
+
+      await loadDetail(activeListId);
+      await fetchPriceLists();
+      toast.success("Filtreye uyan ürünler listeye eklendi.");
+      setBulkModalOpen(false);
+      setBulkCategoryId("");
+      setBulkBrand("");
+    } catch (e) {
+      toast.error(e.message || "Hata.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reportStub = () => toast.info("Fiyat listeleri raporu yakında.");
+
+  const detailItems = detail?.items ?? [];
+  const inListIds = useMemo(
+    () => new Set(detailItems.map((i) => i.productId)),
+    [detailItems]
   );
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
+  const addableProducts = useMemo(
+    () => products.filter((p) => !inListIds.has(p.id)),
+    [products, inListIds]
+  );
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
-  };
+  const brandOptions = useMemo(() => {
+    const set = new Set();
+    for (const p of products) {
+      const b = (p.brand ?? "").toString().trim();
+      if (b) set.add(b);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, "tr"));
+  }, [products]);
 
-  const modalVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: { type: "spring", damping: 25 },
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.8,
-      transition: { duration: 0.2 },
-    },
-  };
+  const listSummary = useMemo(() => {
+    return {
+      totalLists: priceLists.length,
+      totalProducts: products.length,
+      totalCategories: categories.length,
+      readyLists: priceLists.length,
+    };
+  }, [priceLists, products, categories]);
 
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 },
-    exit: { opacity: 0 },
-  };
+  const detailSummary = useMemo(() => {
+    return {
+      itemCount: detailItems.length,
+      discountRate: Number(detail?.discountRate || 0),
+      addableCount: addableProducts.length,
+      categoriesUsed: new Set(
+        detailItems.map((i) => i.categoryId).filter(Boolean)
+      ).size,
+    };
+  }, [detailItems, detail, addableProducts]);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Özel Fiyat Listeleri</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Fiyat listelerini görüntüleyin ve yönetin
-          </p>
-        </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            setSelectedPriceList(null);
-            setPriceListForm(defaultForm());
-            setIsPriceListModalOpen(true);
-          }}
-          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Yeni Fiyat Listesi
-        </motion.button>
-      </div>
-
-      {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl shadow-lg border border-gray-100 p-4"
-      >
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Fiyat listesi ara..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </motion.div>
-
-      {/* Price Lists Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <SkeletonStatCard key={i} />
-          ))}
-        </div>
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          {filteredPriceLists.map((list, index) => (
-            <motion.div
-              key={list.id}
-              variants={itemVariants}
-              whileHover={{ y: -5, scale: 1.02 }}
-              className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
-            >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <TagIcon className="h-5 w-5 text-blue-600" />
-                      <h3 className="text-lg font-semibold text-gray-900">{list.name}</h3>
-                    </div>
-                    <p className="text-sm text-gray-600">{list.description || "—"}</p>
-                  </div>
-                  {list.isActive && <Badge variant="new">Aktif</Badge>}
+  if (view === "detail" && activeListId) {
+    return (
+      <div className="min-h-[calc(100vh-8rem)] space-y-6 bg-slate-100/80 p-4 text-[13px] text-slate-800 antialiased md:p-6">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
+            <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="max-w-2xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+                  <Tags className="h-4 w-4" />
+                  Fiyat Listesi Detayı
                 </div>
 
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <UserGroupIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">Müşteri Grubu</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {list.customerGroup}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <PercentBadgeIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">İndirim Oranı</span>
-                    </div>
-                    <span className="text-sm font-semibold text-green-600">
-                      %{list.discountRate}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <TagIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">Ürün Sayısı</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {list.productCount}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">Geçerlilik</span>
-                    </div>
-                    <span className="text-xs font-medium text-gray-900">
-                      {new Date(list.validFrom).toLocaleDateString("tr-TR")} -{" "}
-                      {new Date(list.validUntil).toLocaleDateString("tr-TR")}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEditPriceList(list)}
-                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center"
-                  >
-                    <PencilIcon className="h-4 w-4 mr-1" />
-                    Düzenle
-                  </button>
-                  <button
-                    onClick={() => handleDeletePriceList(list.id)}
-                    className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+                  {detail?.name || "Fiyat Listesi"}
+                </h1>
+                <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+                  Liste adını düzenleyin, ürün ekleyin veya çıkarın ve bu listeye
+                  özel fiyat yapısını yönetin.
+                </p>
               </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
 
-      {filteredPriceLists.length === 0 && !isLoading && (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center">
-          <TagIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Fiyat listesi bulunamadı.</p>
-        </div>
-      )}
-
-      {/* Price List Modal */}
-      <AnimatePresence>
-        {isPriceListModalOpen && (
-          <>
-            <motion.div
-              variants={backdropVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              onClick={() => setIsPriceListModalOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40"
-            />
-            <motion.div
-              variants={modalVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl sm:rounded-2xl p-6 z-50 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {selectedPriceList ? "Fiyat Listesi Düzenle" : "Yeni Fiyat Listesi"}
-                </h2>
-                <button
-                  onClick={() => setIsPriceListModalOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              <div className="flex flex-wrap items-center gap-3">
+                <ActionButton
+                  onClick={saveListName}
+                  icon={Check}
+                  tone="green"
+                  disabled={saving}
                 >
-                  <XMarkIcon className="h-6 w-6 text-gray-500" />
-                </button>
+                  Kaydet
+                </ActionButton>
+
+                <ActionButton
+                  onClick={reloadDetail}
+                  icon={Pencil}
+                  tone="blue"
+                >
+                  Güncelle
+                </ActionButton>
+
+                <ActionButton
+                  onClick={deleteActiveList}
+                  icon={Trash2}
+                  tone="rose"
+                  disabled={saving}
+                >
+                  Listeyi sil
+                </ActionButton>
+
+                <ActionButton
+                  onClick={backToList}
+                  icon={Undo2}
+                  tone="white"
+                >
+                  Geri dön
+                </ActionButton>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Ürün Sayısı"
+              value={String(detailSummary.itemCount)}
+              sub="Bu listedeki toplam ürün"
+              icon={Package}
+              tone="blue"
+            />
+            <StatCard
+              title="İndirim Oranı"
+              value={`%${detailSummary.discountRate.toLocaleString("tr-TR")}`}
+              sub="Liste bazlı oran"
+              icon={Percent}
+              tone="emerald"
+            />
+            <StatCard
+              title="Eklenebilir Ürün"
+              value={String(detailSummary.addableCount)}
+              sub="Henüz listede olmayan"
+              icon={Boxes}
+              tone="amber"
+            />
+            <StatCard
+              title="Kategori"
+              value={String(detailSummary.categoriesUsed)}
+              sub="Listede kullanılan kategori"
+              icon={FileText}
+              tone="slate"
+            />
+          </section>
+
+          <SectionCard
+            title="Bilgilendirme"
+            subtitle="Liste mantığı ve çalışma biçimi"
+          >
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <ol className="list-decimal space-y-2 pl-5">
+                <li>Bu fiyat listesine özel fiyat girmek için ürün ekleyin.</li>
+                <li>Bu fiyatların geçerli olmasını istediğiniz müşterilerin sayfasında bu listeyi seçin.</li>
+              </ol>
+
+              <div className="mt-4 flex gap-2 rounded-md border border-amber-300/60 bg-amber-100/50 p-3">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                <p className="text-sm text-amber-950">
+                  Eğer bir ürün bu fiyat listesinde yer almıyorsa, ürün kartındaki fiyat geçerli olur.
+                  Sadece farklı fiyat uygulanacak ürünleri eklemeniz yeterlidir.
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Liste Bilgisi"
+            subtitle="Liste adı ve ürün ekleme alanı"
+          >
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Liste Adı
+                </label>
+                <input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-base font-semibold text-slate-900 outline-none focus:border-slate-400"
+                  placeholder="Liste adı"
+                />
               </div>
 
-              <form
-                onSubmit={selectedPriceList ? handleUpdatePriceList : handleAddPriceList}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Liste Adı *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={priceListForm.name}
-                    onChange={(e) =>
-                      setPriceListForm({ ...priceListForm, name: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Örn: VIP Müşteri Fiyat Listesi"
-                  />
-                </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Ürün Ekle
+                </label>
+                <select
+                  key={addProductSelectKey}
+                  defaultValue=""
+                  disabled={detailLoading || saving || addableProducts.length === 0}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v) addProductToList(v);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none ring-emerald-500/20 focus:ring-2"
+                >
+                  <option value="">
+                    {addableProducts.length === 0
+                      ? "Eklenecek ürün kalmadı"
+                      : "Ürün seçin"}
+                  </option>
+                  {addableProducts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Açıklama
-                  </label>
-                  <textarea
-                    value={priceListForm.description}
-                    onChange={(e) =>
-                      setPriceListForm({ ...priceListForm, description: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows="2"
-                    placeholder="Fiyat listesi açıklaması"
-                  />
-                </div>
+              <div className="rounded-xl border border-amber-100 bg-amber-50/90 p-4">
+                <ActionButton
+                  onClick={() => setBulkModalOpen(true)}
+                  icon={Plus}
+                  tone="orange"
+                >
+                  Toplu ürün ekle
+                </ActionButton>
+              </div>
+            </div>
+          </SectionCard>
 
+          <SectionCard
+            title="Liste Ürünleri"
+            subtitle="Bu fiyat listesine bağlı ürünler"
+            right={
+              <div className="text-xs font-semibold text-slate-500">
+                İndirim: %{detailSummary.discountRate}
+              </div>
+            }
+          >
+            {detailLoading ? (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-900 text-white">
+                      <th className="px-4 py-3 font-semibold md:px-5">Kod</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Barkod</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Ürün</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Liste Fiyatı</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <TableSkeleton />
+                  </tbody>
+                </table>
+              </div>
+            ) : detailItems.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-500">
+                Bu listeye hiç ürün eklenmemiş.
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-900 text-white">
+                      <th className="px-4 py-3 font-semibold md:px-5">Kod</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Barkod</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Ürün</th>
+                      <th className="px-4 py-3 font-semibold md:px-5">Liste Fiyatı (TL)</th>
+                      <th className="w-16 px-4 py-3 font-semibold md:px-5">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailItems.map((row, i) => {
+                      const base = baseUnitPrice(row.price, row.discountPrice);
+                      const listed = listUnitPrice(base, detail.discountRate);
+
+                      return (
+                        <tr
+                          key={row.id}
+                          className={`border-b border-slate-100 ${
+                            i % 2 === 0 ? "bg-white" : "bg-slate-50/60"
+                          }`}
+                        >
+                          <td className="px-4 py-3.5 font-mono text-xs text-slate-700 md:px-5">
+                            {productCode(row.slug, row.productId)}
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-400 md:px-5">—</td>
+                          <td className="px-4 py-3.5 font-medium text-teal-700 md:px-5">
+                            {row.productName}
+                          </td>
+                          <td className="px-4 py-3.5 font-semibold tabular-nums md:px-5">
+                            {listed.toLocaleString("tr-TR", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="px-4 py-3.5 md:px-5">
+                            <button
+                              type="button"
+                              onClick={() => removeProductFromList(row.productId)}
+                              className="rounded-lg p-2 text-rose-600 transition hover:bg-rose-50"
+                              aria-label="Kaldır"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          {bulkModalOpen ? (
+            <ModalShell
+              title="Ürün filtreleme"
+              onClose={() => {
+                setBulkModalOpen(false);
+                setBulkCategoryId("");
+                setBulkBrand("");
+              }}
+              footer={
+                <div className="flex justify-end">
+                  <ActionButton
+                    onClick={bulkAddFiltered}
+                    icon={Plus}
+                    tone="green"
+                    disabled={saving}
+                  >
+                    Listeye ekle
+                  </ActionButton>
+                </div>
+              }
+            >
+              <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+                Marka veya kategori seçerek (ikisini birden de kullanabilirsiniz) eşleşen tüm ürünleri listeye
+                topluca ekleyin.
+              </p>
+
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Müşteri Grubu *
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">
+                    Marka
                   </label>
                   <select
-                    required
-                    value={priceListForm.customerGroup}
-                    onChange={(e) =>
-                      setPriceListForm({ ...priceListForm, customerGroup: e.target.value })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={bulkBrand}
+                    onChange={(e) => setBulkBrand(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="ALL">Tüm Müşteriler</option>
-                    <option value="VIP">VIP</option>
-                    <option value="BULK">Toplu Alım</option>
-                    <option value="NEW">Yeni Müşteri</option>
-                    <option value="CORPORATE">Kurumsal</option>
+                    <option value="">Tüm markalar</option>
+                    {brandOptions.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                  {brandOptions.length === 0 ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Ürün kartlarına marka girildiğinde burada listelenir.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-slate-700">
+                    Kategori
+                  </label>
+                  <select
+                    value={bulkCategoryId}
+                    onChange={(e) => setBulkCategoryId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Tüm kategoriler</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+              </div>
+            </ModalShell>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    İndirim Oranı (%) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={priceListForm.discountRate}
-                    onChange={(e) =>
-                      setPriceListForm({
-                        ...priceListForm,
-                        discountRate: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+  return (
+    <div className="min-h-[calc(100vh-8rem)] space-y-6 bg-slate-100/80 p-4 text-[13px] text-slate-800 antialiased md:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+                <Tags className="h-4 w-4" />
+                Fiyat Listeleri
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Geçerlilik Başlangıcı *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={priceListForm.validFrom}
-                      onChange={(e) =>
-                        setPriceListForm({ ...priceListForm, validFrom: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Geçerlilik Bitişi *
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={priceListForm.validUntil}
-                      onChange={(e) =>
-                        setPriceListForm({ ...priceListForm, validUntil: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
+              <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+                Özel Fiyat Listeleri
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+                Müşterilere özel ürün fiyatları oluşturun, listeleri kopyalayın ve
+                kategori bazlı ürün ekleyin.
+              </p>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ürünler (Opsiyonel)
-                  </label>
-                  <div className="border border-gray-300 rounded-lg p-4 max-h-48 overflow-y-auto">
-                    {products.length > 0 ? (
-                      <div className="space-y-2">
-                        {products.map((product) => (
-                          <label
-                            key={product.id}
-                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={priceListForm.selectedProducts.includes(product.id)}
-                              onChange={() => toggleProductSelection(product.id)}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                            <span className="text-sm text-gray-900">{product.name}</span>
-                            <span className="text-xs text-gray-500 ml-auto">
-                              {(product.discountPrice ?? product.price ?? 0).toLocaleString("tr-TR")} ₺
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Ürün bulunamadı.
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {priceListForm.selectedProducts.length} ürün seçildi
-                  </p>
-                </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <ActionButton
+                onClick={() => {
+                  setNewListName("");
+                  setCreateModalOpen(true);
+                }}
+                icon={Plus}
+                tone="green"
+              >
+                Yeni fiyat listesi ekle
+              </ActionButton>
 
-                <div className="pt-4 flex items-center space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsPriceListModalOpen(false)}
-                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                  >
-                    İptal
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {saving ? "Kaydediliyor..." : selectedPriceList ? "Güncelle" : "Ekle"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </motion.div>
+              <ActionButton
+                onClick={() => {
+                  setCopySourceId(priceLists[0]?.id ?? "");
+                  setCopyNewName("");
+                  setCopyModalOpen(true);
+                }}
+                icon={Copy}
+                tone="orange"
+              >
+                Listeyi kopyala
+              </ActionButton>
+
+              <ActionButton
+                onClick={reportStub}
+                icon={BarChart3}
+                tone="dark"
+              >
+                Fiyat listeleri raporu
+              </ActionButton>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Toplam Liste"
+            value={String(listSummary.totalLists)}
+            sub="Tanımlı fiyat listesi"
+            icon={Tags}
+            tone="blue"
+          />
+          <StatCard
+            title="Toplam Ürün"
+            value={String(listSummary.totalProducts)}
+            sub="Hesaptaki ürün sayısı"
+            icon={Package}
+            tone="emerald"
+          />
+          <StatCard
+            title="Kategori"
+            value={String(listSummary.totalCategories)}
+            sub="Tanımlı kategori sayısı"
+            icon={FileText}
+            tone="amber"
+          />
+          <StatCard
+            title="Hazır Liste"
+            value={String(listSummary.readyLists)}
+            sub="Kullanılabilir fiyat listesi"
+            icon={Boxes}
+            tone="slate"
+          />
+        </section>
+
+        <SectionCard
+          title="Bilgilendirme"
+          subtitle="Özel fiyat listelerinin çalışma mantığı"
+        >
+          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-500 text-white">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-amber-950">
+                Özel fiyat listeleri
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-amber-950/95">
+                Ürün sayfasındaki standart fiyatlarınız dışında, belirli müşterilere
+                özel ürün fiyatları tanımlayabilir ve satış ekranında otomatik
+                kullanılmasını sağlayabilirsiniz.
+              </p>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Fiyat Listeleri"
+          subtitle="Açmak için listedeki karta tıklayın"
+        >
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-12 rounded-xl bg-slate-100 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : priceLists.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-500">
+              Henüz fiyat listesi yok.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {priceLists.map((pl, index) => (
+                <button
+                  key={pl.id}
+                  type="button"
+                  onClick={() => openList(pl.id)}
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-4 text-left text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                    index % 2 === 0
+                      ? "border-sky-100 bg-sky-50/90 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-900"
+                  }`}
+                >
+                  <span>{pl.name}</span>
+                  <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-sky-700 shadow-sm">
+                    Aç
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      {createModalOpen ? (
+        <ModalShell
+          title="Yeni Liste"
+          onClose={() => {
+            setCreateModalOpen(false);
+            setNewListName("");
+          }}
+          footer={
+            <div className="flex justify-end gap-2">
+              <ActionButton
+                onClick={() => {
+                  setCreateModalOpen(false);
+                  setNewListName("");
+                }}
+                icon={X}
+                tone="orange"
+              >
+                Vazgeç
+              </ActionButton>
+              <ActionButton
+                onClick={createList}
+                icon={Check}
+                tone="green"
+                disabled={saving}
+              >
+                Kaydet
+              </ActionButton>
+            </div>
+          }
+        >
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Liste adı
+            </label>
+            <input
+              value={newListName}
+              onChange={(e) => setNewListName(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+              placeholder="Liste adı"
+            />
+          </div>
+        </ModalShell>
+      ) : null}
+
+      {copyModalOpen ? (
+        <ModalShell
+          title="Liste Kopyalama"
+          onClose={() => {
+            setCopyModalOpen(false);
+            setCopyNewName("");
+            setCopySourceId("");
+          }}
+          footer={
+            <div className="flex justify-end">
+              <ActionButton
+                onClick={copyList}
+                icon={Check}
+                tone="green"
+                disabled={saving}
+              >
+                Liste oluştur
+              </ActionButton>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Kopyalanacak liste
+              </label>
+              <select
+                value={copySourceId}
+                onChange={(e) => setCopySourceId(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+              >
+                <option value="">Seçin</option>
+                {priceLists.map((pl) => (
+                  <option key={pl.id} value={pl.id}>
+                    {pl.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                Yeni liste adı
+              </label>
+              <input
+                value={copyNewName}
+                onChange={(e) => setCopyNewName(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+                placeholder="Liste adı"
+              />
+            </div>
+          </div>
+        </ModalShell>
+      ) : null}
+    </div>
   );
 }

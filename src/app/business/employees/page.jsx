@@ -19,10 +19,9 @@ import {
   CheckCircleIcon,
   BoltIcon,
   PencilSquareIcon,
-  SparklesIcon,
+  Squares2X2Icon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
-import Image from "next/image";
 
 const LEAVE_TYPES = [
   { value: "annual", label: "Yıllık İzin" },
@@ -41,18 +40,147 @@ function statusLabel(status) {
 }
 
 function statusClass(status) {
-  if (status === "ACTIVE") return "bg-emerald-50 text-emerald-600 border-emerald-100";
-  if (status === "ON_LEAVE") return "bg-rose-50 text-rose-500 border-rose-100";
-  if (status === "REMOTE") return "bg-blue-50 text-blue-600 border-blue-100";
-  return "bg-gray-50 text-gray-400 border-gray-100";
+  if (status === "ACTIVE") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (status === "ON_LEAVE") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  if (status === "REMOTE") {
+    return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+  return "border-slate-200 bg-slate-100 text-slate-500";
+}
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString("tr-TR");
+}
+
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-400 to-orange-500 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, children, right }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        {right}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "white",
+  className = "",
+  type = "button",
+  disabled = false,
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    blue: "bg-sky-500 hover:bg-sky-600 border-sky-600 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+    rose: "bg-rose-600 hover:bg-rose-700 border-rose-700 text-white",
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function ModalShell({ title, children, onClose, footer, size = "max-w-2xl" }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-label="Kapat"
+      />
+      <div
+        className={`relative z-10 w-full ${size} max-h-[90vh] overflow-y-auto rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]`}
+      >
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                İnsan Kaynakları
+              </p>
+              <h2 className="mt-1 text-lg font-bold">{title}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-white/10 bg-white/10 p-2 transition hover:bg-white/15"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">{children}</div>
+
+        {footer ? (
+          <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
+
   const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
   const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -64,8 +192,10 @@ export default function EmployeesPage() {
     avgPerformance: 0,
     onLeave: 0,
   });
+
   const [departmentDraft, setDepartmentDraft] = useState("");
   const [departmentEdit, setDepartmentEdit] = useState({ id: "", name: "" });
+
   const [employeeForm, setEmployeeForm] = useState({
     name: "",
     position: "",
@@ -74,6 +204,7 @@ export default function EmployeesPage() {
     salary: "",
     departmentId: "",
   });
+
   const [leaveForm, setLeaveForm] = useState({
     employeeId: "",
     leaveType: "annual",
@@ -83,10 +214,6 @@ export default function EmployeesPage() {
     notes: "",
   });
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
   const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -94,13 +221,22 @@ export default function EmployeesPage() {
         fetch("/api/business/employees", { cache: "no-store" }),
         fetch("/api/business/departments", { cache: "no-store" }),
       ]);
+
       const empData = await empRes.json().catch(() => ({}));
       const depData = await depRes.json().catch(() => ({}));
+
       if (!empRes.ok) throw new Error(empData.error || "Çalışanlar alınamadı.");
       if (!depRes.ok) throw new Error(depData.error || "Departmanlar alınamadı.");
 
       setEmployees(Array.isArray(empData.employees) ? empData.employees : []);
-      setStats(empData.stats || { total: 0, totalSalary: 0, avgPerformance: 0, onLeave: 0 });
+      setStats(
+        empData.stats || {
+          total: 0,
+          totalSalary: 0,
+          avgPerformance: 0,
+          onLeave: 0,
+        }
+      );
       setDepartments(Array.isArray(depData.departments) ? depData.departments : []);
 
       setEmployeeForm((prev) => ({
@@ -114,12 +250,18 @@ export default function EmployeesPage() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
   const handleAddEmployee = async (e) => {
     e.preventDefault();
+
     if (!employeeForm.departmentId) {
       toast.error("Önce departman oluşturup seçmelisiniz.");
       return;
     }
+
     setSaving(true);
     try {
       const res = await fetch("/api/business/employees", {
@@ -127,11 +269,13 @@ export default function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(employeeForm),
       });
-      const result = await res.json();
+
+      const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "Çalışan kaydedilemedi.");
 
       toast.success("Yeni çalışan başarıyla kaydedildi.");
       setIsEmployeeModalOpen(false);
+
       setEmployeeForm({
         name: "",
         position: "",
@@ -140,6 +284,7 @@ export default function EmployeesPage() {
         salary: "",
         departmentId: departments[0]?.id || "",
       });
+
       await fetchInitialData();
     } catch (error) {
       toast.error(error.message || "Hata oluştu.");
@@ -150,10 +295,14 @@ export default function EmployeesPage() {
 
   const handleDelete = async (id) => {
     if (!confirm("Bu çalışanı silmek istediğinize emin misiniz?")) return;
+
     try {
-      const res = await fetch(`/api/business/employees?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/business/employees?id=${id}`, {
+        method: "DELETE",
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Çalışan silinemedi.");
+
       toast.success("Çalışan kaydı silindi.");
       await fetchInitialData();
     } catch (error) {
@@ -164,6 +313,7 @@ export default function EmployeesPage() {
   const createDepartment = async (e) => {
     e.preventDefault();
     if (!departmentDraft.trim()) return;
+
     setSaving(true);
     try {
       const res = await fetch("/api/business/departments", {
@@ -171,8 +321,10 @@ export default function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: departmentDraft }),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Departman oluşturulamadı.");
+
       toast.success("Departman eklendi.");
       setDepartmentDraft("");
       await fetchInitialData();
@@ -185,6 +337,7 @@ export default function EmployeesPage() {
 
   const renameDepartment = async () => {
     if (!departmentEdit.id || !departmentEdit.name.trim()) return;
+
     setSaving(true);
     try {
       const res = await fetch(`/api/business/departments/${departmentEdit.id}`, {
@@ -192,8 +345,10 @@ export default function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: departmentEdit.name }),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Departman güncellenemedi.");
+
       toast.success("Departman güncellendi.");
       setDepartmentEdit({ id: "", name: "" });
       await fetchInitialData();
@@ -206,11 +361,16 @@ export default function EmployeesPage() {
 
   const deleteDepartment = async (id) => {
     if (!confirm("Departmanı kaldırmak istediğinize emin misiniz?")) return;
+
     setSaving(true);
     try {
-      const res = await fetch(`/api/business/departments/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/business/departments/${id}`, {
+        method: "DELETE",
+      });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Departman silinemedi.");
+
       toast.success("Departman kaldırıldı.");
       await fetchInitialData();
     } catch (error) {
@@ -222,10 +382,12 @@ export default function EmployeesPage() {
 
   const createLeaveRequest = async (e) => {
     e.preventDefault();
+
     if (!leaveForm.employeeId) {
       toast.error("İzin için çalışan seçmelisiniz.");
       return;
     }
+
     setSaving(true);
     try {
       const res = await fetch("/api/business/leaves", {
@@ -233,8 +395,10 @@ export default function EmployeesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(leaveForm),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "İzin talebi oluşturulamadı.");
+
       toast.success("İzin talebi oluşturuldu.");
       setIsLeaveModalOpen(false);
       setLeaveForm({
@@ -245,6 +409,7 @@ export default function EmployeesPage() {
         reason: "",
         notes: "",
       });
+
       await fetchInitialData();
     } catch (error) {
       toast.error(error.message || "İzin talebi oluşturulamadı.");
@@ -254,472 +419,668 @@ export default function EmployeesPage() {
   };
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter((e) => {
-      const matchesSearch =
-        String(e.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(e.position || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDept = filterDepartment === "all" || e.department === filterDepartment;
+    return employees.filter((employee) => {
+      const text = `${employee.name || ""} ${employee.position || ""} ${employee.department || ""} ${employee.email || ""}`.toLowerCase();
+      const matchesSearch = text.includes(searchTerm.toLowerCase());
+      const matchesDept =
+        filterDepartment === "all" || employee.department === filterDepartment;
       return matchesSearch && matchesDept;
     });
-  }, [searchTerm, filterDepartment, employees]);
+  }, [employees, filterDepartment, searchTerm]);
 
   const departmentFilterOptions = useMemo(() => {
-    return ["all", ...new Set(employees.map((e) => e.department).filter(Boolean))];
-  }, [employees]);
+    return ["all", ...departments.map((d) => d.name).filter(Boolean)];
+  }, [departments]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-blue-50 border-t-[#004aad] rounded-full animate-spin" />
+      <div className="min-h-[calc(100vh-8rem)] bg-slate-50 px-4 pb-16 pt-8">
+        <div className="mx-auto flex max-w-6xl justify-center py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-10 pb-24 max-w-[1600px] mx-auto px-4">
-
-      {/* 1. MASTER HR BENTO HEADER */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-8 bg-gray-950 rounded-[4rem] p-10 md:p-14 text-white relative overflow-hidden shadow-3xl group"
-        >
-          <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform blur-sm">
-            <UserGroupIcon className="w-96 h-96" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-between h-full space-y-10">
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#004aad] to-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl">
-                <BriefcaseIcon className="w-10 h-10" />
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">Ekip Yönetimi</h1>
-                <p className="text-blue-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Elite Human Resources Matrix</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Kadro Büyüklüğü</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-4xl font-black">{stats.total}</span>
-                  <span className="text-xs font-bold text-gray-500 mb-1.5">Kişi</span>
+    <div className="min-h-[calc(100vh-8rem)]">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+                  <BriefcaseIcon className="h-4 w-4" />
+                  İnsan Kaynakları
                 </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  Ekip Yönetimi
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Çalışanları, departmanları ve izin süreçlerini tek panelden yönetin.
+                </p>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Aylık Hakediş</p>
-                <p className="text-3xl font-black text-emerald-400">{(stats.totalSalary / 1000).toFixed(1)}k₺</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Genel Performans</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl font-black">%{stats.avgPerformance}</span>
-                  <BoltIcon className="w-6 h-6 text-amber-500 animate-pulse" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Aktif İzinli</p>
-                <p className="text-3xl font-black text-rose-500">{stats.onLeave}</p>
+
+              <div className="flex flex-wrap gap-3">
+                <ActionButton
+                  onClick={() => setIsEmployeeModalOpen(true)}
+                  icon={PlusIcon}
+                  tone="green"
+                  disabled={!departments.length}
+                >
+                  Yeni Çalışan
+                </ActionButton>
+
+                <ActionButton
+                  onClick={() => setIsLeaveModalOpen(true)}
+                  icon={CalendarDaysIcon}
+                  tone="blue"
+                  disabled={!employees.length}
+                >
+                  İzin Talebi
+                </ActionButton>
+
+                <ActionButton
+                  onClick={() => setIsDepartmentModalOpen(true)}
+                  icon={BuildingOffice2Icon}
+                  tone="white"
+                >
+                  Departmanlar
+                </ActionButton>
               </div>
             </div>
           </div>
-        </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="lg:col-span-4 bg-white rounded-[4rem] p-10 border border-gray-100 shadow-xl flex flex-col justify-between group"
-        >
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hızlı Aksiyonlar</p>
-              <SparklesIcon className="w-5 h-5 text-[#004aad]" />
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => setIsEmployeeModalOpen(true)}
-                className="w-full py-5 bg-[#004aad] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-3"
-              >
-                <PlusIcon className="w-5 h-5" /> YENİ ÇALIŞAN EKLE
-              </button>
-              <button
-                onClick={() => setIsLeaveModalOpen(true)}
-                className="w-full py-5 bg-gray-50 text-gray-900 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-3"
-              >
-                <CalendarDaysIcon className="w-5 h-5" /> İZİN TALEBİ OLUŞTUR
-              </button>
-              <button
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Toplam Çalışan"
+              value={stats.total}
+              sub="Aktif kayıtlar"
+              icon={UserGroupIcon}
+              tone="blue"
+            />
+            <StatCard
+              title="Aylık Toplam Maaş"
+              value={`₺${formatMoney(stats.totalSalary)}`}
+              sub="Toplam bordro yükü"
+              icon={BanknotesIcon}
+              tone="emerald"
+            />
+            <StatCard
+              title="Ortalama Performans"
+              value={`%${stats.avgPerformance}`}
+              sub="Genel ekip skoru"
+              icon={BoltIcon}
+              tone="amber"
+            />
+            <StatCard
+              title="İzinli Çalışan"
+              value={stats.onLeave}
+              sub="Şu an izinli"
+              icon={CalendarDaysIcon}
+              tone="slate"
+            />
+          </div>
+        </section>
+
+        {!departments.length ? (
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+                <ExclamationTriangleIcon className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">Önce departman oluşturmalısınız</p>
+                <p className="mt-1 text-sm">
+                  Çalışan ekleyebilmek için en az bir departman tanımlı olmalı.
+                </p>
+              </div>
+              <ActionButton
                 onClick={() => setIsDepartmentModalOpen(true)}
-                className="w-full py-5 bg-gray-50 text-gray-900 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-3"
+                tone="white"
+                className="shrink-0"
               >
-                <BuildingOffice2Icon className="w-5 h-5" /> DEPARTMAN YÖNETİMİ
-              </button>
+                Departman Oluştur
+              </ActionButton>
             </div>
           </div>
-          <div className="mt-8 p-6 bg-amber-50 rounded-[2.5rem] border border-amber-100 flex items-center gap-5">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-              <ExclamationTriangleIcon className="w-6 h-6 text-amber-500" />
+        ) : null}
+
+        <SectionCard
+          title="Filtreler"
+          subtitle="Çalışan listesini arama ve departmana göre daraltın"
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+            <div className="relative flex-1">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="İsim, pozisyon, departman veya e-posta ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-slate-400"
+              />
             </div>
-            <div>
-              <p className="text-[10px] font-black text-amber-700 uppercase">Departman Kontrolü</p>
-              <p className="text-xs font-bold text-amber-900 leading-tight">
-                {departments.length
-                  ? `${departments.length} aktif departman var.`
-                  : "Departman yok. Çalışan eklemek için önce departman oluşturun."}
+
+            <select
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 outline-none"
+            >
+              {departmentFilterOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept === "all" ? "Tüm Departmanlar" : dept}
+                </option>
+              ))}
+            </select>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Çalışan Kartları"
+          subtitle="Ekip üyelerini görüntüleyin ve hızlı işlemler uygulayın"
+        >
+          {filteredEmployees.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-14 text-center">
+              <p className="text-sm font-medium text-slate-500">
+                Çalışan kaydı bulunamadı.
               </p>
             </div>
-          </div>
-        </motion.div>
-      </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <AnimatePresence>
+                {filteredEmployees.map((emp, idx) => (
+                  <motion.div
+                    key={emp.id}
+                    layout
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="h-16 w-16 overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
+                          <img
+                            src={
+                              emp.avatar ||
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                emp.name || "C"
+                              )}&background=E2E8F0&color=0F172A`
+                            }
+                            alt={emp.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
 
-      {/* 2. ADVANCED FILTERS */}
-      <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-xl flex flex-wrap gap-6 items-center justify-between">
-        <div className="flex-1 min-w-[300px] relative group">
-          <MagnifyingGlassIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 group-focus-within:text-[#004aad] transition-colors" />
-          <input
-            type="text"
-            placeholder="İsim, pozisyon veya departman ile hızlı filtrele..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-16 pr-8 py-5 bg-gray-50 rounded-[2.5rem] border-none outline-none focus:ring-4 focus:ring-[#004aad]/5 font-bold transition-all"
-          />
-        </div>
+                        <div className="min-w-0">
+                          <h3 className="truncate text-lg font-bold text-slate-900">
+                            {emp.name}
+                          </h3>
+                          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                            {emp.position || "Pozisyon yok"}
+                          </p>
+                          <p className="mt-2 text-sm font-medium text-slate-600">
+                            {emp.department || "Departman yok"}
+                          </p>
+                        </div>
+                      </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex p-1.5 bg-gray-100 rounded-3xl">
-            {departmentFilterOptions.slice(0, 5).map((dept) => (
-              <button
-                key={dept}
-                onClick={() => setFilterDepartment(dept)}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all
-                  ${filterDepartment === dept ? "bg-white text-[#004aad] shadow-md border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
-              >
-                {dept === "all" ? "HEPSİ" : dept}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      {!departments.length ? (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-3xl px-6 py-4 flex items-center justify-between">
-          <p className="font-semibold text-sm">Çalışan ekleyebilmek için önce en az bir departman oluşturmalısınız.</p>
-          <button
-            type="button"
-            onClick={() => setIsDepartmentModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 transition text-xs font-black uppercase tracking-wider"
-          >
-            Departman Oluştur
-          </button>
-        </div>
-      ) : null}
-
-      {/* 3. EMPLOYEES GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-        <AnimatePresence>
-          {filteredEmployees.length === 0 ? (
-            <div className="col-span-full rounded-[3rem] bg-white border border-gray-100 p-10 text-center text-gray-500 font-semibold">
-              Çalışan kaydı bulunamadı.
-            </div>
-          ) : null}
-          {filteredEmployees.map((emp) => (
-            <motion.div
-              key={emp.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              whileHover={{ y: -10 }}
-              className="bg-white rounded-[4.5rem] p-10 border border-gray-100 shadow-2xl hover:shadow-blue-900/10 transition-all flex flex-col gap-8 relative group overflow-hidden"
-            >
-              {/* Card Decoration */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#004aad]/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-[#004aad]/10 transition-colors" />
-
-              {/* Status Badge */}
-              <div className="absolute top-8 right-8">
-                <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border ${statusClass(emp.status)}`}>
-                  {statusLabel(emp.status)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-[2.5rem] bg-gray-100 overflow-hidden border-4 border-white shadow-2xl relative group-hover:scale-105 transition-transform duration-500">
-                  <Image src={emp.avatar || `https://i.pravatar.cc/150?u=${emp.id}`} alt={emp.name} fill className="object-cover" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black text-gray-900 group-hover:text-[#004aad] transition-colors leading-tight">{emp.name}</h3>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{emp.position}</p>
-                  <p className="text-xs font-bold text-gray-500 pt-2">{emp.department || "Departman Yok"}</p>
-                </div>
-              </div>
-
-              {/* Performance Radial Mini */}
-              <div className="bg-gray-50/80 rounded-[3rem] p-8 flex items-center justify-between border border-gray-100">
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Performans Skoru</p>
-                    <p className="text-2xl font-black text-gray-900">%{emp.performance}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <ClockIcon className="w-4 h-4 text-[#004aad]" />
-                      <span className="text-[10px] font-black text-gray-500 uppercase">{emp.leaves} Kullanılan İzin</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CalendarDaysIcon className="w-4 h-4 text-amber-500" />
-                      <span className="text-[10px] font-black text-gray-500 uppercase">
-                        {emp.pendingLeaveCount || 0} Bekleyen
+                      <span
+                        className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${statusClass(
+                          emp.status
+                        )}`}
+                      >
+                        {statusLabel(emp.status)}
                       </span>
                     </div>
-                  </div>
-                </div>
-                <div className="relative w-20 h-20">
-                  <svg className="w-full h-full -rotate-90">
-                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-gray-200" />
-                    <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="6" fill="transparent"
-                      strokeDasharray={2 * Math.PI * 34}
-                      strokeDashoffset={2 * Math.PI * 34 * (1 - emp.performance / 100)}
-                      className="text-[#004aad]"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <BoltIcon className="w-6 h-6 text-[#004aad]" />
-                  </div>
-                </div>
-              </div>
 
-              <div className="space-y-4 px-4">
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover/item:bg-blue-50 group-hover/item:text-[#004aad] transition-all">
-                    <EnvelopeIcon className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-bold text-gray-500 truncate">{emp.email}</p>
-                </div>
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover/item:bg-emerald-50 group-hover/item:text-emerald-600 transition-all text-xs">
-                    <PhoneIcon className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-black text-gray-900 uppercase">{emp.phone}</p>
-                </div>
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover/item:bg-amber-50 group-hover/item:text-amber-600 transition-all">
-                    <BanknotesIcon className="w-5 h-5" />
-                  </div>
-                  <p className="text-sm font-black text-gray-900 italic">{emp.salary.toLocaleString()}₺ <span className="text-[9px] text-gray-400 uppercase not-italic">/ AY</span></p>
-                </div>
-              </div>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          Performans
+                        </p>
+                        <p className="mt-2 text-lg font-black text-slate-900">
+                          %{emp.performance || 0}
+                        </p>
+                      </div>
 
-              {/* Actions */}
-              <div className="pt-6 flex gap-4 mt-auto">
-                <button
-                  onClick={() => {
-                    setLeaveForm((prev) => ({ ...prev, employeeId: emp.id }));
-                    setIsLeaveModalOpen(true);
-                  }}
-                  className="flex-1 py-5 bg-gray-950 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-[#004aad] transition-all shadow-xl shadow-black/10"
-                >
-                  İZİN TALEBİ OLUŞTUR
-                </button>
-                <button onClick={() => handleDelete(emp.id)} className="w-16 h-16 bg-gray-50 text-gray-400 rounded-[2.2rem] flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100 shadow-sm">
-                  <TrashIcon className="w-6 h-6" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                          Maaş
+                        </p>
+                        <p className="mt-2 text-lg font-black text-slate-900">
+                          ₺{formatMoney(emp.salary)}
+                        </p>
+                      </div>
+                    </div>
 
-      {/* 4. OPERATION SUMMARY */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-12 bg-white p-10 rounded-[4rem] border border-gray-100 shadow-xl">
-          <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-            <h3 className="text-2xl font-black text-gray-900 uppercase">Operasyon Özeti</h3>
-            <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-black uppercase tracking-widest">
-              {departments.length} Departman
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-3xl border border-gray-100 bg-gray-50 px-5 py-4">
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Bekleyen Departman İşi</p>
-              <p className="text-lg font-black text-gray-900 mt-1">
-                {departments.filter((item) => (item.employeeCount || 0) === 0).length} boş departman
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <EnvelopeIcon className="h-4 w-4 text-slate-400" />
+                        <span className="truncate text-sm font-medium text-slate-700">
+                          {emp.email || "E-posta yok"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <PhoneIcon className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-700">
+                          {emp.phone || "Telefon yok"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <ClockIcon className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-700">
+                          {emp.leaves || 0} kullanılan izin / {emp.pendingLeaveCount || 0} bekleyen
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex gap-2">
+                      <ActionButton
+                        onClick={() => {
+                          setLeaveForm((prev) => ({ ...prev, employeeId: emp.id }));
+                          setIsLeaveModalOpen(true);
+                        }}
+                        icon={CalendarDaysIcon}
+                        tone="blue"
+                        className="flex-1 justify-center"
+                      >
+                        İzin
+                      </ActionButton>
+
+                      <ActionButton
+                        onClick={() => handleDelete(emp.id)}
+                        icon={TrashIcon}
+                        tone="rose"
+                        className="justify-center"
+                      >
+                        Sil
+                      </ActionButton>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Operasyon Özeti"
+          subtitle="Departman ve ekip durumuna hızlı bakış"
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                Boş Departman
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900">
+                {departments.filter((item) => (item.employeeCount || 0) === 0).length} adet
               </p>
             </div>
-            <div className="rounded-3xl border border-gray-100 bg-gray-50 px-5 py-4">
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">İzinli Çalışan</p>
-              <p className="text-lg font-black text-gray-900 mt-1">{stats.onLeave} kişi şu an izinli</p>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                İzinli Personel
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900">
+                {stats.onLeave} kişi
+              </p>
             </div>
-            <div className="rounded-3xl border border-gray-100 bg-gray-50 px-5 py-4">
-              <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Ortalama Performans</p>
-              <p className="text-lg font-black text-gray-900 mt-1">%{stats.avgPerformance}</p>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                Ortalama Performans
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-900">
+                %{stats.avgPerformance}
+              </p>
             </div>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
-      {/* Employee Modal */}
       <AnimatePresence>
-        {isEmployeeModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsEmployeeModalOpen(false)} className="absolute inset-0 bg-gray-950/80 backdrop-blur-md" />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[3rem] p-8 md:p-10 shadow-3xl"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">
-                    <BriefcaseIcon className="w-7 h-7 text-[#004aad]" />
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-black text-gray-900 uppercase">Yeni Çalışan Kaydı</h2>
-                    <p className="text-gray-400 font-medium tracking-tight">Kadroya yeni bir yetenek ekleyin.</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsEmployeeModalOpen(false)} className="p-3 bg-gray-50 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all">
-                  <XMarkIcon className="w-6 h-6" />
-                </button>
+        {isEmployeeModalOpen ? (
+          <ModalShell
+            title="Yeni Çalışan Kaydı"
+            onClose={() => setIsEmployeeModalOpen(false)}
+            footer={
+              <div className="flex justify-end gap-3">
+                <ActionButton onClick={() => setIsEmployeeModalOpen(false)} tone="white">
+                  Vazgeç
+                </ActionButton>
+                <ActionButton
+                  type="submit"
+                  onClick={handleAddEmployee}
+                  icon={CheckCircleIcon}
+                  tone="green"
+                  disabled={saving || !departments.length}
+                >
+                  Kaydet
+                </ActionButton>
               </div>
-
-              <form onSubmit={handleAddEmployee} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input type="text" required placeholder="Ad Soyad" value={employeeForm.name} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, name: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold" />
-                  <input type="text" required placeholder="Pozisyon" value={employeeForm.position} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, position: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="email" placeholder="E-Posta" value={employeeForm.email} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, email: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold" />
-                  <input type="tel" placeholder="Telefon" value={employeeForm.phone} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, phone: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <select value={employeeForm.departmentId} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, departmentId: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold appearance-none" required>
-                    {departments.length ? (
-                      departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)
-                    ) : (
-                      <option value="">Önce departman ekleyin</option>
-                    )}
-                  </select>
-                  <input type="number" required placeholder="Net Maaş" value={employeeForm.salary} onChange={(e) => setEmployeeForm((prev) => ({ ...prev, salary: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-bold text-emerald-600" />
-                </div>
-
-                <div className="pt-6 flex gap-4">
-                  <button type="button" onClick={() => setIsEmployeeModalOpen(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest">IPTAL</button>
-                  <button type="submit" disabled={saving || !departments.length} className="flex-1 py-4 bg-[#004aad] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-black transition-all disabled:opacity-50">SİSTEME KAYDET</button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Department Modal */}
-      <AnimatePresence>
-        {isDepartmentModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDepartmentModalOpen(false)} className="absolute inset-0 bg-gray-950/80 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-[3rem] p-8 shadow-3xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-black text-gray-900 uppercase">Departman Yönetimi</h2>
-                <button onClick={() => setIsDepartmentModalOpen(false)} className="p-3 bg-gray-50 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all">
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={createDepartment} className="flex gap-2 mb-6">
+            }
+          >
+            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleAddEmployee}>
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Ad Soyad
+                </span>
                 <input
                   type="text"
-                  placeholder="Yeni departman adı"
-                  value={departmentDraft}
-                  onChange={(e) => setDepartmentDraft(e.target.value)}
-                  className="flex-1 p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold"
+                  required
+                  value={employeeForm.name}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
                 />
-                <button type="submit" disabled={saving} className="px-4 py-3 rounded-2xl bg-[#004aad] text-white font-black text-xs uppercase tracking-wide disabled:opacity-50">
-                  Ekle
-                </button>
-              </form>
+              </label>
 
-              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-                {departments.map((d) => (
-                  <div key={d.id} className="rounded-2xl border border-gray-100 p-3">
-                    {departmentEdit.id === d.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={departmentEdit.name}
-                          onChange={(e) => setDepartmentEdit({ id: d.id, name: e.target.value })}
-                          className="flex-1 p-3 bg-gray-50 rounded-xl border-none outline-none font-semibold"
-                        />
-                        <button type="button" onClick={renameDepartment} className="px-3 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-xs">Kaydet</button>
-                        <button type="button" onClick={() => setDepartmentEdit({ id: "", name: "" })} className="px-3 py-2 bg-gray-50 text-gray-500 rounded-xl font-black text-xs">Vazgeç</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-black text-gray-900">{d.name}</p>
-                          <p className="text-xs text-gray-500">{d.employeeCount || 0} çalışan</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => setDepartmentEdit({ id: d.id, name: d.name })} className="p-2 rounded-lg bg-gray-50 text-gray-500 hover:text-[#004aad]">
-                            <PencilSquareIcon className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={() => deleteDepartment(d.id)} className="p-2 rounded-lg bg-gray-50 text-gray-500 hover:text-rose-500">
-                            <TrashIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {!departments.length ? (
-                  <div className="rounded-2xl bg-gray-50 text-gray-500 text-sm px-4 py-5 text-center font-semibold">
-                    Henüz departman yok.
-                  </div>
-                ) : null}
-              </div>
-            </motion.div>
-          </div>
-        )}
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Pozisyon
+                </span>
+                <input
+                  type="text"
+                  required
+                  value={employeeForm.position}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({ ...prev, position: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  E-Posta
+                </span>
+                <input
+                  type="email"
+                  value={employeeForm.email}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Telefon
+                </span>
+                <input
+                  type="tel"
+                  value={employeeForm.phone}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({ ...prev, phone: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Departman
+                </span>
+                <select
+                  value={employeeForm.departmentId}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({
+                      ...prev,
+                      departmentId: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                  required
+                >
+                  {departments.length ? (
+                    departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Önce departman ekleyin</option>
+                  )}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Net Maaş
+                </span>
+                <input
+                  type="number"
+                  required
+                  value={employeeForm.salary}
+                  onChange={(e) =>
+                    setEmployeeForm((prev) => ({ ...prev, salary: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+            </form>
+          </ModalShell>
+        ) : null}
       </AnimatePresence>
 
-      {/* Leave Request Modal */}
       <AnimatePresence>
-        {isLeaveModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsLeaveModalOpen(false)} className="absolute inset-0 bg-gray-950/80 backdrop-blur-md" />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-2xl bg-white rounded-[3rem] p-8 shadow-3xl">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <CalendarDaysIcon className="w-8 h-8 text-[#004aad]" />
-                  <h2 className="text-2xl font-black text-gray-900 uppercase">İzin Talebi Oluştur</h2>
+        {isDepartmentModalOpen ? (
+          <ModalShell
+            title="Departman Yönetimi"
+            onClose={() => setIsDepartmentModalOpen(false)}
+            size="max-w-xl"
+          >
+            <form onSubmit={createDepartment} className="mb-5 flex gap-2">
+              <input
+                type="text"
+                placeholder="Yeni departman adı"
+                value={departmentDraft}
+                onChange={(e) => setDepartmentDraft(e.target.value)}
+                className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              />
+              <ActionButton type="submit" icon={PlusIcon} tone="green" disabled={saving}>
+                Ekle
+              </ActionButton>
+            </form>
+
+            <div className="space-y-3">
+              {departments.map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  {departmentEdit.id === d.id ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={departmentEdit.name}
+                        onChange={(e) =>
+                          setDepartmentEdit({ id: d.id, name: e.target.value })
+                        }
+                        className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                      />
+                      <ActionButton onClick={renameDepartment} tone="green" disabled={saving}>
+                        Kaydet
+                      </ActionButton>
+                      <ActionButton
+                        onClick={() => setDepartmentEdit({ id: "", name: "" })}
+                        tone="white"
+                      >
+                        Vazgeç
+                      </ActionButton>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-slate-900">{d.name}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {d.employeeCount || 0} çalışan
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDepartmentEdit({ id: d.id, name: d.name })}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-[#004aad]"
+                        >
+                          <PencilSquareIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteDepartment(d.id)}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button onClick={() => setIsLeaveModalOpen(false)} className="p-3 bg-gray-50 hover:bg-rose-50 hover:text-rose-500 rounded-2xl transition-all">
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-              <form onSubmit={createLeaveRequest} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <select required value={leaveForm.employeeId} onChange={(e) => setLeaveForm((prev) => ({ ...prev, employeeId: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold">
-                    <option value="">Çalışan seçin</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                  <select value={leaveForm.leaveType} onChange={(e) => setLeaveForm((prev) => ({ ...prev, leaveType: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold">
-                    {LEAVE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
+              ))}
+
+              {!departments.length ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center text-sm font-medium text-slate-500">
+                  Henüz departman yok.
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="date" required value={leaveForm.startDate} onChange={(e) => setLeaveForm((prev) => ({ ...prev, startDate: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold" />
-                  <input type="date" required value={leaveForm.endDate} onChange={(e) => setLeaveForm((prev) => ({ ...prev, endDate: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold" />
-                </div>
-                <textarea required rows={3} placeholder="İzin nedeni" value={leaveForm.reason} onChange={(e) => setLeaveForm((prev) => ({ ...prev, reason: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold resize-none" />
-                <textarea rows={2} placeholder="Not (opsiyonel)" value={leaveForm.notes} onChange={(e) => setLeaveForm((prev) => ({ ...prev, notes: e.target.value }))} className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none font-semibold resize-none" />
-                <button type="submit" disabled={saving} className="w-full py-4 bg-[#004aad] text-white rounded-2xl font-black text-xs uppercase tracking-wider hover:bg-black transition-all disabled:opacity-60">
-                  {saving ? "GÖNDERİLİYOR..." : "TALEBİ OLUŞTUR"}
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
+              ) : null}
+            </div>
+          </ModalShell>
+        ) : null}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isLeaveModalOpen ? (
+          <ModalShell
+            title="İzin Talebi Oluştur"
+            onClose={() => setIsLeaveModalOpen(false)}
+            footer={
+              <div className="flex justify-end gap-3">
+                <ActionButton onClick={() => setIsLeaveModalOpen(false)} tone="white">
+                  Vazgeç
+                </ActionButton>
+                <ActionButton
+                  type="submit"
+                  onClick={createLeaveRequest}
+                  icon={CheckCircleIcon}
+                  tone="green"
+                  disabled={saving}
+                >
+                  Talebi Oluştur
+                </ActionButton>
+              </div>
+            }
+          >
+            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={createLeaveRequest}>
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Çalışan
+                </span>
+                <select
+                  required
+                  value={leaveForm.employeeId}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, employeeId: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                >
+                  <option value="">Çalışan seçin</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  İzin Türü
+                </span>
+                <select
+                  value={leaveForm.leaveType}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, leaveType: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                >
+                  {LEAVE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Başlangıç Tarihi
+                </span>
+                <input
+                  type="date"
+                  required
+                  value={leaveForm.startDate}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Bitiş Tarihi
+                </span>
+                <input
+                  type="date"
+                  required
+                  value={leaveForm.endDate}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, endDate: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+                />
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  İzin Nedeni
+                </span>
+                <textarea
+                  required
+                  rows={3}
+                  value={leaveForm.reason}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, reason: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none resize-none"
+                />
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Not
+                </span>
+                <textarea
+                  rows={2}
+                  value={leaveForm.notes}
+                  onChange={(e) =>
+                    setLeaveForm((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none resize-none"
+                />
+              </label>
+            </form>
+          </ModalShell>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

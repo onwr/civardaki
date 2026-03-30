@@ -248,6 +248,7 @@ export async function POST(req) {
         discount: totals.discount,
         tax: totals.tax,
         total: totals.total,
+        exchangeRate: Number.isFinite(Number(body.exchangeRate)) ? Number(body.exchangeRate) : null,
         items: {
           create: items,
         },

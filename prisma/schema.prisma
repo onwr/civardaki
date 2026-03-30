@@ -211,10 +211,12 @@ model business {
   product               product[]
   ecommerceProductMatch ecommerce_product_match[]
   productcategory       productcategory[]
+  productvariantdimension productvariantdimension[]
   catalog               catalog[]
   pricelist             pricelist[]
   production_run        production_run[]
   warehouse             warehouse[]
+  warehouseProductStock warehouse_product_stock[]
   referral              referral[]
   review                review[]
   order                 order[]
@@ -239,6 +241,20 @@ model business {
   supportTicketMessages   support_ticket_message[]   @relation("SupportTicketMessageBusiness")
   planningProjects        planning_project[]
   planningTasks           planning_task[]
+  businessCustomers       business_customer[]
+  businessSuppliers       business_supplier[]
+  businessSales           business_sale[]
+  businessPurchases       business_purchase[]
+  expenseCategories       expense_category[]
+  expenseItems            expense_item[]
+  businessLoans           business_loan[]
+  cashProjects            cash_project[]
+  cashChecks              cash_check[]
+  cashPromissoryNotes     cash_promissory_note[]
+  masterdataEntries       business_masterdata_entry[]
+  businessFihristEntries  business_fihrist_entry[]
+  proposalTemplates       business_proposal_template[]
+  labelTemplates          business_label_template[]
 
   @@index([city, district], map: "Business_city_district_idx")
   @@index([slug], map: "Business_slug_idx")
@@ -412,6 +428,290 @@ model business_note {
   @@map("business_note")
 }
 
+enum business_masterdata_kind {
+  PRODUCT_BRAND
+  CUSTOMER_CLASS_1
+  CUSTOMER_CLASS_2
+  SUPPLIER_CLASS_1
+  SUPPLIER_CLASS_2
+  FIHRIST_1
+  FIHRIST_2
+  SHELF_LOCATION
+}
+
+model business_masterdata_entry {
+  id         String                 @id @default(cuid())
+  businessId String
+  kind       business_masterdata_kind
+  name       String
+  order      Int                    @default(0)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessMasterdataEntry_businessId_fkey")
+  fihristEntriesClass1 business_fihrist_entry[] @relation("FihristEntryClass1")
+  fihristEntriesClass2 business_fihrist_entry[] @relation("FihristEntryClass2")
+
+  @@unique([businessId, kind, name], map: "BusinessMasterdataEntry_businessId_kind_name_key")
+  @@index([businessId, kind], map: "BusinessMasterdataEntry_businessId_kind_idx")
+  @@map("business_masterdata_entry")
+}
+
+/// Fihrist: müşteri/tedarikçi dışı rehber kartları
+model business_fihrist_entry {
+  id               String   @id @default(cuid())
+  businessId       String
+  name             String
+  phone1           String?
+  phone2           String?
+  email            String?  @db.Text
+  authorizedPerson String?
+  address          String?  @db.Text
+  note             String?  @db.Text
+  imageUrl         String?
+  class1Id         String?
+  class2Id         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessFihristEntry_businessId_fkey")
+  class1   business_masterdata_entry? @relation("FihristEntryClass1", fields: [class1Id], references: [id], onDelete: SetNull, map: "BusinessFihristEntry_class1Id_fkey")
+  class2   business_masterdata_entry? @relation("FihristEntryClass2", fields: [class2Id], references: [id], onDelete: SetNull, map: "BusinessFihristEntry_class2Id_fkey")
+
+  @@index([businessId], map: "BusinessFihristEntry_businessId_idx")
+  @@index([class1Id], map: "BusinessFihristEntry_class1Id_idx")
+  @@index([class2Id], map: "BusinessFihristEntry_class2Id_idx")
+  @@map("business_fihrist_entry")
+}
+
+enum proposal_template_kind {
+  PURCHASE_NOTE
+  BA_BS_FORM
+  SALES_NOTE
+  QUOTE
+  CUSTOM
+}
+
+model business_proposal_template {
+  id              String                 @id @default(cuid())
+  businessId      String
+  name            String
+  kind            proposal_template_kind
+  language        String                 @default("tr")
+  documentTitle   String                 @default("TEKLİF FORMU")
+  pageSize        String                 @default("A4")
+  introText       String?                @db.Text
+  footerText      String?                @db.Text
+  layoutSettings  Json                   @default("{}")
+  order           Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessProposalTemplate_businessId_fkey")
+
+  @@unique([businessId, name], map: "BusinessProposalTemplate_businessId_name_key")
+  @@index([businessId], map: "BusinessProposalTemplate_businessId_idx")
+  @@map("business_proposal_template")
+}
+
+enum label_template_category {
+  PRODUCT
+  ADDRESS
+}
+
+enum label_sheet_format {
+  A4
+  RIBBON
+}
+
+model business_label_template {
+  id         String                 @id @default(cuid())
+  businessId String
+  name       String
+  category   label_template_category
+  format     label_sheet_format
+  settings   Json                   @default("{}")
+  order      Int                    @default(0)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessLabelTemplate_businessId_fkey")
+
+  @@unique([businessId, name], map: "BusinessLabelTemplate_businessId_name_key")
+  @@index([businessId], map: "BusinessLabelTemplate_businessId_idx")
+  @@map("business_label_template")
+}
+
+/// Cari müşteri (BizimHesap tarzı; panel içi, Civardaki dışı)
+model business_customer {
+  id        String   @id @default(cuid())
+  businessId String
+  name      String
+  isActive  Boolean  @default(true)
+  customerClass String @default("GENEL")
+  openBalance        Decimal @default(0) @db.Decimal(14, 2)
+  checkNoteBalance   Decimal @default(0) @db.Decimal(14, 2)
+  integrationLabel   String?
+  imageUrl           String?
+
+  email              String?  @db.Text
+  mobilePhone        String?
+  phone2             String?
+  otherAccess        String?  @db.Text
+  authorizedPerson   String?
+  address            String?  @db.Text
+  shippingAddresses  Json?
+
+  taxOffice          String?
+  taxId              String?
+  taxExempt          Boolean  @default(false)
+  bankInfo           String?  @db.Text
+  currency           String   @default("TRY")
+  riskLimit          Decimal  @default(0) @db.Decimal(14, 2)
+  maturityDays       Int?
+  fixedDiscountPct   Decimal? @db.Decimal(5, 2)
+  priceListMode      String?
+  openingBalance     Decimal  @default(0) @db.Decimal(14, 2)
+
+  otherNotes         String?  @db.Text
+  branchesJson       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business     business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessCustomer_businessId_fkey")
+  business_sales business_sale[]
+
+  @@index([businessId], map: "BusinessCustomer_businessId_idx")
+  @@index([businessId, isActive], map: "BusinessCustomer_businessId_isActive_idx")
+  @@map("business_customer")
+}
+
+/// Tedarikçi (BizimHesap tarzı; panel içi)
+model business_supplier {
+  id          String   @id @default(cuid())
+  businessId  String
+  name        String
+  isActive    Boolean  @default(true)
+  imageUrl    String?
+
+  taxOffice      String?
+  taxId          String?
+  taxExempt      Boolean  @default(false)
+  bankInfo       String?  @db.Text
+  currency       String   @default("TRY")
+  maturityDays   Int?
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
+
+  authorizedPerson String?
+  email           String?  @db.Text
+  address         String?  @db.Text
+  phone           String?
+  otherAccess     String?  @db.Text
+
+  otherNotes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business         business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessSupplier_businessId_fkey")
+  business_purchases business_purchase[]
+
+  @@index([businessId], map: "BusinessSupplier_businessId_idx")
+  @@index([businessId, isActive], map: "BusinessSupplier_businessId_isActive_idx")
+  @@map("business_supplier")
+}
+
+/// Panel satış belgesi (BizimHesap Satışlar)
+model business_sale {
+  id              String              @id @default(cuid())
+  businessId      String
+  documentType    sale_document_type   @default(ORDER)
+  saleKind        sale_kind           @default(RETAIL)
+  customerId      String?
+  customerName    String?
+  saleDate        DateTime
+  totalAmount     Float               @default(0)
+  collectionAmount Float              @default(0)
+  cashAccountId   String?
+  projectId       String?
+  description     String?             @db.Text
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  business     business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessSale_businessId_fkey")
+  customer     business_customer? @relation(fields: [customerId], references: [id], onDelete: SetNull, map: "BusinessSale_customerId_fkey")
+  cashAccount  cash_account?    @relation(fields: [cashAccountId], references: [id], onDelete: SetNull, map: "BusinessSale_cashAccountId_fkey")
+  project      cash_project?    @relation(fields: [projectId], references: [id], onDelete: SetNull, map: "BusinessSale_projectId_fkey")
+  items        business_sale_item[]
+
+  @@index([businessId], map: "BusinessSale_businessId_idx")
+  @@index([projectId], map: "BusinessSale_projectId_idx")
+  @@index([businessId, saleDate], map: "BusinessSale_businessId_saleDate_idx")
+  @@index([documentType], map: "BusinessSale_documentType_idx")
+  @@map("business_sale")
+}
+
+model business_sale_item {
+  id         String   @id @default(cuid())
+  saleId     String
+  productId  String?
+  name       String
+  quantity   Float    @default(1)
+  unitPrice  Float    @default(0)
+  total      Float    @default(0)
+
+  sale business_sale @relation(fields: [saleId], references: [id], onDelete: Cascade, map: "BusinessSaleItem_saleId_fkey")
+
+  @@index([saleId], map: "BusinessSaleItem_saleId_idx")
+  @@map("business_sale_item")
+}
+
+/// Panel alış belgesi (BizimHesap Alışlar)
+model business_purchase {
+  id              String                  @id @default(cuid())
+  businessId      String
+  documentType    purchase_document_type   @default(ORDER)
+  supplierId      String?
+  supplierName    String?
+  purchaseDate    DateTime
+  totalAmount     Float                   @default(0)
+  paymentAmount   Float                   @default(0)
+  cashAccountId   String?
+  projectId       String?
+  description     String?                 @db.Text
+  isCancelled     Boolean                 @default(false)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  business     business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessPurchase_businessId_fkey")
+  supplier     business_supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull, map: "BusinessPurchase_supplierId_fkey")
+  cashAccount  cash_account?    @relation(fields: [cashAccountId], references: [id], onDelete: SetNull, map: "BusinessPurchase_cashAccountId_fkey")
+  project      cash_project?    @relation(fields: [projectId], references: [id], onDelete: SetNull, map: "BusinessPurchase_projectId_fkey")
+  items        business_purchase_item[]
+
+  @@index([businessId], map: "BusinessPurchase_businessId_idx")
+  @@index([projectId], map: "BusinessPurchase_projectId_idx")
+  @@index([businessId, purchaseDate], map: "BusinessPurchase_businessId_purchaseDate_idx")
+  @@index([documentType], map: "BusinessPurchase_documentType_idx")
+  @@map("business_purchase")
+}
+
+model business_purchase_item {
+  id         String   @id @default(cuid())
+  purchaseId String
+  productId  String?
+  name       String
+  quantity   Float    @default(1)
+  unitPrice  Float    @default(0)
+  total      Float    @default(0)
+
+  purchase business_purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade, map: "BusinessPurchaseItem_purchaseId_fkey")
+
+  @@index([purchaseId], map: "BusinessPurchaseItem_purchaseId_idx")
+  @@map("business_purchase_item")
+}
+
 // ============================================================================
 // ADS (Reklamlar)
 // ============================================================================
@@ -554,14 +854,38 @@ model product {
   categoryId    String?
   name          String
   slug          String
+  brand         String?
   description   String?  @db.Text
   price         Float?
   discountPrice Float?
+  /// TL | USD | EUR (boş = TL)
+  priceCurrency String?  @db.VarChar(8)
+  /// Satış birimi kodu (örn. ADET, KG)
+  salesUnit     String?  @db.VarChar(32)
+  /// Etiketler, satır veya virgülle ayrılmış
+  tagsString    String?  @db.Text
   imageUrl      String?
+  /// Resim 2–6: https URL'leri (JSON dizi, en fazla 5 öğe)
+  imageGallery  Json?
   isActive      Boolean  @default(true)
   order         Int      @default(0)
   stock         Int?     // Stok (varyasyon yoksa ürün bazlı)
   maxOrderQty   Int?     // Maksimum sipariş adedi (null = sınırsız)
+  /// EAN-13 veya serbest barkod metni
+  barcode       String?  @db.VarChar(32)
+  /// İç ürün kodu / SKU
+  productCode   String?  @db.VarChar(64)
+  gtip          String?  @db.VarChar(32)
+  gtin          String?  @db.VarChar(32)
+  /// Harici ülke listesi id (örn. "12" = Türkiye)
+  countryCode   String?  @db.VarChar(8)
+  shelfLocation String?  @db.VarChar(128)
+  /// NORMAL | NONE | BATCH | SERIAL
+  stockTracking String   @default("NORMAL") @db.VarChar(16)
+  /// Seri takipte satış faturasında seri gösterimi: HIDE | SHOW | OPTIONAL
+  serialInvoiceMode String? @db.VarChar(16)
+  /// Civardaki pazaryerinde listelensin
+  publishedOnMarketplace Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -571,11 +895,14 @@ model product {
   catalogitem     catalogitem[]
   pricelistitem   pricelistitem[]
   production_run  production_run[]
+  production_run_line production_run_line[]
   lead            lead[]
   ecommerceMatches ecommerce_product_match[]
+  warehouseProductStocks warehouse_product_stock[]
 
   @@unique([businessId, slug], map: "Product_businessId_slug_key")
   @@index([businessId], map: "Product_businessId_idx")
+  @@index([businessId, brand], map: "Product_businessId_brand_idx")
   @@index([categoryId], map: "Product_categoryId_fkey")
   @@map("product")
 }
@@ -617,9 +944,41 @@ model productvariant {
   updatedAt     DateTime @updatedAt
 
   product product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductVariant_productId_fkey")
+  production_run_line production_run_line[]
 
   @@index([productId], map: "ProductVariant_productId_idx")
   @@map("productvariant")
+}
+
+/// İşletme geneli varyant boyutu (örn. RENK, BOYUT/EBAT)
+model productvariantdimension {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business                        @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ProductVariantDimension_businessId_fkey")
+  values   productvariantdimensionvalue[]
+
+  @@index([businessId], map: "ProductVariantDimension_businessId_idx")
+  @@map("productvariantdimension")
+}
+
+model productvariantdimensionvalue {
+  id          String @id @default(cuid())
+  dimensionId String
+  value       String
+  order       Int    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dimension productvariantdimension @relation(fields: [dimensionId], references: [id], onDelete: Cascade, map: "ProductVariantDimensionValue_dimensionId_fkey")
+
+  @@unique([dimensionId, value], map: "ProductVariantDimensionValue_dimensionId_value_key")
+  @@index([dimensionId], map: "ProductVariantDimensionValue_dimensionId_idx")
+  @@map("productvariantdimensionvalue")
 }
 
 model productcategory {
@@ -635,6 +994,35 @@ model productcategory {
   @@map("productcategory")
 }
 
+enum catalog_price_display {
+  SHOW_SALES
+  HIDE
+}
+
+enum catalog_brand_display {
+  SHOW
+  HIDE
+}
+
+enum catalog_stock_qty_display {
+  SHOW
+  HIDE
+}
+
+enum catalog_stock_filter {
+  ALL
+  IN_STOCK_ONLY
+}
+
+enum catalog_sort {
+  BY_NAME
+  BY_CATALOG_ORDER
+  BY_SLUG
+  BY_CATEGORY
+  PRICE_ASC
+  PRICE_DESC
+}
+
 model catalog {
   id          String   @id @default(cuid())
   businessId  String
@@ -643,13 +1031,22 @@ model catalog {
   isPublished Boolean @default(false)
   pdfUrl      String?
   shareUrl    String?
+  shareSlug   String?  @unique(map: "Catalog_shareSlug_key")
+  priceListId String?
+  priceDisplay   catalog_price_display   @default(SHOW_SALES)
+  brandDisplay   catalog_brand_display   @default(HIDE)
+  stockQtyDisplay catalog_stock_qty_display @default(HIDE)
+  stockFilter    catalog_stock_filter    @default(ALL)
+  sortOrder      catalog_sort            @default(BY_NAME)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  business business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Catalog_businessId_fkey")
-  items    catalogitem[]
+  business  business   @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Catalog_businessId_fkey")
+  priceList pricelist? @relation(fields: [priceListId], references: [id], onDelete: SetNull, map: "Catalog_priceListId_fkey")
+  items     catalogitem[]
 
   @@index([businessId], map: "Catalog_businessId_idx")
+  @@index([priceListId], map: "Catalog_priceListId_idx")
   @@map("catalog")
 }
 
@@ -683,6 +1080,7 @@ model pricelist {
 
   business business        @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Pricelist_businessId_fkey")
   items    pricelistitem[]
+  catalogs catalog[]
 
   @@index([businessId], map: "Pricelist_businessId_idx")
   @@map("pricelist")
@@ -707,9 +1105,11 @@ model production_run {
   id        String   @id @default(cuid())
   businessId String
   productId  String
+  outputWarehouseId String?
   quantity   Float   @default(0)
   unit       String  @default("kg") // kg, adet, litre, vb.
   recipe     String? @db.Text
+  description String? @db.Text
   startDate  DateTime
   endDate    DateTime
   status     String  @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
@@ -719,10 +1119,37 @@ model production_run {
 
   business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ProductionRun_businessId_fkey")
   product  product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductionRun_productId_fkey")
+  outputWarehouse warehouse? @relation("ProductionRun_outputWarehouse", fields: [outputWarehouseId], references: [id], onDelete: SetNull, map: "ProductionRun_outputWarehouseId_fkey")
+  lines    production_run_line[]
 
   @@index([businessId], map: "ProductionRun_businessId_idx")
   @@index([productId], map: "ProductionRun_productId_idx")
+  @@index([outputWarehouseId], map: "ProductionRun_outputWarehouseId_idx")
   @@map("production_run")
+}
+
+model production_run_line {
+  id               String   @id @default(cuid())
+  productionRunId  String
+  productId        String
+  warehouseId      String
+  productVariantId String?
+  quantity         Float    @default(0)
+  unitCost         Float    @default(0)
+  lineCost         Float    @default(0)
+  description      String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  productionRun  production_run  @relation(fields: [productionRunId], references: [id], onDelete: Cascade, map: "ProductionRunLine_productionRunId_fkey")
+  product        product         @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductionRunLine_productId_fkey")
+  warehouse      warehouse       @relation(fields: [warehouseId], references: [id], onDelete: Cascade, map: "ProductionRunLine_warehouseId_fkey")
+  productVariant productvariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull, map: "ProductionRunLine_productVariantId_fkey")
+
+  @@index([productionRunId], map: "ProductionRunLine_productionRunId_idx")
+  @@index([productId], map: "ProductionRunLine_productId_idx")
+  @@index([warehouseId], map: "ProductionRunLine_warehouseId_idx")
+  @@map("production_run_line")
 }
 
 model warehouse {
@@ -738,10 +1165,34 @@ model warehouse {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Warehouse_businessId_fkey")
+  business               business                 @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Warehouse_businessId_fkey")
+  warehouseProductStocks warehouse_product_stock[]
+  productionRunsAsOutput production_run[]         @relation("ProductionRun_outputWarehouse")
+  production_run_lines   production_run_line[]
 
   @@index([businessId], map: "Warehouse_businessId_idx")
   @@map("warehouse")
+}
+
+/// Depo bazlı ürün miktarı (negatif olabilir)
+model warehouse_product_stock {
+  id          String   @id @default(cuid())
+  businessId  String
+  warehouseId String
+  productId   String
+  quantity    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business  business  @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "WarehouseProductStock_businessId_fkey")
+  warehouse warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade, map: "WarehouseProductStock_warehouseId_fkey")
+  product   product   @relation(fields: [productId], references: [id], onDelete: Cascade, map: "WarehouseProductStock_productId_fkey")
+
+  @@unique([warehouseId, productId], map: "WarehouseProductStock_warehouseId_productId_key")
+  @@index([businessId], map: "WarehouseProductStock_businessId_idx")
+  @@index([warehouseId], map: "WarehouseProductStock_warehouseId_idx")
+  @@index([productId], map: "WarehouseProductStock_productId_idx")
+  @@map("warehouse_product_stock")
 }
 
 // ============================================================================
@@ -820,6 +1271,7 @@ model quote {
   discount          Float          @default(0)
   tax               Float          @default(0)
   total             Float          @default(0)
+  exchangeRate      Float?
   status            quote_status   @default(DRAFT)
   priority          quote_priority @default(NORMAL)
   probability       Int            @default(0)
@@ -1139,7 +1591,7 @@ model asset {
   category        asset_category  @default(EQUIPMENT)
   purchasePrice   Float           @default(0)
   currentValue    Float           @default(0)
-  purchaseDate    DateTime        @default(now())
+  purchaseDate    DateTime?
   location        String?
   assignedTo      String?
   status          asset_status    @default(ACTIVE)
@@ -1149,6 +1601,7 @@ model asset {
   listingType     String?         @default("sale")
   listingPrice    Float?
   description     String?         @db.Text
+  notes           String?         @db.Text
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -1356,6 +1809,159 @@ model financial_transaction {
 }
 
 // ============================================================================
+// EXPENSE CATEGORIES (Masraf kalemleri)
+// ============================================================================
+
+enum expense_payment_status {
+  PENDING
+  PAID
+}
+
+model expense_category {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ExpenseCategory_businessId_fkey")
+  items    expense_item[]
+
+  @@index([businessId], map: "ExpenseCategory_businessId_idx")
+  @@map("expense_category")
+}
+
+model expense_item {
+  id         String   @id @default(cuid())
+  businessId String
+  categoryId String
+  name       String
+  tagColor   String?  @db.VarChar(32)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business   business            @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "ExpenseItem_businessId_fkey")
+  category   expense_category    @relation(fields: [categoryId], references: [id], onDelete: Cascade, map: "ExpenseItem_categoryId_fkey")
+  expenses   cash_transaction[]
+
+  @@index([businessId], map: "ExpenseItem_businessId_idx")
+  @@index([categoryId], map: "ExpenseItem_categoryId_idx")
+  @@map("expense_item")
+}
+
+// ============================================================================
+// BUSINESS LOANS (Krediler)
+// ============================================================================
+
+enum loan_payment_schedule {
+  MONTHLY
+  WEEKLY
+  BIWEEKLY
+  QUARTERLY
+  YEARLY
+}
+
+model business_loan {
+  id                    String                @id @default(cuid())
+  businessId            String
+  name                  String
+  remainingDebt         Float
+  remainingInstallments Int
+  nextInstallmentDate   DateTime
+  paymentSchedule       loan_payment_schedule @default(MONTHLY)
+  cashAccountId         String
+  notes                 String?               @db.Text
+  isClosed              Boolean               @default(false)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  business    business     @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessLoan_businessId_fkey")
+  cashAccount cash_account @relation(fields: [cashAccountId], references: [id], onDelete: Restrict, map: "BusinessLoan_cashAccountId_fkey")
+
+  @@index([businessId], map: "BusinessLoan_businessId_idx")
+  @@index([cashAccountId], map: "BusinessLoan_cashAccountId_idx")
+  @@index([nextInstallmentDate], map: "BusinessLoan_nextInstallmentDate_idx")
+  @@map("business_loan")
+}
+
+// ============================================================================
+// ÇEKLER (çek portföyü)
+// ============================================================================
+
+enum check_direction {
+  RECEIVED
+  ISSUED
+}
+
+enum cash_check_status {
+  IN_PORTFOLIO
+  GIVEN_TO_SUPPLIER
+  GIVEN_TO_BANK
+  PAID
+  BOUNCED
+  CANCELLED
+}
+
+model cash_check {
+  id          String            @id @default(cuid())
+  businessId  String
+  direction   check_direction   @default(RECEIVED)
+  status      cash_check_status @default(IN_PORTFOLIO)
+  checkNumber String?
+  amount      Float             @default(0)
+  issueDate   DateTime?
+  dueDate     DateTime?
+  bankName    String?
+  drawerName  String?
+  payeeName   String?
+  notes       String?           @db.Text
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashCheck_businessId_fkey")
+
+  @@index([businessId], map: "CashCheck_businessId_idx")
+  @@index([businessId, status], map: "CashCheck_businessId_status_idx")
+  @@index([dueDate], map: "CashCheck_dueDate_idx")
+  @@map("cash_check")
+}
+
+enum cash_promissory_note_status {
+  IN_PORTFOLIO
+  OVERDUE
+  GIVEN_TO_SUPPLIER
+  GIVEN_TO_BANK
+  PAID
+  PARTIAL_PAID
+  CANCELLED
+}
+
+model cash_promissory_note {
+  id          String                     @id @default(cuid())
+  businessId  String
+  direction   check_direction            @default(RECEIVED)
+  status      cash_promissory_note_status @default(IN_PORTFOLIO)
+  noteNumber  String?
+  amount      Float                      @default(0)
+  paidAmount  Float                      @default(0)
+  issueDate   DateTime?
+  dueDate     DateTime?
+  drawerName  String?
+  payeeName   String?
+  notes       String?                    @db.Text
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashPromissoryNote_businessId_fkey")
+
+  @@index([businessId], map: "CashPromissoryNote_businessId_idx")
+  @@index([businessId, status], map: "CashPromissoryNote_businessId_status_idx")
+  @@index([dueDate], map: "CashPromissoryNote_dueDate_idx")
+  @@map("cash_promissory_note")
+}
+
+// ============================================================================
 // LEGACY CASH ACCOUNT MODELS (Keeping for backward compatibility)
 // ============================================================================
 
@@ -1366,37 +1972,82 @@ model cash_account {
   type       account_type @default(CASH)
   balance    Float        @default(0)
   currency   String       @default("TRY")
+  accountNo  String?
+  labelColor String?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
   business        business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashAccount_businessId_fkey")
   transactions    cash_transaction[] @relation("accountTransactions")
   to_transactions cash_transaction[] @relation("toAccountTransactions")
+  business_sales     business_sale[]
+  business_purchases business_purchase[]
+  business_loans     business_loan[]
 
   @@index([businessId], map: "CashAccount_businessId_idx")
   @@map("cash_account")
 }
 
-model cash_transaction {
-  id          String           @id @default(cuid())
+/// Nakit / masraf modülü proje ağacı (alt proje destekli)
+model cash_project {
+  id          String                  @id @default(cuid())
   businessId  String
-  accountId   String
-  toAccountId String?
-  type        transaction_type
-  amount      Float
-  category    String
-  description String?          @db.Text
-  date        DateTime         @default(now())
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  parentId    String?
+  name        String
+  description String?                 @db.Text
+  notes       String?                 @db.Text
+  status      planning_project_status @default(ACTIVE)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
 
-  business  business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashTransaction_businessId_fkey")
-  account   cash_account  @relation("accountTransactions", fields: [accountId], references: [id], onDelete: Cascade, map: "CashTransaction_accountId_fkey")
-  toAccount cash_account? @relation("toAccountTransactions", fields: [toAccountId], references: [id], onDelete: Cascade, map: "CashTransaction_toAccountId_fkey")
+  business     business             @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashProject_businessId_fkey")
+  parent       cash_project?        @relation("CashProjectHierarchy", fields: [parentId], references: [id], onDelete: Cascade, map: "CashProject_parentId_fkey")
+  children     cash_project[]       @relation("CashProjectHierarchy")
+  transactions cash_transaction[]
+  purchases    business_purchase[]
+  sales        business_sale[]
+
+  @@index([businessId], map: "CashProject_businessId_idx")
+  @@index([businessId, status], map: "CashProject_businessId_status_idx")
+  @@index([parentId], map: "CashProject_parentId_idx")
+  @@map("cash_project")
+}
+
+model cash_transaction {
+  id                    String                   @id @default(cuid())
+  businessId            String
+  accountId             String
+  toAccountId           String?
+  type                  transaction_type
+  amount                Float
+  category              String
+  description           String?                  @db.Text
+  date                  DateTime                 @default(now())
+  expensePaymentStatus  expense_payment_status?
+  dueDate               DateTime?
+  paymentDate           DateTime?
+  receiptNo             String?
+  vatRate               Float?
+  projectName           String?
+  notes                 String?                  @db.Text
+  recurring             Boolean                  @default(false)
+  expenseItemId         String?
+  projectId             String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  business    business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashTransaction_businessId_fkey")
+  account     cash_account   @relation("accountTransactions", fields: [accountId], references: [id], onDelete: Cascade, map: "CashTransaction_accountId_fkey")
+  toAccount   cash_account?  @relation("toAccountTransactions", fields: [toAccountId], references: [id], onDelete: Cascade, map: "CashTransaction_toAccountId_fkey")
+  expenseItem expense_item?  @relation(fields: [expenseItemId], references: [id], onDelete: SetNull, map: "CashTransaction_expenseItemId_fkey")
+  project     cash_project?  @relation(fields: [projectId], references: [id], onDelete: SetNull, map: "CashTransaction_projectId_fkey")
 
   @@index([businessId], map: "CashTransaction_businessId_idx")
   @@index([accountId], map: "CashTransaction_accountId_idx")
   @@index([date], map: "CashTransaction_date_idx")
+  @@index([expensePaymentStatus], map: "CashTransaction_expensePaymentStatus_idx")
+  @@index([expenseItemId], map: "CashTransaction_expenseItemId_idx")
+  @@index([projectId], map: "CashTransaction_projectId_idx")
   @@map("cash_transaction")
 }
 
@@ -1800,6 +2451,25 @@ enum order_status {
   CANCELLED
 }
 
+enum sale_document_type {
+  ORDER
+  WAYBILL
+  INVOICED_EFATURA
+  INVOICED_NOT_EFATURA
+}
+
+enum sale_kind {
+  RETAIL
+  TO_NEW_CUSTOMER
+  TO_REGISTERED_CUSTOMER
+}
+
+enum purchase_document_type {
+  ORDER
+  WAYBILLED
+  INVOICED
+}
+
 enum reservation_status {
   PENDING
   CONFIRMED
@@ -1898,6 +2568,10 @@ enum account_type {
   CASH
   BANK
   ESCROW
+  POS
+  CREDIT_CARD
+  PARTNER
+  CREDIT
 }
 
 enum neighborhood_tab {

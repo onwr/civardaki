@@ -111,7 +111,7 @@ export async function createPaymentReminderNotification(business, daysLeft) {
     message: `Abonelik ödemeniz ${daysLeft} gün sonra sona eriyor`,
     relatedId: business.id,
     relatedType: "business",
-    actionUrl: `/business/cash`,
+    actionUrl: `/business/cash/accounts`,
     targetBusinessId: business.id,
   });
 }
@@ -127,7 +127,7 @@ export async function createSubscriptionExpiringNotification(
     message: `Abonelik ödemeniz ${daysLeft} gün sonra sona eriyor`,
     relatedId: business.id,
     relatedType: "business",
-    actionUrl: `/business/cash`,
+    actionUrl: `/business/cash/accounts`,
     targetBusinessId: business.id,
   });
 }
@@ -140,7 +140,7 @@ export async function createSubscriptionExpiredNotification(business) {
     message: "Abonelik süreniz doldu. Hesabınız askıya alındı.",
     relatedId: business.id,
     relatedType: "business",
-    actionUrl: `/business/cash`,
+    actionUrl: `/business/cash/accounts`,
     targetBusinessId: business.id,
   });
 }

@@ -11,6 +11,8 @@ import {
   Clock3,
   Tag,
   ShieldCheck,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getStatusLabel, getCategoryLabel } from "@/lib/tickets/config";
@@ -49,6 +51,33 @@ function statusBadgeClass(status) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   }
   return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function SectionCard({ title, subtitle, children, right }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        {right}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function InfoMiniCard({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+      <Icon className="mb-2 h-5 w-5 text-white" />
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+    </div>
+  );
 }
 
 export default function BusinessTicketDetailPage() {
@@ -120,16 +149,19 @@ export default function BusinessTicketDetailPage() {
 
   if (!id) {
     return (
-      <div className="space-y-6">
-        <Link
-          href="/business/tickets"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Taleplere dön
-        </Link>
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
-          Geçersiz talep.
+      <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <Link
+            href="/business/tickets"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Taleplere dön
+          </Link>
+
+          <SectionCard title="Geçersiz talep">
+            <div className="text-sm text-slate-500">Geçersiz talep.</div>
+          </SectionCard>
         </div>
       </div>
     );
@@ -137,21 +169,20 @@ export default function BusinessTicketDetailPage() {
 
   if (loading && !ticket) {
     return (
-      <div className="space-y-6">
-        <Link
-          href="/business/tickets"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Taleplere dön
-        </Link>
+      <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <Link
+            href="/business/tickets"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Taleplere dön
+          </Link>
 
-        <div className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-          <div className="h-40 animate-pulse bg-slate-100" />
-          <div className="space-y-4 p-6">
-            <div className="h-6 w-1/2 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-4 w-1/3 animate-pulse rounded-xl bg-slate-100" />
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="space-y-4">
+            <div className="h-44 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
+            <div className="h-48 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
+            <div className="h-72 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
           </div>
         </div>
       </div>
@@ -160,230 +191,239 @@ export default function BusinessTicketDetailPage() {
 
   if (!ticket) {
     return (
-      <div className="space-y-6">
-        <Link
-          href="/business/tickets"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Taleplere dön
-        </Link>
-        <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
-          Talep bulunamadı.
+      <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <Link
+            href="/business/tickets"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Taleplere dön
+          </Link>
+
+          <SectionCard title="Talep bulunamadı">
+            <div className="text-sm text-slate-500">Talep bulunamadı.</div>
+          </SectionCard>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <Link
-        href="/business/tickets"
-        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Taleplere dön
-      </Link>
+    <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Link
+          href="/business/tickets"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Taleplere dön
+        </Link>
 
-      <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-gradient-to-br from-[#004aad] via-[#0b57c8] to-[#0f172a] text-white shadow-[0_30px_80px_-30px_rgba(0,74,173,0.45)]">
-        <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.25fr_0.75fr] md:px-8 md:py-10">
-          <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/90 backdrop-blur">
-              <Headphones className="h-3.5 w-3.5" />
-              Business Destek Talebi
-            </div>
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white">
+            <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
+              <div>
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+                  <Headphones className="h-4 w-4" />
+                  Business Destek Talebi
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  {ticket.subject}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  Destek ekibiyle yazışmalarınızı bu ekran üzerinden takip edebilir,
+                  yeni mesaj gönderebilir ve kayıt durumunu izleyebilirsiniz.
+                </p>
+              </div>
 
-            <div className="space-y-3">
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                {ticket.subject}
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-white/80 md:text-[15px]">
-                Destek ekibiyle yazışmalarınızı bu ekran üzerinden takip
-                edebilir ve yeni yanıt gönderebilirsiniz.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1">
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-              <Tag className="mb-2 h-5 w-5 text-white" />
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                Kategori
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {categoryLabel}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-              <ShieldCheck className="mb-2 h-5 w-5 text-white" />
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                Durum
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {statusLabel}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
-              <Clock3 className="mb-2 h-5 w-5 text-white" />
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-                Oluşturulma
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">
-                {formatDateTime(ticket.createdAt)}
-              </p>
+              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                <InfoMiniCard
+                  icon={Tag}
+                  label="Kategori"
+                  value={categoryLabel}
+                />
+                <InfoMiniCard
+                  icon={ShieldCheck}
+                  label="Durum"
+                  value={statusLabel}
+                />
+                <InfoMiniCard
+                  icon={Clock3}
+                  label="Oluşturulma"
+                  value={formatDateTime(ticket.createdAt)}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <MessageSquare className="h-4 w-4 text-[#004aad]" />
-              Talep Özeti
-            </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-6">
+            <SectionCard
+              title="Talep özeti"
+              subtitle="İlk oluşturulan kayıt içeriği"
+              right={
+                <span
+                  className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${statusBadgeClass(
+                    ticket.status,
+                  )}`}
+                >
+                  {statusLabel}
+                </span>
+              }
+            >
+              <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                  {ticket.body}
+                </p>
+              </div>
+            </SectionCard>
 
-            <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                {ticket.body}
-              </p>
-            </div>
-          </section>
+            <SectionCard
+              title="Mesaj geçmişi"
+              subtitle="Destek ekibiyle yapılan tüm yazışmalar"
+            >
+              <div className="space-y-4">
+                {(ticket.messages || []).length > 0 ? (
+                  ticket.messages.map((msg) => {
+                    const isAdmin = msg.authorType === "ADMIN";
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Mesaj Geçmişi
-              </h2>
-              <span
-                className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(
-                  ticket.status,
-                )}`}
-              >
-                {statusLabel}
-              </span>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {(ticket.messages || []).length > 0 ? (
-                ticket.messages.map((msg) => {
-                  const isAdmin = msg.authorType === "ADMIN";
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}
-                    >
+                    return (
                       <div
-                        className={`max-w-[90%] rounded-[24px] border p-4 shadow-sm md:max-w-[80%] ${
-                          isAdmin
-                            ? "border-blue-100 bg-blue-50"
-                            : "border-slate-200 bg-slate-50"
-                        }`}
+                        key={msg.id}
+                        className={`flex ${isAdmin ? "justify-start" : "justify-end"}`}
                       >
-                        <div className="flex items-center justify-between gap-4">
-                          <p className="text-sm font-semibold text-slate-800">
-                            {messageAuthor(msg)}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {formatDateTime(msg.createdAt)}
+                        <div
+                          className={`max-w-[92%] rounded-[24px] border p-4 shadow-sm md:max-w-[80%] ${
+                            isAdmin
+                              ? "border-blue-100 bg-blue-50"
+                              : "border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-sm font-bold text-slate-800">
+                              {messageAuthor(msg)}
+                            </p>
+                            <p className="text-xs font-medium text-slate-500">
+                              {formatDateTime(msg.createdAt)}
+                            </p>
+                          </div>
+
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                            {msg.body}
                           </p>
                         </div>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                          {msg.body}
-                        </p>
                       </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-                  Henüz mesaj bulunmuyor.
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                    Henüz mesaj bulunmuyor.
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            <SectionCard
+              title="Yanıt gönder"
+              subtitle="Destek kaydına yeni mesaj ekleyin"
+            >
+              <form onSubmit={handleSendReply} className="space-y-4">
+                <textarea
+                  value={replyBody}
+                  onChange={(e) => setReplyBody(e.target.value)}
+                  rows={5}
+                  placeholder="Yanıtınızı detaylı şekilde yazın..."
+                  className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!replyBody.trim() || sending}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Send className="h-4 w-4" />
+                  {sending ? "Gönderiliyor..." : "Yanıtı Gönder"}
+                </button>
+              </form>
+            </SectionCard>
+          </div>
+
+          <div className="space-y-6">
+            <SectionCard title="Talep bilgileri">
+              <div className="space-y-4 text-sm">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Talep No
+                  </p>
+                  <p className="mt-1 font-medium text-slate-800">{ticket.id}</p>
                 </div>
-              )}
-            </div>
-          </section>
 
-          <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-            <h3 className="text-base font-semibold text-slate-900">
-              Yanıt Gönder
-            </h3>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Kategori
+                  </p>
+                  <p className="mt-1 font-medium text-slate-800">{categoryLabel}</p>
+                </div>
 
-            <form onSubmit={handleSendReply} className="mt-4 space-y-4">
-              <textarea
-                value={replyBody}
-                onChange={(e) => setReplyBody(e.target.value)}
-                rows={5}
-                placeholder="Yanıtınızı detaylı şekilde yazın..."
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 resize-none focus:border-[#004aad] focus:bg-white focus:ring-4 focus:ring-[#004aad]/10"
-              />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Durum
+                  </p>
+                  <p className="mt-1 font-medium text-slate-800">{statusLabel}</p>
+                </div>
 
-              <button
-                type="submit"
-                disabled={!replyBody.trim() || sending}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#004aad] px-5 text-sm font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Send className="h-4 w-4" />
-                {sending ? "Gönderiliyor..." : "Yanıtı Gönder"}
-              </button>
-            </form>
-          </section>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Açılış Tarihi
+                  </p>
+                  <p className="mt-1 font-medium text-slate-800">
+                    {formatDateTime(ticket.createdAt)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Son Güncelleme
+                  </p>
+                  <p className="mt-1 font-medium text-slate-800">
+                    {formatDateTime(ticket.updatedAt)}
+                  </p>
+                </div>
+              </div>
+            </SectionCard>
+
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-blue-700 to-slate-900 text-white shadow-[0_14px_35px_rgba(15,23,42,0.10)]">
+              <div className="p-6">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+                  <Sparkles className="h-4 w-4" />
+                  Bilgilendirme
+                </div>
+                <p className="text-sm leading-7 text-blue-100/90">
+                  Destek ekibi tarafından gönderilen tüm yanıtlar bu sayfada
+                  görüntülenir. Yeni mesaj gönderdiğinizde kayıt yeniden incelemeye
+                  alınabilir.
+                </p>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
+              <div className="flex gap-4 p-6">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-white">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">İpucu</h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Yeni yanıtınızda ekran adı, hata adımı ve beklenen sonucu açıkça
+                    yazmanız çözüm süresini kısaltır.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
-
-        <aside className="space-y-4">
-          <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Talep Bilgileri
-            </h2>
-            <div className="mt-4 space-y-4 text-sm">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Talep No
-                </p>
-                <p className="mt-1 font-medium text-slate-800">{ticket.id}</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Kategori
-                </p>
-                <p className="mt-1 font-medium text-slate-800">
-                  {categoryLabel}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Durum
-                </p>
-                <p className="mt-1 font-medium text-slate-800">{statusLabel}</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Açılış Tarihi
-                </p>
-                <p className="mt-1 font-medium text-slate-800">
-                  {formatDateTime(ticket.createdAt)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Bilgilendirme
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Destek ekibi tarafından gönderilen tüm yanıtlar bu sayfada
-              görüntülenir. Yeni mesaj gönderdiğinizde talep yeniden incelemeye
-              alınabilir.
-            </p>
-          </div>
-        </aside>
       </div>
     </div>
   );

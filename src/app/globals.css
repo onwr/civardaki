@@ -61,6 +61,19 @@
   --color-danger-900: #7f1d1d;
 }
 
+/* İşletme paneli — Bizim Hesap tarzı kabuk */
+:root {
+  --bh-sidebar-bg: #071a3a;
+  --bh-sidebar-border: rgba(255, 255, 255, 0.08);
+  --bh-main-bg: #eef2f6;
+  --bh-card-radius: 10px;
+  --bh-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --bh-accent-blue: #004aad;
+  --bh-accent-red: #dc2626;
+  --bh-accent-green: #22c55e;
+  --bh-accent-sky: #0ea5e9;
+}
+
 /* Global Stiller */
 * {
   box-sizing: border-box;

@@ -51,6 +51,7 @@ export async function POST(req) {
 
   const body = await req.json();
   const name = toStr(body?.name);
+  const copyFromId = toStr(body?.copyFromId);
   const description = toStr(body?.description) || null;
   const customerGroup = toStr(body?.customerGroup) || "ALL";
   const discountRate = typeof body?.discountRate === "number" ? Math.max(0, Math.min(100, body.discountRate)) : 0;
@@ -60,24 +61,36 @@ export async function POST(req) {
 
   if (!name || name.length < 2) return NextResponse.json({ message: "Fiyat listesi adı en az 2 karakter olmalı." }, { status: 400 });
 
-  const businessProducts = await prisma.product.findMany({
-    where: { businessId: auth.businessId, id: { in: productIds } },
-    select: { id: true },
-  });
-  const validProductIds = businessProducts.map((p) => p.id);
+  let sourceList = null;
+  if (copyFromId) {
+    sourceList = await prisma.pricelist.findFirst({
+      where: { id: copyFromId, businessId: auth.businessId },
+      include: { items: { orderBy: { order: "asc" } } },
+    });
+    if (!sourceList) return NextResponse.json({ message: "Kopyalanacak liste bulunamadı." }, { status: 404 });
+  }
+
+  let itemsCreate = [];
+  if (sourceList) {
+    itemsCreate = sourceList.items.map((it, index) => ({ productId: it.productId, order: index }));
+  } else if (productIds.length) {
+    const businessProducts = await prisma.product.findMany({
+      where: { businessId: auth.businessId, id: { in: productIds } },
+      select: { id: true },
+    });
+    itemsCreate = businessProducts.map((p, index) => ({ productId: p.id, order: index }));
+  }
 
   const list = await prisma.pricelist.create({
     data: {
       businessId: auth.businessId,
       name,
-      description,
-      customerGroup,
-      discountRate,
-      validFrom,
-      validUntil,
-      items: {
-        create: validProductIds.map((productId, index) => ({ productId, order: index })),
-      },
+      description: sourceList ? sourceList.description : description,
+      customerGroup: sourceList ? sourceList.customerGroup : customerGroup,
+      discountRate: sourceList ? sourceList.discountRate : discountRate,
+      validFrom: sourceList ? sourceList.validFrom : validFrom,
+      validUntil: sourceList ? sourceList.validUntil : validUntil,
+      items: { create: itemsCreate },
     },
     include: { _count: { select: { items: true } } },
   });

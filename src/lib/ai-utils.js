@@ -157,7 +157,8 @@ export function simulateTyping(text, callback, speed = 30) {
  * @returns {Promise<string>} AI yanıtı
  */
 export async function getAIResponseAsync(context, query = "", delay = null) {
-  const actualDelay = delay || Math.floor(Math.random() * 1000) + 500;
+  const actualDelay =
+    delay != null ? delay : Math.floor(Math.random() * 1000) + 500;
 
   return new Promise((resolve) => {
     setTimeout(() => {

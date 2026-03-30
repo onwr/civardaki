@@ -1,0 +1,31 @@
+PROJE KURAL PROMPT’U (Civardaki)
+
+1) Ana ürün: “BizimHesap” benzeri işletme paneli.
+- Panel Civardaki’den BAĞIMSIZ bir muhasebe/CRM programıdır.
+- Menü, ekran akışı, terminoloji ve modüller BizimHesap’la BİREBİR olmalıdır (UI/UX dahil).
+- Civardaki’yi panele entegre etmeye çalışma; bu kafa karıştırır ve işi uzatır.
+
+2) Civardaki’nin rolü:
+- Civardaki ÜCRETSİZ bir pazaryeri/kanal olacak.
+- Görevi: panele müşteri/sipariş getirmek.
+- Panel ile Civardaki arasında ticari bağ sadece Civardaki içerikleri tarafında.
+
+3) Bağlantı sınırı (en kritik):
+- Civardaki ile bağlantılı olan sadece 2 menü/kategori:
+  A) “Civardaki menüsü / Civardaki araçları”
+  B) “Civardaki Mağaza”
+- Bu iki menü dışındaki her şey panelin kendi içinde çalışır (tamamen bağımsız).
+
+4) E-Ticaret:
+- E-ticaret entegrasyonlarını biz YAPMIYORUZ.
+- Diğer pazaryerlerinden (Trendyol vb.) satış verisi çekme / API bağlantı ayarları EN SON.
+- Panel, diğer pazaryeri satışlarının muhasebesini tutabilecek şekilde tasarlanır; ama entegrasyon işleri sona bırakılır.
+
+5) Teslim beklentisi:
+- “BizimHesap’ın birebir aynısı” + ekstra: “Yapay Zeka Analizi”.
+- Yapay zeka analizi, kullanıcının panelde kendi girdiği veriler üzerinden çalışır (API key en son bağlanır).
+
+6) Uygulama prensibi:
+- Önce menü ve açılan ekranlar birebir.
+- Sonra tanımlamalar ve veri bağlama oturur.
+- Civardaki bağlantısını çoğaltma; sadece (A) ve (B) ile sınırlı tut.

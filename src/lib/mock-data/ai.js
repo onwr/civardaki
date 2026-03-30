@@ -322,7 +322,7 @@ export const aiContextMap = {
   "/business/dashboard": "dashboard",
   "/business/customers": "customers",
   "/business/products": "products",
-  "/business/cash": "cash",
+  "/business/cash/accounts": "cash",
   "/business/reports": "reports",
   "/business/orders": "orders",
   "/business/hr": "hr",

@@ -20,6 +20,21 @@ async function getWarehouseAndCheck(id, businessId) {
   });
 }
 
+/** GET - single warehouse */
+export async function GET(req, { params }) {
+  const auth = await requireBusiness();
+  if (auth.err) return auth.err;
+
+  const resolved = await params;
+  const id = resolved?.id;
+  if (!id) return NextResponse.json({ message: "Bad request" }, { status: 400 });
+
+  const wh = await getWarehouseAndCheck(id, auth.businessId);
+  if (!wh) return NextResponse.json({ message: "Depo bulunamadı." }, { status: 404 });
+
+  return NextResponse.json(wh);
+}
+
 /** PATCH - update warehouse */
 export async function PATCH(req, { params }) {
   const auth = await requireBusiness();

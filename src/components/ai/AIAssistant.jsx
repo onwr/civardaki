@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import {
   SparklesIcon,
   XMarkIcon,
@@ -11,7 +12,6 @@ import {
 } from "@heroicons/react/24/outline";
 import {
   detectContext,
-  getAIResponse,
   getQuickReplies,
   getAIResponseAsync,
   simulateTyping,
@@ -32,19 +32,18 @@ export default function AIAssistant() {
   // İlk mesajı yükle
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      // İlk açılışta özel karşılama mesajı
       const welcomeMessage =
         "Merhaba! Ben Civardaki AI, işletmenizin akıllı asistanıyım. Size nasıl yardımcı olabilirim? İşletmenizle ilgili her konuda sorularınızı sorabilirsiniz - satışlar, müşteriler, stok, finans veya başka bir konuda yardımcı olabilirim.";
       setMessages([
         {
           id: 1,
-          type: "ai",
+          role: "assistant",
           text: welcomeMessage,
           timestamp: new Date(),
         },
       ]);
     }
-  }, [isOpen]);
+  }, [isOpen, messages.length]);
 
   // Mesajlar değiştiğinde scroll yap
   useEffect(() => {
@@ -60,62 +59,107 @@ export default function AIAssistant() {
     }
   }, [isOpen]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isTyping) return;
+  const appendAssistantReply = (replyText) => {
+    const aiId = Date.now() + 1;
+    const newAIMessage = {
+      id: aiId,
+      role: "assistant",
+      text: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, newAIMessage]);
+
+    if (!replyText || replyText.length > 1200) {
+      setMessages((prev) => {
+        const u = [...prev];
+        u[u.length - 1] = { ...u[u.length - 1], text: replyText || "" };
+        return u;
+      });
+      setIsTyping(false);
+      return;
+    }
+
+    simulateTyping(
+      replyText,
+      (text) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          if (updated.length === 0) return updated;
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            text,
+          };
+          return updated;
+        });
+      },
+      15
+    );
+
+    setTimeout(() => {
+      setIsTyping(false);
+    }, replyText.length * 15 + 100);
+  };
+
+  const sendWithText = async (rawText) => {
+    const trimmed = (rawText || "").trim();
+    if (!trimmed || isTyping) return;
 
     const userMessage = {
       id: Date.now(),
-      type: "user",
-      text: inputValue,
+      role: "user",
+      text: trimmed,
       timestamp: new Date(),
     };
+
+    const historyForApi = [...messages, userMessage]
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-40)
+      .map((m) => ({ role: m.role, content: m.text }));
 
     setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
     setIsTyping(true);
 
-    // AI yanıtını al (async simülasyon)
-    const aiResponse = await getAIResponseAsync(context, inputValue);
+    let replyText = "";
 
-    // Typing effect ile göster
-    const newAIMessage = {
-      id: Date.now() + 1,
-      type: "ai",
-      text: "",
-      timestamp: new Date(),
-    };
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: historyForApi, pathname, context }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    setMessages((prev) => [...prev, newAIMessage]);
+      if (res.ok && data.reply) {
+        replyText = data.reply;
+      } else {
+        if (res.status === 429) {
+          toast.error("Çok fazla istek. Lütfen bir süre sonra tekrar deneyin.");
+        } else {
+          toast.error("AI şu an kullanılamıyor. Örnek yanıt gösteriliyor.");
+        }
+        replyText = await getAIResponseAsync(context, trimmed, 0);
+      }
+    } catch {
+      toast.error("Bağlantı hatası. Örnek yanıt gösteriliyor.");
+      replyText = await getAIResponseAsync(context, trimmed, 0);
+    }
 
-    simulateTyping(
-      aiResponse,
-      (text) => {
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { ...newAIMessage, text };
-          return updated;
-        });
-      },
-      20
-    );
-
-    setTimeout(() => {
-      setIsTyping(false);
-    }, aiResponse.length * 20 + 100);
+    appendAssistantReply(replyText);
   };
 
-  const handleQuickReply = async (reply) => {
-    setInputValue(reply);
-    // Kısa bir delay sonra gönder
-    setTimeout(() => {
-      handleSendMessage();
-    }, 100);
+  const handleSendMessage = async () => {
+    await sendWithText(inputValue);
+  };
+
+  const handleQuickReply = (reply) => {
+    void sendWithText(reply);
   };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      void handleSendMessage();
     }
   };
 
@@ -196,12 +240,12 @@ export default function AIAssistant() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`flex ${
-                      message.type === "user" ? "justify-end" : "justify-start"
+                      message.role === "user" ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        message.type === "user"
+                        message.role === "user"
                           ? "bg-gradient-to-r from-[#004aad] to-blue-600 text-white"
                           : "bg-white text-gray-800 shadow-sm border border-gray-200"
                       }`}
@@ -270,6 +314,7 @@ export default function AIAssistant() {
                     {quickReplies.slice(0, 4).map((reply, index) => (
                       <button
                         key={index}
+                        type="button"
                         onClick={() => handleQuickReply(reply)}
                         className="px-3 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-[#004aad] rounded-full transition-colors border border-blue-200"
                       >
@@ -296,7 +341,8 @@ export default function AIAssistant() {
                     />
                   </div>
                   <button
-                    onClick={handleSendMessage}
+                    type="button"
+                    onClick={() => void handleSendMessage()}
                     disabled={!inputValue.trim() || isTyping}
                     className="p-2.5 bg-gradient-to-r from-[#004aad] to-blue-600 text-white rounded-xl hover:from-blue-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                   >

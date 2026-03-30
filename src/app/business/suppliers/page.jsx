@@ -1,308 +1,427 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  BuildingOffice2Icon,
   PlusIcon,
+  Bars3BottomLeftIcon,
+  UserGroupIcon,
+  ArrowsUpDownIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
-  PhoneIcon,
-  MapPinIcon,
-  StarIcon,
-  PencilSquareIcon,
-  ArrowUpIcon,
-  SparklesIcon,
+  BuildingStorefrontIcon,
   BanknotesIcon,
-  CheckBadgeIcon,
-  UsersIcon,
+  ExclamationTriangleIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { mockSuppliers, supplierStats } from "@/lib/mock-data/suppliers";
+import SupplierFormModal from "@/components/business/SupplierFormModal";
 
-export default function SuppliersPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [viewMode, setViewMode] = useState("grid"); // grid or list
-  const [suppliers, setSuppliers] = useState(mockSuppliers);
+const fmtMoney = (n) =>
+  new Intl.NumberFormat("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(n) || 0);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+const fmtTry = (n) => `₺${fmtMoney(n)}`;
 
-  const filteredSuppliers = suppliers.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.contactPerson.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "all" || s.category.includes(filterCategory);
-    return matchesSearch && matchesCategory;
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-10 p-4">
-        <div className="h-48 bg-gray-100 rounded-[4rem] animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-64 bg-gray-50 rounded-[3rem] animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
 
   return (
-    <div className="space-y-12 pb-20 max-w-[1600px] mx-auto">
-
-      {/* 1. PREMIUM HERO SECTION */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900 rounded-[4rem] p-10 md:p-14 text-white relative overflow-hidden shadow-3xl"
-      >
-        <div className="absolute top-0 right-0 p-12 opacity-10 blur-2xl">
-          <BuildingOffice2Icon className="w-80 h-80 text-white" />
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
         </div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-3xl bg-[#004aad] flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <BuildingOffice2Icon className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight uppercase">Tedarikçi Ağı</h1>
-            </div>
-            <p className="text-gray-400 font-bold text-lg max-w-xl italic">İşletmenizin can damarı olan tedarikçilerinizi yönetin, performanslarını analiz edin ve en iyi fiyatları yakalayın.</p>
-          </div>
-
-          <button className="px-10 py-5 bg-[#004aad] text-white rounded-[2rem] font-black text-sm uppercase tracking-widest hover:bg-white hover:text-[#004aad] transition-all shadow-2xl flex items-center gap-3 active:scale-95">
-            <PlusIcon className="w-5 h-5" /> YENİ TEDARİKÇİ EKLE
-          </button>
-        </div>
-
-        {/* Stats Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-14 pt-10 border-t border-white/5">
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Aktif Partnerler</p>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-white">{supplierStats.activePartners}</span>
-              <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">+1</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Toplam Harcama</p>
-            <span className="text-3xl font-black text-white">{supplierStats.totalSpend.toLocaleString()}₺</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Ortalama Sadakat</p>
-            <span className="text-3xl font-black text-blue-400">{supplierStats.avgReliability}%</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Bekleyen Teklifler</p>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-black text-white">{supplierStats.pendingQuotes}</span>
-              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 2. FILTERS & SEARCH */}
-      <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-xl shadow-gray-200/40 flex flex-wrap items-center justify-between gap-6 mx-4">
-        <div className="flex-1 min-w-[300px] relative">
-          <MagnifyingGlassIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Tedarikçi adı veya yetkili ara..."
-            className="w-full pl-16 pr-8 py-5 bg-gray-50 rounded-3xl outline-none focus:ring-4 focus:ring-[#004aad]/5 font-black text-lg border-2 border-transparent focus:border-[#004aad]/10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center p-1.5 bg-gray-100 rounded-3xl">
-            {["all", "Gıda", "Lojistik"].map(cat => (
-              <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${filterCategory === cat ? "bg-white text-[#004aad] shadow-lg" : "text-gray-400 hover:text-gray-600"}`}
-              >
-                {cat === "all" ? "TÜMÜ" : cat.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <button className="p-5 bg-gray-50 rounded-3xl text-gray-400 hover:bg-[#004aad] hover:text-white transition-all shadow-sm">
-            <FunnelIcon className="w-6 h-6" />
-          </button>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* 3. SUPPLIER LISTING */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 px-4">
-        <AnimatePresence>
-          {filteredSuppliers.map((supplier) => (
-            <motion.div
-              key={supplier.id}
-              layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              whileHover={{ y: -10 }}
-              className="bg-white rounded-[4rem] p-10 border border-gray-100 shadow-2xl shadow-gray-200/30 flex flex-col gap-10 relative group transition-all hover:bg-gray-50/50"
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "dark",
+  className = "",
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    amber:
+      "bg-amber-500 hover:bg-amber-600 border-amber-600 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <tr key={i} className="border-b border-slate-100">
+          <td className="px-4 py-4 md:px-5">
+            <div className="h-4 w-56 max-w-[70%] rounded bg-slate-200 animate-pulse" />
+          </td>
+          <td className="px-4 py-4 text-right md:px-5">
+            <div className="ml-auto h-4 w-24 rounded bg-slate-200 animate-pulse" />
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export default function SuppliersPage() {
+  const [suppliers, setSuppliers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQ, setSearchQ] = useState("");
+
+  const [sortKey, setSortKey] = useState("name");
+  const [sortDir, setSortDir] = useState("asc");
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
+
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    setApiError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (searchQ.length >= 3) params.set("q", searchQ);
+
+      const res = await fetch(`/api/business/suppliers?${params}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Liste alınamadı");
+
+      setSuppliers(data.suppliers || []);
+      setTotalCount(data.totalCount ?? (data.suppliers || []).length);
+    } catch (e) {
+      console.error(e);
+      setApiError(e.message);
+      setSuppliers([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQ]);
+
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchInput.length === 0 || searchInput.length >= 3) {
+        setSearchQ(searchInput.trim());
+      }
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const sorted = useMemo(() => {
+    const arr = [...suppliers];
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    arr.sort((a, b) => {
+      if (sortKey === "name") {
+        return dir * String(a.name || "").localeCompare(String(b.name || ""), "tr");
+      }
+      if (sortKey === "openingBalance") {
+        return dir * ((a.openingBalance || 0) - (b.openingBalance || 0));
+      }
+      return 0;
+    });
+
+    return arr;
+  }, [suppliers, sortKey, sortDir]);
+
+  const summary = useMemo(() => {
+    return sorted.reduce(
+      (acc, row) => {
+        acc.openingBalance += Number(row.openingBalance) || 0;
+        return acc;
+      },
+      {
+        openingBalance: 0,
+      }
+    );
+  }, [sorted]);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const openNew = () => {
+    setEditId(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (id) => {
+    setEditId(id);
+    setModalOpen(true);
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-8rem)] space-y-6 text-[13px] text-slate-700">
+      <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
+        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+              <BuildingStorefrontIcon className="h-4 w-4" />
+              Tedarikçi Yönetimi
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+              Tedarikçiler
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              Ürün ve hizmet aldığınız tedarikçileri yönetin, bakiyeleri izleyin
+              ve kayıtları tek ekranda düzenleyin.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <ActionButton onClick={openNew} icon={PlusIcon} tone="green">
+              Yeni Tedarikçi Ekle
+            </ActionButton>
+
+            <ActionButton
+              onClick={() => alert("Excel ile tedarikçi yükleme yakında eklenecek.")}
+              icon={Bars3BottomLeftIcon}
+              tone="amber"
             >
-              {/* Header info */}
-              <div className="flex items-start justify-between">
-                <div className="flex gap-6">
-                  <div className="w-20 h-20 rounded-[2.5rem] bg-white p-1 shadow-2xl border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 group-hover:rotate-6 transition-transform">
-                    <img src={supplier.logo} alt={supplier.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-gray-900 leading-none group-hover:text-[#004aad] transition-colors">{supplier.name}</h3>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{supplier.category}</p>
-                    <div className="flex items-center gap-1.5 pt-2">
-                      <StarIcon className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-sm font-black text-gray-700">{supplier.rating}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${supplier.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
-                  {supplier.status === 'active' ? 'AKTİF PARTNER' : 'PASİF'}
-                </div>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-2 gap-6 p-6 bg-white rounded-[2.5rem] border border-gray-50 shadow-inner group-hover:bg-white/80 transition-colors">
-                <div className="space-y-1 text-center">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">İşlem Hacmi</p>
-                  <p className="text-lg font-black text-gray-900">{supplier.totalPurchases.toLocaleString()}₺</p>
-                </div>
-                <div className="space-y-1 text-center border-l border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Güven Skoru</p>
-                  <p className="text-lg font-black text-emerald-500">%{supplier.reliability}</p>
-                </div>
-              </div>
-
-              {/* Contact & Location */}
-              <div className="space-y-4 px-2">
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover/item:bg-blue-50 group-hover/item:text-[#004aad] transition-all">
-                    <MapPinIcon className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-bold text-gray-500 line-clamp-1">{supplier.address}</p>
-                </div>
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover/item:bg-emerald-50 group-hover/item:text-emerald-600 transition-all">
-                    <PhoneIcon className="w-5 h-5" />
-                  </div>
-                  <div className="flex flex-col">
-                    <p className="text-xs font-black text-gray-900">{supplier.contactPerson}</p>
-                    <p className="text-[10px] font-bold text-gray-400">{supplier.phone}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-2 px-2">
-                {supplier.tags.map(tag => (
-                  <span key={tag} className="px-3 py-1 bg-gray-100 text-gray-600 text-[8px] font-black uppercase tracking-widest rounded-lg">{tag}</span>
-                ))}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-4 pt-4 mt-auto">
-                <button className="flex-1 py-5 bg-[#004aad] text-white rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-900/10">SİPARİŞ VER</button>
-                <button className="w-16 h-16 bg-gray-100 text-gray-400 rounded-[2.5rem] flex items-center justify-center hover:bg-gray-200 transition-all group/edit">
-                  <PencilSquareIcon className="w-6 h-6 group-hover/edit:scale-110 transition-transform" />
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* 4. AI INSIGHTS FOR PROCUREMENT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 px-4">
-        <div className="lg:col-span-8 bg-white p-12 rounded-[5rem] border border-gray-100 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12">
-            <SparklesIcon className="w-64 h-64 text-[#004aad]" />
+              Excelden Tedarikçi Yükle
+            </ActionButton>
           </div>
+        </div>
+      </section>
 
-          <div className="flex flex-col md:flex-row gap-12 relative z-10">
-            <div className="md:w-1/3 space-y-6">
-              <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-[#004aad] flex items-center justify-center shadow-2xl shadow-blue-500/30">
-                <SparklesIcon className="w-10 h-10 text-white animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-3xl font-black text-gray-900 uppercase leading-none">AI Tedarik Analizi</h3>
-                <p className="text-[10px] font-black text-[#004aad] uppercase tracking-[0.2em] mt-3">Smart Procurement Engine</p>
-              </div>
-              <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckBadgeIcon className="w-5 h-5 text-emerald-600" />
-                  <span className="text-[10px] font-black text-emerald-700 uppercase">Öneri</span>
-                </div>
-                <p className="text-xs font-bold text-emerald-800 leading-relaxed">"Taze Et Ltd. ile olan hacminiz %20 arttı. Yıllık iskonto talebi için en uygun dönemdesiniz."</p>
-              </div>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          title="Toplam Tedarikçi"
+          value={String(totalCount)}
+          sub="Listelenen toplam tedarikçi kaydı"
+          icon={UserGroupIcon}
+          tone="blue"
+        />
+        <StatCard
+          title="Açılış Bakiyesi Toplamı"
+          value={fmtTry(summary.openingBalance)}
+          sub="Listelenen tedarikçilerin toplam açılış bakiyesi"
+          icon={BanknotesIcon}
+          tone="emerald"
+        />
+        <StatCard
+          title="Görünen Kayıt"
+          value={String(sorted.length)}
+          sub="Arama sonucuna göre ekranda görünen satır sayısı"
+          icon={BuildingStorefrontIcon}
+          tone="slate"
+        />
+      </section>
+
+      {apiError && (
+        <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-amber-900 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+              <ExclamationTriangleIcon className="h-5 w-5" />
             </div>
-
-            <div className="flex-1 space-y-8">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xl font-black text-gray-900 uppercase">Kritik Uyarılar</h4>
-                  <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full uppercase">Dikkat</span>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    { title: "Fiyat Dalgalanması", desc: "Sebze grubunda %15 maliyet artışı öngörülüyor.", icon: ArrowUpIcon, color: "text-rose-500", bg: "bg-rose-50" },
-                    { title: "Alternatif Tedarikçi", desc: "Süt ürünleri için Gebze bölgesinde 2 yeni potansiyel firma saptandı.", icon: UsersIcon, color: "text-blue-500", bg: "bg-blue-50" },
-                  ].map((alert, i) => (
-                    <div key={i} className="flex gap-6 p-6 bg-gray-50/50 rounded-[2.5rem] border border-white hover:bg-white hover:shadow-xl transition-all">
-                      <div className={`w-12 h-12 rounded-2xl ${alert.bg} flex items-center justify-center shrink-0`}>
-                        <alert.icon className={`w-6 h-6 ${alert.color}`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{alert.title}</p>
-                        <p className="text-[11px] font-bold text-gray-500 mt-1">{alert.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button className="w-full py-6 bg-gray-900 text-white rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] hover:bg-black transition-all">TÜM ANALİZİ İNDİR</button>
+            <div>
+              <p className="font-semibold">Veri alınırken bir hata oluştu</p>
+              <p className="mt-1 text-sm leading-6">{apiError}</p>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="lg:col-span-4 space-y-8">
-          <div className="bg-gradient-to-br from-[#004aad] to-blue-900 rounded-[5rem] p-10 text-white shadow-2xl relative overflow-hidden h-full">
-            <div className="absolute bottom-0 right-0 opacity-10 translate-x-1/2 translate-y-1/2">
-              <BanknotesIcon className="w-64 h-64 text-white" />
+      <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
+              Arama ve İşlemler
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Tedarikçi adına göre arama yapabilir ve listeyi yenileyebilirsiniz.
+            </p>
+          </div>
+
+          <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+            <div className="relative w-full sm:w-[320px]">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-slate-400"
+                placeholder="arama... (en az 3 karakter)"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
             </div>
-            <div className="relative z-10 space-y-10">
-              <h3 className="text-2xl font-black uppercase tracking-tight">Finansal Özet</h3>
-              <div className="space-y-8">
-                <div className="p-8 bg-white/10 backdrop-blur-xl rounded-[3rem] border border-white/10">
-                  <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-2">Toplam Borç</p>
-                  <p className="text-4xl font-black">{mockSuppliers.reduce((s, x) => s + x.outstandingBalance, 0).toLocaleString()}₺</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-bold text-blue-200 uppercase mb-1">Valör Ort.</p>
-                    <p className="text-lg font-black italic">22 Gün</p>
-                  </div>
-                  <div className="p-6 bg-white/5 rounded-3xl border border-white/5">
-                    <p className="text-[9px] font-bold text-blue-200 uppercase mb-1">Maliyet Tasarruf</p>
-                    <p className="text-lg font-black text-emerald-400">%{supplierStats.avgReliability - 80}</p>
-                  </div>
-                </div>
-              </div>
-              <button className="w-full py-5 bg-white text-gray-900 rounded-3xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-400 hover:text-white transition-all">ÖDEME PLANINA GİT</button>
-            </div>
+
+            <ActionButton
+              onClick={fetchList}
+              icon={ArrowPathIcon}
+              tone="white"
+              className="rounded-xl px-3 py-2.5"
+            >
+              Yenile
+            </ActionButton>
           </div>
         </div>
-      </div>
+      </section>
 
+      {suppliers.length === 0 && !loading ? (
+        <section className="rounded-[28px] border border-amber-200 bg-amber-50/70 px-5 py-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="rounded-2xl bg-amber-100 p-3 text-amber-700">
+              <BuildingStorefrontIcon className="h-6 w-6" />
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Henüz tedarikçi kaydı yok
+              </h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Yeni tedarikçi ekleyerek ürün veya hizmet aldığınız firmaları
+                sisteme tanımlayabilirsiniz.
+              </p>
+
+              <button
+                type="button"
+                onClick={openNew}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Yeni Tedarikçi Ekle
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Tedarikçi Listesi</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Düzenlemek için satıra tıklayın.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">
+                Kayıt: {sorted.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-auto max-h-[calc(100vh-300px)]">
+            <table className="min-w-full border-collapse text-left">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-900 text-white">
+                  <th className="w-[70%] px-4 py-3 font-semibold md:px-5">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 hover:opacity-90"
+                      onClick={() => toggleSort("name")}
+                    >
+                      İsim / Unvan
+                      <ArrowsUpDownIcon className="h-4 w-4 opacity-80" />
+                    </button>
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold whitespace-nowrap md:px-5">
+                    <button
+                      type="button"
+                      className="ml-auto inline-flex items-center gap-1.5 hover:opacity-90"
+                      onClick={() => toggleSort("openingBalance")}
+                    >
+                      Açılış Bakiyesi
+                      <ArrowsUpDownIcon className="h-4 w-4 opacity-80" />
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <TableSkeleton />
+                ) : (
+                  sorted.map((row, index) => (
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer border-b border-slate-100 transition hover:bg-sky-50/70 ${
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
+                      }`}
+                      onClick={() => openEdit(row.id)}
+                    >
+                      <td className="px-4 py-3.5 md:px-5">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-900">
+                            {row.name}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            Tedarikçi kaydı
+                          </p>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap text-slate-800 md:px-5">
+                        {fmtTry(row.openingBalance)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <SupplierFormModal
+        open={modalOpen}
+        supplierId={editId}
+        onClose={() => {
+          setModalOpen(false);
+          setEditId(null);
+        }}
+        onSaved={fetchList}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Menü Tercihleri Yönetimi
 
-const STORAGE_KEY = "business-menu-preferences";
+const STORAGE_KEY = "business-menu-preferences-bh-v1";
 
 // Varsayılan menü yapısı - tüm öğeler görünür ve mevcut sırada
 export function getDefaultMenuPreferences(navigation) {

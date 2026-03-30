@@ -10,7 +10,17 @@ const port = parseInt(process.env.PORT || "3000", 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
+    // Prisma query engine'i ilk HTTP isteğinden önce hazır olsun; aksi halde
+    // "Engine is not yet connected" (özellikle dev / Turbopack'ta) görülebilir.
+    try {
+        const { prisma } = await import("./src/lib/prisma.js");
+        await prisma.$connect();
+    } catch (e) {
+        console.error("Prisma bağlantısı kurulamadı. DATABASE_URL ve `npx prisma generate` kontrol edin:", e);
+        process.exit(1);
+    }
+
     const server = createServer(async (req, res) => {
         try {
             const parsedUrl = parse(req.url, true);

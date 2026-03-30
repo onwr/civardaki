@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CheckCircle,
@@ -17,6 +18,16 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { turkeyLocations, getDistricts } from "@/constants/locations";
+
+const OnboardingLocationMap = dynamic(
+  () => import("@/components/business/OnboardingLocationMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[min(320px,55vh)] min-h-[240px] animate-pulse rounded-2xl bg-gray-100" />
+    ),
+  },
+);
 
 const STEPS = [
   { id: 1, label: "Temel Bilgiler", icon: Building2 },
@@ -50,6 +61,8 @@ export default function OnboardingPage() {
     phone: "",
     email: "",
     website: "",
+    latitude: null,
+    longitude: null,
   });
 
   const cities = Object.keys(turkeyLocations).sort((a, b) =>
@@ -81,6 +94,8 @@ export default function OnboardingPage() {
         phone: b.phone || "",
         email: b.email || "",
         website: b.website || "",
+        latitude: b.latitude != null ? Number(b.latitude) : null,
+        longitude: b.longitude != null ? Number(b.longitude) : null,
       }));
     } finally {
       setLoading(false);
@@ -154,6 +169,8 @@ export default function OnboardingPage() {
         address: form.address,
         phone: form.phone,
         website: form.website,
+        latitude: form.latitude,
+        longitude: form.longitude,
       };
 
     if (Object.keys(fields).length > 0) {
@@ -433,7 +450,7 @@ export default function OnboardingPage() {
                 <div className="md:col-span-2">
                   <label className={labelClass}>Website</label>
                   <input
-                    value={form.website}
+                    value={form.website}v 
                     onChange={(e) =>
                       setForm((p) => ({ ...p, website: e.target.value }))
                     }
@@ -450,6 +467,26 @@ export default function OnboardingPage() {
                     }
                     placeholder="Tam adres"
                     className={inputClass}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Harita konumu</label>
+                  <p className="mb-3 text-sm text-gray-500">
+                    İşletmenizin haritada doğru görünmesi için konumu tıklayarak
+                    seçin veya &quot;Konumumu kullan&quot; ile cihaz konumunu
+                    alın.
+                  </p>
+                  <OnboardingLocationMap
+                    latitude={form.latitude}
+                    longitude={form.longitude}
+                    onChange={(lat, lng) =>
+                      setForm((p) => ({
+                        ...p,
+                        latitude: lat,
+                        longitude: lng,
+                      }))
+                    }
                   />
                 </div>
               </div>

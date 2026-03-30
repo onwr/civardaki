@@ -7,7 +7,8 @@ import { computeCompletion } from "@/lib/completion";
 // Allowlist for PATCH
 const ALLOWED_FIELDS = new Set([
     "name", "category", "phone", "email", "website",
-    "address", "city", "district", "description"
+    "address", "city", "district", "description",
+    "latitude", "longitude",
 ]);
 
 // GET /api/business/onboarding
@@ -28,6 +29,7 @@ export async function GET() {
                     name: true, category: true, description: true,
                     phone: true, email: true, website: true,
                     address: true, city: true, district: true,
+                    latitude: true, longitude: true,
                 }
             }),
             prisma.product.count({ where: { businessId, isActive: true } }),
@@ -74,9 +76,20 @@ export async function PATCH(req) {
         // Whitelist — only allowed fields pass through
         const data = {};
         for (const [key, val] of Object.entries(body)) {
-            if (ALLOWED_FIELDS.has(key)) {
-                data[key] = typeof val === "string" ? val.trim() || null : val;
+            if (!ALLOWED_FIELDS.has(key)) continue;
+
+            if (key === "latitude" || key === "longitude") {
+                if (val === null || val === undefined || val === "") {
+                    data[key] = null;
+                } else {
+                    const n = typeof val === "number" ? val : parseFloat(String(val));
+                    if (!Number.isFinite(n)) continue;
+                    data[key] = n;
+                }
+                continue;
             }
+
+            data[key] = typeof val === "string" ? val.trim() || null : val;
         }
 
         if (Object.keys(data).length === 0) {
@@ -95,6 +108,7 @@ export async function PATCH(req) {
                 id: true, name: true, category: true, description: true,
                 phone: true, email: true, website: true,
                 address: true, city: true, district: true,
+                latitude: true, longitude: true,
             }
         });
 

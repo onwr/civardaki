@@ -179,6 +179,9 @@ export async function PATCH(req, context) {
       ...(totals.discount !== undefined ? { discount: totals.discount } : {}),
       ...(totals.tax !== undefined ? { tax: totals.tax } : {}),
       ...(totals.total !== undefined ? { total: totals.total } : {}),
+      ...(body.exchangeRate !== undefined
+        ? { exchangeRate: Number.isFinite(Number(body.exchangeRate)) ? Number(body.exchangeRate) : null }
+        : {}),
     };
 
     if (status === "ACCEPTED" && !current.acceptedDate) {

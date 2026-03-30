@@ -9,11 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bars3Icon,
   XMarkIcon,
-  BuildingOfficeIcon,
-  UserCircleIcon,
   ArrowRightOnRectangleIcon,
   ArrowsPointingOutIcon,
-  StarIcon,
   MapPinIcon,
   PowerIcon,
   PencilSquareIcon,
@@ -27,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { defaultNavigation, BusinessTypes } from "@/lib/navigation-config";
 import { loadMenuPreferences } from "@/lib/menu-preferences";
 import AIAssistant from "@/components/ai/AIAssistant";
+import { Leaf, ChevronDown, ChevronUp } from "lucide-react";
 
 const AUTH_PAGES = ["/business/register", "/business/login"];
 
@@ -189,6 +187,8 @@ export default function BusinessLayout({ children }) {
   const [isMobile, setIsMobile] = useState(false);
   const [businessType, setBusinessType] = useState(BusinessTypes.INDIVIDUAL);
   const [navigation, setNavigation] = useState(defaultNavigation);
+  const [bizPanelExpanded, setBizPanelExpanded] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
 
@@ -202,6 +202,24 @@ export default function BusinessLayout({ children }) {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/business/settings");
+        if (!r.ok || cancelled) return;
+        const d = await r.json();
+        const t = String(d.businessType || d.type || "").toUpperCase();
+        if (t === "CORPORATE") setBusinessType(BusinessTypes.CORPORATE);
+      } catch (_) {
+        /* sessiz */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -233,7 +251,10 @@ export default function BusinessLayout({ children }) {
     updateNavigation();
 
     const handleStorageChange = (e) => {
-      if (e.key === "business-menu-preferences") {
+      if (
+        e.key === "business-menu-preferences" ||
+        e.key === "business-menu-preferences-bh-v1"
+      ) {
         updateNavigation();
       }
     };
@@ -292,23 +313,45 @@ export default function BusinessLayout({ children }) {
   function SidebarContent({ collapsed = false }) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/10 flex-shrink-0 relative">
+        <div
+          className="flex items-center justify-between px-3 py-2.5 border-b flex-shrink-0 relative"
+          style={{ borderColor: "var(--bh-sidebar-border)" }}
+        >
           <AnimatePresence initial={false}>
             {!collapsed && (
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="flex items-center"
+                className="flex items-center gap-2 min-w-0"
               >
-                <div>
-                  <h2 className="text-[13px] font-black text-white uppercase tracking-wider leading-none">
-                    Civardaki
-                  </h2>
-                  <p className="text-[9px] text-blue-100/60 font-bold uppercase tracking-tight mt-1">
-                    İşletme Paneli
-                  </p>
-                </div>
+                {!logoError ? (
+                  <Image
+                    src="/logo.png"
+                    alt="Civardaki"
+                    width={128}
+                    height={32}
+                    priority
+                    sizes="(min-width: 768px) 128px, 120px"
+                    className="h-7 w-auto object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Leaf
+                      className="h-5 w-5 text-emerald-300 shrink-0"
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <h2 className="text-[12px] font-bold text-white tracking-tight leading-none lowercase">
+                        civardaki
+                      </h2>
+                      <p className="text-[8px] text-white/45 font-semibold uppercase tracking-wide mt-0.5">
+                        İşletme Paneli
+                      </p>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -319,8 +362,20 @@ export default function BusinessLayout({ children }) {
               animate={{ opacity: 1 }}
               className="flex items-center justify-center w-full"
             >
-              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                <BuildingOfficeIcon className="h-6 w-6 text-white" />
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center overflow-hidden">
+                {!logoError ? (
+                  <Image
+                    src="/logo.png"
+                    alt="Civardaki"
+                    width={40}
+                    height={40}
+                    sizes="40px"
+                    className="h-10 w-10 object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <Leaf className="h-6 w-6 text-emerald-300" />
+                )}
               </div>
             </motion.div>
           )}
@@ -345,111 +400,93 @@ export default function BusinessLayout({ children }) {
         </div>
 
         {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mx-3 my-3 p-3 rounded-2xl bg-white/5 border border-white/10 shadow-xl"
-          >
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-[13px] font-black text-white tracking-tight truncate">
+          <div className="mx-3 mt-2 mb-2 space-y-2">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-white truncate">
                   {businessName}
-                </h3>
-
-                <div className="flex items-center gap-1 text-blue-100/40">
-                  <MapPinIcon className="w-3 h-3 flex-shrink-0" />
-                  <span className="text-[10px] font-bold truncate">
-                    {businessLocation}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-yellow-400/10 border border-yellow-400/20">
-                  <StarIcon className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span className="text-[11px] font-black text-yellow-400">
-                    Panel
-                  </span>
-                </div>
-
-                <div
-                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg transition-colors ${
-                    isBusinessOpen
-                      ? "bg-emerald-400/10 border border-emerald-400/20 text-emerald-400"
-                      : "bg-red-400/10 border border-red-400/20 text-red-400"
-                  }`}
-                >
-                  <div
-                    className={`w-1 h-1 rounded-full bg-current ${
-                      isBusinessOpen ? "animate-pulse" : ""
-                    }`}
-                  />
-                  <span className="text-[9px] font-black uppercase tracking-tight">
+                </p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span
+                    className={`text-[8px] font-bold uppercase ${isBusinessOpen ? "text-emerald-400" : "text-red-400"}`}
+                  >
                     {isBusinessOpen ? "Açık" : "Kapalı"}
                   </span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-                <button
-                  onClick={async () => {
-                    const next = !isBusinessOpen;
-                    try {
-                      const res = await fetch("/api/business/open-status", {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ isOpen: next }),
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        setIsBusinessOpen(data.isOpen);
-                        toast.success(
-                          data.isOpen
-                            ? "İşletme açıldı."
-                            : "İşletme kapatıldı.",
-                        );
-                      } else {
-                        toast.error("Durum güncellenemedi.");
-                      }
-                    } catch (_) {
-                      toast.error("Bir hata oluştu.");
-                    }
-                  }}
-                  className={`flex items-center justify-center gap-2 py-1.5 rounded-xl transition-all duration-200 ${
-                    isBusinessOpen
-                      ? "bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white"
-                      : "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                  }`}
-                >
-                  <PowerIcon className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase">
-                    {isBusinessOpen ? "Kapat" : "Aç"}
-                  </span>
-                </button>
-
-                <Link
-                  href={
-                    businessSlug
-                      ? `/isletme/${businessSlug}`
-                      : "/business/panel"
-                  }
-                  className="flex items-center justify-center gap-2 py-1.5 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all duration-200"
-                >
-                  <PencilSquareIcon className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase">
-                    Profili Aç
-                  </span>
-                </Link>
-              </div>
+              <button
+                type="button"
+                onClick={() => setBizPanelExpanded((v) => !v)}
+                className="p-1.5 rounded-md bg-white/10 text-white/80 hover:bg-white/15 shrink-0"
+                title="Detay"
+                aria-expanded={bizPanelExpanded}
+              >
+                {bizPanelExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
             </div>
-          </motion.div>
+            {bizPanelExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="rounded-xl border border-white/10 bg-white/5 p-2.5 space-y-2 overflow-hidden"
+              >
+                <div className="flex items-center gap-1 text-white/40">
+                  <MapPinIcon className="w-3 h-3 shrink-0" />
+                  <span className="text-[8px] font-semibold truncate">
+                    {businessLocation}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const next = !isBusinessOpen;
+                      try {
+                        const res = await fetch("/api/business/open-status", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ isOpen: next }),
+                        });
+                        if (res.ok) {
+                          const dat = await res.json();
+                          setIsBusinessOpen(dat.isOpen);
+                          toast.success(dat.isOpen ? "İşletme açıldı." : "İşletme kapatıldı.");
+                        } else toast.error("Durum güncellenemedi.");
+                      } catch (_) {
+                        toast.error("Bir hata oluştu.");
+                      }
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[8px] font-bold uppercase ${
+                      isBusinessOpen
+                        ? "bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                        : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                    }`}
+                  >
+                    <PowerIcon className="w-3.5 h-3.5" />
+                    {isBusinessOpen ? "Kapat" : "Aç"}
+                  </button>
+                  <Link
+                    href={businessSlug ? `/isletme/${businessSlug}` : "/business/onboarding"}
+                    className="flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/10 text-white text-[8px] font-bold uppercase hover:bg-white/15"
+                  >
+                    <PencilSquareIcon className="w-3.5 h-3.5" />
+                    Profil
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </div>
         )}
 
         <nav
-          className={`flex-1 overflow-y-auto no-scrollbar pb-6 ${collapsed ? "px-2" : "px-3"}`}
+          className={`flex-1 overflow-y-auto no-scrollbar pb-5 ${collapsed ? "px-2" : "px-3"}`}
         >
           {!collapsed && (
-            <p className="px-3 mb-3 text-[10px] font-black text-white/40 uppercase tracking-[0.25em] mt-2">
+            <p className="px-3 mb-2 text-[10px] font-medium text-white/50 tracking-[0.18em] mt-2">
               Menü
             </p>
           )}
@@ -464,20 +501,30 @@ export default function BusinessLayout({ children }) {
               >
                 {collapsed ? (
                   <div className="relative group mb-1">
-                    <Link
-                      href={item.href || "#"}
-                      className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${
-                        getIsActive(pathname, item.href)
-                          ? "bg-white text-[#004aad] shadow-lg"
-                          : "text-blue-100 hover:bg-white hover:text-[#004aad]"
-                      }`}
-                      title={item.name}
-                    >
-                      <item.icon className="h-5 w-5" />
-                    </Link>
+                    {item.disabled ? (
+                      <div
+                        className="flex items-center justify-center p-2.5 rounded-xl cursor-not-allowed opacity-40 text-blue-100"
+                        title={item.disabledReason || item.name}
+                        aria-disabled
+                      >
+                        <item.icon className="h-5 w-5" />
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href || "#"}
+                        className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${
+                          getIsActive(pathname, item.href)
+                            ? "bg-white text-[#004aad] shadow-lg"
+                            : "text-blue-100 hover:bg-white hover:text-[#004aad]"
+                        }`}
+                        title={item.name}
+                      >
+                        <item.icon className="h-5 w-5" />
+                      </Link>
+                    )}
 
                     <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-[11px] font-bold rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
-                      {item.name}
+                      {item.disabled ? item.disabledReason || `${item.name} (yakında)` : item.name}
                     </div>
                   </div>
                 ) : (
@@ -503,8 +550,32 @@ export default function BusinessLayout({ children }) {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {item.children ? (
+                  {item.disabled ? (
                     <button
+                      type="button"
+                      onClick={() =>
+                        toast.info(item.disabledReason || "Bu menü yakında açılacak.")
+                      }
+                      className="relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 cursor-not-allowed opacity-50 bg-white/5 text-blue-100/80"
+                      aria-disabled
+                    >
+                      <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
+                      <span className="text-[11px] sm:text-xs md:text-sm font-medium text-center leading-tight">
+                        {item.name}
+                      </span>
+
+                      {item.badge && (
+                        <Badge
+                          variant={item.badge.variant || "new"}
+                          className="absolute -top-1 -right-1 text-[10px] px-1.5 py-0.5"
+                        >
+                          {item.badge.text}
+                        </Badge>
+                      )}
+                    </button>
+                  ) : item.children ? (
+                    <button
+                      type="button"
                       onClick={() => setExpandedItem(item)}
                       className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${
                         getIsActive(pathname, item.href)
@@ -652,7 +723,7 @@ export default function BusinessLayout({ children }) {
       <LeadNotificationListener />
       <OrderNotificationListener />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen" style={{ background: "var(--bh-main-bg)" }}>
         <AnimatePresence>
           {sidebarOpen && (
             <>
@@ -670,7 +741,8 @@ export default function BusinessLayout({ children }) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ type: "spring", damping: 20, stiffness: 300 }}
-                className="fixed inset-0 flex flex-col w-full bg-[#004aad] z-50 md:hidden"
+                className="fixed inset-0 flex flex-col w-full z-50 md:hidden"
+                style={{ background: "var(--bh-sidebar-bg)" }}
               >
                 <SidebarContent />
               </motion.div>
@@ -686,7 +758,10 @@ export default function BusinessLayout({ children }) {
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="hidden md:flex md:flex-col md:fixed md:inset-y-0 z-30"
         >
-          <div className="flex-1 flex flex-col min-h-0 bg-[#004aad] shadow-2xl">
+          <div
+            className="flex-1 flex flex-col min-h-0 shadow-2xl"
+            style={{ background: "var(--bh-sidebar-bg)" }}
+          >
             <SidebarContent collapsed={sidebarCollapsed} />
           </div>
         </motion.div>
@@ -697,7 +772,8 @@ export default function BusinessLayout({ children }) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
             onClick={() => setSidebarCollapsed(false)}
-            className="hidden md:flex fixed top-4 left-[88px] z-40 items-center justify-center h-10 w-10 rounded-full bg-[#004aad] text-white shadow-lg hover:bg-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#004aad] focus:ring-offset-2"
+            className="hidden md:flex fixed top-4 left-[88px] z-40 items-center justify-center h-10 w-10 rounded-full text-white shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{ background: "var(--bh-sidebar-bg)" }}
             title="Sidebar'ı Genişlet"
           >
             <ArrowsPointingOutIcon className="h-5 w-5" />
@@ -720,29 +796,18 @@ export default function BusinessLayout({ children }) {
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center py-3 sm:py-4 md:py-6">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    className="-ml-2 p-2 rounded-md text-gray-500 hover:text-gray-900 focus:outline-none md:hidden"
-                    onClick={() => setSidebarOpen(true)}
-                  >
-                    <Bars3Icon className="h-6 w-6" />
-                  </button>
-
-                  <div className="flex items-center space-x-2 sm:space-x-3">
-                    <BuildingOfficeIcon className="h-6 w-6 text-[#004aad] flex-shrink-0 hidden sm:block" />
-                    <div className="min-w-0">
-                      <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate tracking-tight">
-                        İşletme Paneli
-                      </h1>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest hidden sm:block">
-                        Civardaki.com İşletme Paneli
-                      </p>
-                    </div>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="min-w-0 border-slate-200">
+                    <h1 className="text-sm sm:text-base font-bold text-slate-900 truncate tracking-tight uppercase">
+                      {businessName}
+                    </h1>
+                    <p className="text-[10px] text-slate-500 font-semibold hidden sm:block">
+                      İşletme özeti
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 sm:space-x-4">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                   <NotificationDropdown />
 
                   <div className="flex items-center space-x-2 bg-gray-50/50 border border-gray-100 rounded-xl px-2 py-1.5 sm:px-3 hover:bg-gray-50 transition-colors cursor-pointer">
@@ -775,7 +840,7 @@ export default function BusinessLayout({ children }) {
             </div>
           </motion.header>
 
-          <main className="flex-1 bg-gray-50">
+          <main className="flex-1" style={{ background: "var(--bh-main-bg)" }}>
             <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
               <Suspense
                 fallback={

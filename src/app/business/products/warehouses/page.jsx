@@ -1,87 +1,170 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MagnifyingGlassIcon,
-  BuildingStorefrontIcon,
-  XMarkIcon,
-  PhoneIcon,
-  UserIcon,
-  MapPinIcon,
-  ExclamationTriangleIcon,
-  CheckBadgeIcon,
-  Squares2X2Icon
-} from "@heroicons/react/24/outline";
+  Plus,
+  Check,
+  X,
+  Loader2,
+  Package,
+  Boxes,
+  MapPin,
+  Warehouse,
+} from "lucide-react";
 import { toast } from "sonner";
 
-const defaultForm = () => ({
-  name: "",
-  address: "",
-  capacity: "",
-  currentStock: "0",
-  manager: "",
-  phone: "",
-});
+const emptyForm = () => ({ name: "" });
+
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-400 to-orange-500 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "green",
+  className = "",
+  type = "button",
+  disabled = false,
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+    dark: "bg-slate-900 hover:bg-slate-800 border-slate-900 text-white",
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function WarehouseSkeleton() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="h-4 w-36 rounded bg-slate-200 animate-pulse" />
+          <div className="mt-2 h-3 w-20 rounded bg-slate-100 animate-pulse" />
+        </div>
+        <div className="h-10 w-10 rounded-xl bg-slate-100 animate-pulse" />
+      </div>
+    </div>
+  );
+}
 
 export default function WarehousesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [warehouses, setWarehouses] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [apiError, setApiError] = useState(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState(defaultForm());
+  const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
 
-  const fetchWarehouses = useCallback(() => {
-    return fetch("/api/business/warehouses")
-      .then((r) => r.json())
-      .then((data) => setWarehouses(Array.isArray(data) ? data : []))
-      .catch(() => setWarehouses([]));
+  const fetchWarehouses = useCallback(async () => {
+    try {
+      setApiError(null);
+      const res = await fetch("/api/business/warehouses");
+      const data = await res.json();
+      setWarehouses(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setApiError("Depolar yüklenemedi.");
+      setWarehouses([]);
+    }
   }, []);
 
   useEffect(() => {
-    fetchWarehouses().finally(() => setIsLoading(false));
+    let cancelled = false;
+
+    (async () => {
+      setIsLoading(true);
+      try {
+        await fetchWarehouses();
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [fetchWarehouses]);
 
-  const filteredWarehouses = useMemo(() => {
-    return warehouses.filter(
-      (wh) =>
-        wh.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (wh.address || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, warehouses]);
+  const openNew = () => {
+    setForm(emptyForm());
+    setIsModalOpen(true);
+  };
 
-  const stats = useMemo(() => {
-    const totalCapacity = warehouses.reduce((acc, w) => acc + (w.capacity ?? 0), 0);
-    const totalStock = warehouses.reduce((acc, w) => acc + (w.currentStock ?? 0), 0);
-    const withCapacity = warehouses.filter((w) => (w.capacity ?? 0) > 0);
-    const avgOccupancy = withCapacity.length
-      ? Math.round((withCapacity.reduce((acc, w) => acc + (w.currentStock ?? 0) / (w.capacity || 1), 0) / withCapacity.length) * 100)
-      : 0;
-    return { totalCapacity, totalStock, avgOccupancy };
-  }, [warehouses]);
+  const closeModal = () => {
+    if (!saving) setIsModalOpen(false);
+  };
 
   const handleSubmitWarehouse = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) return toast.error("Depo adı girin.");
+
+    const name = form.name.trim();
+    if (!name) return toast.error("Depo adı girin.");
+    if (name.length < 2) return toast.error("Depo adı en az 2 karakter olmalı.");
+
     setSaving(true);
     try {
       const res = await fetch("/api/business/warehouses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name.trim(),
-          address: form.address.trim() || null,
-          capacity: form.capacity === "" ? null : parseInt(form.capacity, 10),
-          currentStock: parseInt(form.currentStock, 10) || 0,
-          manager: form.manager.trim() || null,
-          phone: form.phone.trim() || null,
+          name,
+          address: null,
+          capacity: null,
+          currentStock: 0,
+          manager: null,
+          phone: null,
         }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Oluşturulamadı.");
+
       toast.success("Depo oluşturuldu.");
-      setForm(defaultForm());
+      setForm(emptyForm());
       setIsModalOpen(false);
       await fetchWarehouses();
     } catch (err) {
@@ -91,289 +174,272 @@ export default function WarehousesPage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-blue-100 border-t-[#004aad] rounded-full animate-spin" />
-      </div>
+  const summary = useMemo(() => {
+    const total = warehouses.length;
+    const withStock = warehouses.filter(
+      (w) => Number(w?.currentStock || 0) > 0
+    ).length;
+    const totalStock = warehouses.reduce(
+      (sum, w) => sum + Number(w?.currentStock || 0),
+      0
     );
-  }
+    const withAddress = warehouses.filter((w) => !!w?.address).length;
+
+    return {
+      total,
+      withStock,
+      totalStock,
+      withAddress,
+    };
+  }, [warehouses]);
+
+  const inp =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-teal-500 focus:ring-1 focus:ring-teal-500/30";
+  const label =
+    "mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500";
 
   return (
-    <div className="space-y-10 pb-20 max-w-[1600px] mx-auto px-4">
+    <div className="min-h-[calc(100vh-8rem)] space-y-6 bg-slate-100/80 p-4 text-[13px] text-slate-800 antialiased md:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+                <Warehouse className="h-4 w-4" />
+                Depo Yönetimi
+              </div>
 
-      {/* 1. BENTO STATS HEADER */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 bg-gray-900 rounded-[3rem] p-8 text-white relative overflow-hidden shadow-2xl"
-        >
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <BuildingStorefrontIcon className="w-64 h-64" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-between h-full">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-[#004aad] rounded-2xl flex items-center justify-center shadow-xl">
-                <BuildingStorefrontIcon className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-black uppercase tracking-tight">Depo Yönetimi</h1>
-                <p className="text-blue-400 text-[10px] font-black uppercase tracking-widest">Global Envanter Ağı</p>
-              </div>
+              <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+                Depolar
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+                Depolarınızı yönetin, stok giriş noktalarını düzenleyin ve detay
+                sayfalarına hızlıca geçin.
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Toplam Kapasite</p>
-                <p className="text-3xl font-black">{stats.totalCapacity.toLocaleString()}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <ActionButton onClick={openNew} icon={Plus} tone="green">
+                Yeni Depo Ekle
+              </ActionButton>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Toplam Depo"
+            value={String(summary.total)}
+            sub="Tanımlı depo sayısı"
+            icon={Warehouse}
+            tone="blue"
+          />
+          <StatCard
+            title="Stoklu Depo"
+            value={String(summary.withStock)}
+            sub="Stok bulunan depolar"
+            icon={Boxes}
+            tone="emerald"
+          />
+          <StatCard
+            title="Toplam Stok"
+            value={String(summary.totalStock)}
+            sub="Depolardaki toplam stok"
+            icon={Package}
+            tone="amber"
+          />
+          <StatCard
+            title="Adresli Depo"
+            value={String(summary.withAddress)}
+            sub="Adres bilgisi olan depolar"
+            icon={MapPin}
+            tone="slate"
+          />
+        </section>
+
+        {apiError ? (
+          <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-amber-900 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+                <X className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ort. Doluluk</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-3xl font-black">%{stats.avgOccupancy}</p>
-                  {stats.avgOccupancy > 80 && <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+                <p className="font-semibold">Veri alınırken bir hata oluştu</p>
+                <p className="mt-1 text-sm leading-6">{apiError}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Depo Listesi</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Detayları görmek için depo kartına tıklayın
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-600">
+                Kayıt: {warehouses.length}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 md:p-5">
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <WarehouseSkeleton key={i} />
+                ))}
+              </div>
+            ) : warehouses.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-14 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                  <Warehouse className="h-6 w-6" />
                 </div>
+                <h4 className="mt-4 text-base font-bold text-slate-900">
+                  Henüz depo yok
+                </h4>
+                <p className="mt-2 text-sm text-slate-500">
+                  İlk deponuzu eklemek için yukarıdaki butonu kullanın.
+                </p>
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className="mt-4 font-semibold text-emerald-600 underline"
+                >
+                  Yeni Depo Ekle
+                </button>
               </div>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-          className="bg-white rounded-[3rem] p-8 border border-gray-100 shadow-xl flex flex-col justify-between"
-        >
-          <div className="space-y-4">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Depo Durumu</p>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-gray-500">Aktif Depo</span>
-                <span className="text-gray-900">{warehouses.length}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-bold text-rose-500">
-                <span>Kritik Seviye</span>
-                <span>{warehouses.filter(w => (w.capacity ?? 0) > 0 && ((w.currentStock ?? 0) / (w.capacity || 1)) > 0.8).length}</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full py-4 bg-[#004aad] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-lg"
-          >
-            YENİ DEPO EKLE
-          </button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="bg-emerald-50 rounded-[3rem] p-8 border border-emerald-100 flex flex-col justify-between relative overflow-hidden"
-        >
-          <div className="absolute -right-8 -bottom-8 opacity-10">
-            <CheckBadgeIcon className="w-40 h-40 text-emerald-600" />
-          </div>
-          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-4">Lojistik Verimlilik</p>
-          <div className="space-y-2">
-            <p className="text-2xl font-black text-emerald-900 leading-none">94.2</p>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase">Sağlık Skoru</p>
-          </div>
-          <div className="h-1 bg-emerald-200 rounded-full mt-4 overflow-hidden">
-            <div className="h-full bg-emerald-500 w-[94%]" />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* 2. SEARCH BAR */}
-      <div className="max-w-2xl group relative">
-        <MagnifyingGlassIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 group-focus-within:text-[#004aad] transition-colors" />
-        <input
-          type="text"
-          placeholder="Depo adı veya adresi ile ara..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-16 pr-8 py-5 bg-white rounded-[2.5rem] border border-gray-100 shadow-xl outline-none focus:ring-4 focus:ring-[#004aad]/5 font-bold transition-all"
-        />
-      </div>
-
-      {/* 3. WAREHOUSES GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8 text-center">
-        <AnimatePresence>
-          {filteredWarehouses.map((warehouse, index) => {
-            const cap = warehouse.capacity ?? 1;
-            const occupancyRate = cap > 0 ? Math.round(((warehouse.currentStock ?? 0) / cap) * 100) : 0;
-            const isCritical = occupancyRate > 80;
-
-            return (
-              <motion.div
-                key={warehouse.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-white rounded-[4rem] group border border-gray-100 shadow-2xl hover:shadow-blue-900/10 transition-all overflow-hidden relative"
-              >
-                <div className={`h-2 w-full ${isCritical ? 'bg-rose-500' : 'bg-[#004aad]'}`} />
-
-                <div className="p-10 space-y-8">
-                  <div className="flex justify-between items-start text-left">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-2xl font-black text-gray-900">{warehouse.name}</h3>
-                        {warehouse.isActive ? (
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-600 text-[8px] font-black uppercase rounded-lg">AKTİF</span>
-                        ) : (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-400 text-[8px] font-black uppercase rounded-lg">PASİF</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-400">
-                        <MapPinIcon className="w-4 h-4 shrink-0" />
-                        <span className="text-xs font-bold truncate max-w-[200px]">{warehouse.address || "—"}</span>
-                      </div>
-                    </div>
-                    <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center border border-gray-100">
-                      <BuildingStorefrontIcon className="w-7 h-7 text-[#004aad]" />
-                    </div>
-                  </div>
-
-                  {/* Occupancy Chart - Modern Mini Circle */}
-                  <div className="flex items-center gap-8 py-4 bg-gray-50/50 rounded-[2.5rem] p-6">
-                    <div className="relative w-24 h-24 shrink-0">
-                      <svg className="w-full h-full -rotate-90">
-                        <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-200" />
-                        <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent"
-                          strokeDasharray={2 * Math.PI * 40}
-                          strokeDashoffset={2 * Math.PI * 40 * (1 - occupancyRate / 100)}
-                          className={isCritical ? 'text-rose-500' : 'text-[#004aad]'}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-xl font-black text-gray-900">%{occupancyRate}</span>
-                        <span className="text-[8px] font-black text-gray-400 uppercase">DOLULUK</span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 grid grid-cols-1 gap-4 text-left">
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mevcut Stok / Kapasite</p>
-                        <p className="text-lg font-black text-gray-900">
-                          {(warehouse.currentStock ?? 0).toLocaleString()} <span className="text-gray-300 text-sm">/ {(warehouse.capacity ?? 0).toLocaleString()}</span>
-                        </p>
-                      </div>
-                      {isCritical && (
-                        <div className="flex items-center gap-2 text-rose-500">
-                          <ExclamationTriangleIcon className="w-4 h-4 animate-bounce" />
-                          <span className="text-[10px] font-black uppercase">Alan Daralıyor</span>
+            ) : (
+              <ul className="space-y-3">
+                {warehouses.map((w, index) => (
+                  <li key={w.id}>
+                    <Link
+                      href={`/business/products/warehouses/${w.id}`}
+                      className={`block rounded-2xl border px-4 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                        index % 2 === 0
+                          ? "border-sky-100 bg-sky-50/90"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-bold text-slate-900">
+                            {w.name}
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <span>Stok: {Number(w.currentStock || 0)}</span>
+                            {w.address ? (
+                              <>
+                                <span className="text-slate-300">•</span>
+                                <span className="truncate">{w.address}</span>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-6 items-center">
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200/50">
-                        <UserIcon className="w-5 h-5 text-gray-500" />
+                        <div className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-sky-700 shadow-sm">
+                          Detay
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[9px] font-black text-gray-400 uppercase">SORUMLU</p>
-                        <p className="text-xs font-bold text-gray-700">{warehouse.manager || "—"}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center border border-gray-200/50">
-                        <PhoneIcon className="w-5 h-5 text-gray-500" />
-                      </div>
-                      <div>
-                        <p className="text-[9px] font-black text-gray-400 uppercase">İLETİŞİM</p>
-                        <p className="text-xs font-bold text-gray-700">{warehouse.phone || "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 flex gap-3">
-                    <button className="flex-1 py-4 bg-gray-950 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#004aad] transition-all shadow-xl shadow-black/10">STOKLARI GÖR</button>
-                    <button className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:text-[#004aad] hover:bg-white border border-transparent hover:border-gray-100 transition-all">
-                      <Squares2X2Icon className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* 4. MODAL */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-gray-950/80 backdrop-blur-md" />
+            <motion.button
+              type="button"
+              aria-label="Kapat"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={closeModal}
+            />
+
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-xl bg-white rounded-[4.5rem] p-10 md:p-14 shadow-3xl text-center"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="depo-tanim-baslik"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="relative z-10 w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+              onMouseDown={(e) => e.stopPropagation()}
             >
-              <div className="flex flex-col items-center gap-6 mb-10">
-                <div className="w-20 h-20 rounded-[2.5rem] bg-blue-50 flex items-center justify-center">
-                  <BuildingStorefrontIcon className="w-10 h-10 text-[#004aad]" />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black text-gray-900 uppercase">Yeni Depo Kaydı</h2>
-                  <p className="text-gray-400 font-medium">Lojistik ağınızı genişletmek için bilgileri girin.</p>
+              <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                      Depo Tanımı
+                    </p>
+                    <h2 id="depo-tanim-baslik" className="mt-1 text-lg font-bold">
+                      Yeni Depo
+                    </h2>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                    aria-label="Kapat"
+                    disabled={saving}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmitWarehouse} className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Depo Adı *"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Adres"
-                  value={form.address}
-                  onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                  className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Kapasite"
-                    value={form.capacity}
-                    onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
-                    className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Mevcut Stok"
-                    value={form.currentStock}
-                    onChange={(e) => setForm((f) => ({ ...f, currentStock: e.target.value }))}
-                    className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmitWarehouse} className="space-y-4 p-5">
+                <div>
+                  <label className={label}>Depo Adı</label>
                   <input
                     type="text"
-                    placeholder="Sorumlu"
-                    value={form.manager}
-                    onChange={(e) => setForm((f) => ({ ...f, manager: e.target.value }))}
-                    className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Telefon"
-                    value={form.phone}
-                    onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                    className="w-full p-5 bg-gray-50 rounded-2xl border-none outline-none font-bold"
+                    value={form.name}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, name: e.target.value }))
+                    }
+                    className={inp}
+                    placeholder="Örn: Ana Depo"
+                    required
+                    minLength={2}
+                    autoFocus
                   />
                 </div>
 
-                <div className="pt-6 flex gap-4">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 bg-gray-100 text-gray-500 rounded-[2rem] font-black text-[10px] uppercase tracking-widest">İPTAL</button>
-                  <button type="submit" disabled={saving} className="flex-1 py-5 bg-[#004aad] text-white rounded-[2rem] font-black text-[10px] uppercase tracking-widest shadow-2xl disabled:opacity-50">
-                    {saving ? "Kaydediliyor..." : "KAYDI OLUŞTUR"}
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                    Vazgeç
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    Kaydet
                   </button>
                 </div>
               </form>
@@ -381,7 +447,6 @@ export default function WarehousesPage() {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
-}
+}  

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, ArrowRight, ShieldCheck, MailCheck } from "lucide-react";
+import { Mail, ArrowRight, ShieldCheck, MailCheck, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { signOut, useSession } from "next-auth/react";
 
@@ -10,6 +10,24 @@ export default function VerifyRequiredPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isSending, setIsSending] = useState(false);
+  const [skipAllowed, setSkipAllowed] = useState(false);
+  const [skipLoading, setSkipLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/auth/verify-email/skip-test");
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && data.allowed) setSkipAllowed(true);
+      } catch {
+        /* sessiz */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -39,6 +57,33 @@ export default function VerifyRequiredPage() {
       toast.error(error.message);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSkipVerify = async () => {
+    if (
+      !confirm(
+        "Test ortamında e-posta doğrulamasını atlamak istediğinize emin misiniz?",
+      )
+    ) {
+      return;
+    }
+    setSkipLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-email/skip-test", {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "İşlem başarısız");
+      }
+      toast.success(data.message || "Doğrulama tamamlandı. Yönlendiriliyorsunuz.");
+      router.replace("/business");
+      router.refresh();
+    } catch (error) {
+      toast.error(error.message || "İşlem başarısız");
+    } finally {
+      setSkipLoading(false);
     }
   };
 
@@ -90,6 +135,23 @@ export default function VerifyRequiredPage() {
               </>
             )}
           </button>
+
+          {skipAllowed ? (
+            <div className="mt-6 w-full rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-left">
+              <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-amber-800">
+                <FlaskConical className="h-4 w-4 shrink-0" />
+                Test ortamı — canlıda kapatılır
+              </p>
+              <button
+                type="button"
+                onClick={handleSkipVerify}
+                disabled={skipLoading}
+                className="w-full rounded-xl border border-amber-600 bg-white py-3 text-[11px] font-black uppercase tracking-[0.15em] text-amber-900 shadow-sm transition hover:bg-amber-100 disabled:opacity-60"
+              >
+                {skipLoading ? "İşleniyor…" : "Doğrulamayı atla (test)"}
+              </button>
+            </div>
+          ) : null}
 
           <div className="mt-8 flex flex-col gap-4 text-center">
             <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">

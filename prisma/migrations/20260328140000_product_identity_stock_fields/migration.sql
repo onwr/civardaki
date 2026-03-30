@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE `product` ADD COLUMN `productCode` VARCHAR(64) NULL,
+    ADD COLUMN `gtip` VARCHAR(32) NULL,
+    ADD COLUMN `gtin` VARCHAR(32) NULL,
+    ADD COLUMN `shelfLocation` VARCHAR(128) NULL,
+    ADD COLUMN `stockTracking` VARCHAR(16) NOT NULL DEFAULT 'NORMAL';

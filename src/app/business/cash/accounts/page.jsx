@@ -1,27 +1,205 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import {
   PlusIcon,
-  MagnifyingGlassIcon,
-  PencilIcon,
-  EyeIcon,
+  QuestionMarkCircleIcon,
+  ExclamationTriangleIcon,
   BanknotesIcon,
-  CreditCardIcon,
-  CurrencyDollarIcon,
   BuildingLibraryIcon,
-  SparklesIcon,
-  ArrowTrendingUpIcon,
-  WalletIcon
+  CreditCardIcon,
+  WalletIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { CheckIcon } from "@heroicons/react/24/solid";
 import { toast } from "sonner";
+
+const ACCOUNT_TYPE_OPTIONS = [
+  { type: "CASH", label: "Kasa Ekle" },
+  { type: "BANK", label: "Banka Hesabı Ekle" },
+  { type: "POS", label: "POS Hesabı Ekle" },
+  { type: "PARTNER", label: "Ortaklar Hesabı Ekle" },
+  { type: "CREDIT", label: "Veresiye Hesabı Ekle" },
+  { type: "CREDIT_CARD", label: "Kredi Kartı Ekle" },
+];
+
+const PANELS_LEFT = [
+  { type: "CASH", title: "KASA TANIMLARI", showHelp: false },
+  { type: "POS", title: "POS HESAPLARI", showHelp: true },
+  { type: "CREDIT_CARD", title: "KREDİ KARTLARI", showHelp: true },
+];
+
+const PANELS_RIGHT = [
+  { type: "BANK", title: "BANKA HESAPLARI", showHelp: false },
+  { type: "PARTNER", title: "ŞİRKET ORTAKLARI HESAPLARI", showHelp: false },
+  { type: "CREDIT", title: "VERESİYE HESAPLARI", showHelp: true },
+];
+
+const MODAL_TITLES = {
+  CASH: "Kasa",
+  BANK: "Banka Hesabı",
+  POS: "POS Hesabı",
+  PARTNER: "Ortaklar Hesabı",
+  CREDIT: "Veresiye Hesabı",
+  CREDIT_CARD: "Kredi Kartı",
+  ESCROW: "Havuz Hesap",
+};
+
+const CURRENCIES = [
+  { value: "TRY", label: "TL" },
+  { value: "EUR", label: "EUR" },
+  { value: "USD", label: "USD" },
+];
+
+function formatCurrency(currency, amount) {
+  const n = (Number(amount) || 0).toLocaleString("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  if (currency === "EUR") return `EUR ${n}`;
+  if (currency === "USD") return `USD ${n}`;
+  return `TL ${n}`;
+}
+
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-400 to-orange-500 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "white",
+  className = "",
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    blue: "bg-sky-500 hover:bg-sky-600 border-sky-600 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+    dark: "bg-slate-900 hover:bg-slate-800 border-slate-900 text-white",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function AccountCard({ acc }) {
+  return (
+    <div className="min-w-[170px] rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span
+          className="h-3.5 w-3.5 shrink-0 rounded"
+          style={{ backgroundColor: acc.labelColor || "#e5e7eb" }}
+        />
+        <p className="truncate text-sm font-semibold text-slate-900">{acc.name}</p>
+      </div>
+
+      {acc.accountNo ? (
+        <p className="mt-1 truncate text-xs text-slate-400">{acc.accountNo}</p>
+      ) : (
+        <p className="mt-1 text-xs text-slate-400">Hesap numarası yok</p>
+      )}
+
+      <p className="mt-3 text-lg font-bold text-slate-900">
+        {formatCurrency(acc.currency || "TRY", acc.balance)}
+      </p>
+    </div>
+  );
+}
+
+function Panel({ title, showHelp, accountList }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-900 px-5 py-4 text-white">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/65">
+            Hesap Grubu
+          </p>
+          <h2 className="mt-1 text-base font-bold">{title}</h2>
+        </div>
+
+        {showHelp ? (
+          <button
+            type="button"
+            className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+            aria-label="Yardım"
+          >
+            <QuestionMarkCircleIcon className="h-5 w-5" />
+          </button>
+        ) : null}
+      </div>
+
+      <div className="p-5">
+        {accountList.length === 0 ? (
+          <div className="rounded-2xl bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+            Bu grupta tanımlı hesap bulunmuyor.
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {accountList.map((acc) => (
+              <AccountCard key={acc.id} acc={acc} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [apiError, setApiError] = useState(null);
+
+  const [typeSelectModalOpen, setTypeSelectModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState("CASH");
+
+  const [form, setForm] = useState({
+    name: "",
+    labelColor: "#f5f0e6",
+    currency: "TRY",
+    accountNo: "",
+    balance: 0,
+  });
+
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -29,13 +207,20 @@ export default function AccountsPage() {
 
   const fetchAccounts = async () => {
     setLoading(true);
+    setApiError(null);
+
     try {
-      const res = await fetch("/api/business/cash");
+      const res = await fetch("/api/business/cash/accounts");
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAccounts(data.accounts || []);
+
+      if (res.ok && Array.isArray(data)) {
+        setAccounts(data);
+      } else {
+        throw new Error(data?.error || "Hesaplar yüklenemedi.");
+      }
     } catch (e) {
       console.error(e);
+      setApiError(e.message || "Hesaplar yüklenirken hata oluştu.");
       toast.error("Hesaplar yüklenirken hata oluştu.");
       setAccounts([]);
     } finally {
@@ -43,236 +228,366 @@ export default function AccountsPage() {
     }
   };
 
-  const filteredAccounts = accounts.filter((account) =>
-    account.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const openFormModal = (type) => {
+    setModalType(type);
+    setForm({
+      name: "",
+      labelColor: "#f5f0e6",
+      currency: "TRY",
+      accountNo: "",
+      balance: 0,
+    });
+    setTypeSelectModalOpen(false);
+    setModalOpen(true);
+  };
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const getAccountIcon = (type) => {
-    switch (type) {
-      case "CASH":
-        return BanknotesIcon;
-      case "BANK":
-        return BuildingLibraryIcon;
-      case "ESCROW":
-        return CurrencyDollarIcon;
-      default:
-        return CurrencyDollarIcon;
+    if (!form.name?.trim()) {
+      toast.error("Tanım girin.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const res = await fetch("/api/business/cash/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          type: modalType,
+          balance: parseFloat(form.balance) || 0,
+          currency: form.currency,
+          accountNo: form.accountNo?.trim() || null,
+          labelColor: form.labelColor || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Kayıt başarısız.");
+      }
+
+      toast.success("Hesap eklendi.");
+      setModalOpen(false);
+      fetchAccounts();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Kayıt sırasında hata oluştu.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getAccountTypeLabel = (type) => {
-    switch (type) {
-      case "CASH":
-        return "Kasa";
-      case "BANK":
-        return "Banka";
-      case "ESCROW":
-        return "Havuz Hesap";
-      default:
-        return type;
-    }
-  };
+  const byType = (type) => accounts.filter((a) => a.type === type);
+  const escrowAccounts = accounts.filter((a) => a.type === "ESCROW");
+
+  const summary = useMemo(() => {
+    return {
+      totalAccounts: accounts.length,
+      cashAndBank: byType("CASH").length + byType("BANK").length,
+      cardAndPos: byType("POS").length + byType("CREDIT_CARD").length,
+      otherAccounts:
+        byType("PARTNER").length + byType("CREDIT").length + escrowAccounts.length,
+    };
+  }, [accounts]);
+
+  const inp =
+    "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-slate-400";
+  const label =
+    "mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-500";
 
   return (
-    <div className="space-y-10 pb-24 max-w-[1400px] mx-auto px-6 font-sans antialiased text-gray-900">
-
-      {/* 1. PREMIUM ACCOUNTS HERO SECTION */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#004aad] rounded-[4rem] p-10 md:p-14 text-white relative overflow-hidden shadow-3xl"
-      >
-        <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
-          <WalletIcon className="w-96 h-96 text-white" />
-        </div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[2.5rem] bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-2xl border border-white/10">
-                <BuildingLibraryIcon className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight uppercase leading-none">Hesaplarım</h1>
-                <p className="text-blue-200 text-[10px] font-black uppercase tracking-[0.3em] mt-1">Cash & Asset Management Hub</p>
-              </div>
+    <div className="min-h-[calc(100vh-8rem)] space-y-6 text-[13px] text-slate-700">
+      <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
+        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+              <WalletIcon className="h-4 w-4" />
+              Nakit Yönetimi
             </div>
+
+            <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+              Hesaplarım
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              Kasa, banka, POS, kredi kartı ve diğer hesaplarınızı tek ekranda
+              yönetin.
+            </p>
           </div>
 
-          <div className="flex gap-4">
-            <button className="px-8 py-5 bg-white/10 backdrop-blur-xl text-white rounded-[2.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all border border-white/10 flex items-center gap-3">
-              <SparklesIcon className="w-5 h-5 opacity-70" /> AI ANALİZ
-            </button>
-            <Link href="/business/cash" className="px-10 py-5 bg-white text-[#004aad] rounded-[2.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-black hover:text-white transition-all shadow-2xl flex items-center gap-3">
-              <PlusIcon className="w-5 h-5" /> NAKİT YÖNETİMİNE GİT
-            </Link>
-          </div>
+          <ActionButton
+            onClick={() => setTypeSelectModalOpen(true)}
+            icon={PlusIcon}
+            tone="green"
+          >
+            Yeni Hesap Ekle
+          </ActionButton>
         </div>
+      </section>
 
-        {/* Live Stats Strip */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-10 mt-14 pt-10 border-t border-white/10 text-left">
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-blue-200">
-              <CurrencyDollarIcon className="w-4 h-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Toplam Bakiye</p>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Toplam Hesap"
+          value={String(summary.totalAccounts)}
+          sub="Tanımlı tüm hesap kayıtları"
+          icon={WalletIcon}
+          tone="blue"
+        />
+        <StatCard
+          title="Kasa + Banka"
+          value={String(summary.cashAndBank)}
+          sub="Nakit ve banka hesap adedi"
+          icon={BanknotesIcon}
+          tone="emerald"
+        />
+        <StatCard
+          title="POS + Kart"
+          value={String(summary.cardAndPos)}
+          sub="POS ve kredi kartı hesap adedi"
+          icon={CreditCardIcon}
+          tone="amber"
+        />
+        <StatCard
+          title="Diğer Hesaplar"
+          value={String(summary.otherAccounts)}
+          sub="Ortak, veresiye ve diğer hesaplar"
+          icon={BuildingLibraryIcon}
+          tone="slate"
+        />
+      </section>
+
+      {apiError && (
+        <div className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-amber-900 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+              <ExclamationTriangleIcon className="h-5 w-5" />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-black text-white tracking-tighter">
-                {totalBalance.toLocaleString("tr-TR")} ₺
-              </span>
+            <div>
+              <p className="font-semibold">Veri alınırken bir hata oluştu</p>
+              <p className="mt-1 text-sm leading-6">{apiError}</p>
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-blue-200">
-              <BanknotesIcon className="w-4 h-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Kasa Bakiyesi</p>
-            </div>
-            <span className="text-4xl font-black text-white tracking-tighter">
-              {accounts.filter(a => a.type === "CASH").reduce((sum, a) => sum + (a.balance || 0), 0).toLocaleString("tr-TR")} ₺
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-emerald-400">
-              <ArrowTrendingUpIcon className="w-4 h-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Banka Bakiyesi</p>
-            </div>
-            <span className="text-4xl font-black text-white tracking-tighter">
-              {accounts.filter(a => a.type === "BANK").reduce((sum, a) => sum + (a.balance || 0), 0).toLocaleString("tr-TR")} ₺
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-blue-200">
-              <CreditCardIcon className="w-4 h-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Toplam Hesap</p>
-            </div>
-            <span className="text-4xl font-black text-white tracking-tighter">{accounts.length}</span>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 2. ADVANCED SEARCH & ACCOUNT FILTERS */}
-      <div className="bg-white p-6 md:p-8 rounded-[3.5rem] border border-gray-100 shadow-xl shadow-gray-200/40 flex flex-col xl:flex-row items-center justify-between gap-6 mx-2 md:mx-4">
-        {/* Search Input */}
-        <div className="w-full xl:w-auto flex-1 min-w-[300px] relative group h-full">
-          <MagnifyingGlassIcon className="absolute left-8 top-1/2 -translate-y-1/2 w-7 h-7 text-gray-400 group-focus-within:text-[#004aad] transition-colors" />
-          <input
-            type="text"
-            placeholder="Hesap adı, banka veya IBAN ara..."
-            className="w-full h-[72px] pl-20 pr-8 bg-gray-50/50 rounded-[2.5rem] outline-none focus:ring-4 focus:ring-[#004aad]/5 font-black text-lg border-2 border-transparent focus:border-[#004aad]/10 transition-all text-gray-900 placeholder:text-gray-400 italic"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        {/* Filters & Actions Overlay */}
-        <div className="flex items-center gap-4 w-full xl:w-auto">
-          <button className="flex-1 md:flex-none px-10 py-5 bg-gray-50 hover:bg-white text-gray-400 hover:text-[#004aad] rounded-[2.5rem] font-black text-[10px] uppercase tracking-widest transition-all border border-transparent hover:border-blue-100 flex items-center justify-center gap-3">
-            <ArrowTrendingUpIcon className="w-5 h-5" /> HAREKET ÖZETİ
-          </button>
-        </div>
-      </div>
-
-      {/* 3. ACCOUNTS LIST */}
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-12 h-12 border-4 border-blue-100 border-t-[#004aad] rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-6 mx-2 md:mx-4">
-          {filteredAccounts.length === 0 ? (
-            <div className="bg-white p-16 rounded-[3rem] border border-gray-100 text-center space-y-4">
-              <BuildingLibraryIcon className="w-12 h-12 text-gray-200 mx-auto" />
-              <p className="text-sm font-bold text-gray-500">Henüz hesap tanımlı değil</p>
-              <Link href="/business/cash" className="inline-flex items-center gap-2 px-6 py-3 bg-[#004aad] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-800">
-                Nakit yönetimine git
-              </Link>
-            </div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredAccounts.map((account) => {
-                const Icon = getAccountIcon(account.type);
-                return (
-                  <motion.div
-                    key={account.id}
-                    layout
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-gray-200/50 transition-all flex flex-col lg:flex-row items-center gap-8 group"
-                  >
-                    <div className="flex items-center gap-6 lg:w-[35%] shrink-0">
-                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform ${account.type === "BANK" ? "bg-blue-50 text-[#004aad]" : account.type === "CASH" ? "bg-emerald-50 text-emerald-600" : "bg-purple-50 text-purple-600"}`}>
-                        <Icon className="w-8 h-8" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${account.type === "BANK" ? "bg-blue-100 text-blue-700" : account.type === "CASH" ? "bg-emerald-100 text-emerald-700" : "bg-purple-100 text-purple-700"}`}>
-                            {getAccountTypeLabel(account.type)}
-                          </span>
-                          <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-tight bg-emerald-50 px-2 py-0.5 rounded-md">AKTİF</span>
-                        </div>
-                        <h3 className="text-2xl font-black text-gray-950 truncate group-hover:text-[#004aad] transition-colors leading-none uppercase">{account.name}</h3>
-                        <p className="text-[10px] font-bold text-gray-400 mt-2.5 uppercase tracking-widest">{account.type === "BANK" ? "BANKA HESABI" : "NAKİT POZİSYONU"}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0 px-8 lg:border-x border-gray-100 text-center lg:text-left">
-                      <div className="grid grid-cols-2 gap-8">
-                        <div>
-                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Döviz</p>
-                          <p className="text-sm font-black text-gray-950 leading-none">{account.currency || "TRY"}</p>
-                        </div>
-                        <div className="text-right lg:text-center">
-                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Güncel</p>
-                          <p className="text-sm font-black text-gray-950 leading-none">—</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-10 lg:w-[25%] justify-end shrink-0">
-                      <div className="text-right">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Bakiye</p>
-                        <p className="text-3xl font-black text-gray-950 tracking-tighter leading-none">
-                          {(account.balance ?? 0).toLocaleString("tr-TR")} ₺
-                        </p>
-                      </div>
-                      <Link href="/business/cash" className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-blue-50 hover:text-[#004aad] transition-all border border-gray-100">
-                        <EyeIcon className="w-5 h-5" />
-                      </Link>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          )}
         </div>
       )}
 
-      {/* 4. AI FINANCE WIDGET */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-[#004aad] to-[#01142f] rounded-[4rem] p-12 text-white relative overflow-hidden shadow-2xl mx-2 md:mx-4 group mt-12"
-      >
-        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-          <SparklesIcon className="w-80 h-80 rotate-12" />
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
         </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
+            {PANELS_LEFT.map((p) => (
+              <Panel
+                key={p.type}
+                title={p.title}
+                showHelp={p.showHelp}
+                accountList={byType(p.type)}
+              />
+            ))}
 
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12 text-center md:text-left">
-          <div className="space-y-6 flex-1">
-            <div className="flex items-center justify-center md:justify-start gap-4">
-              <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
-              <span className="text-xs font-black uppercase tracking-[0.4em] text-blue-200">Finansal Optimizasyon Önerisi</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black leading-tight italic uppercase tracking-tighter">Atıl Nakdi <span className="text-blue-200">Değerlendirin!</span></h2>
-            <p className="text-blue-100/70 text-xl font-medium max-w-2xl leading-relaxed italic">"Banka hesaplarınızdaki toplam bakiyenin %30'u son 90 gündür hareketsiz. Bu tutarı kısa vadeli repo veya para piyasası fonlarında değerlendirerek pasif gelir elde edebilirsiniz."</p>
+            {escrowAccounts.length > 0 && (
+              <Panel
+                title="DİĞER HESAPLAR"
+                showHelp={false}
+                accountList={escrowAccounts}
+              />
+            )}
           </div>
-          <button className="px-12 py-6 bg-white text-[#004aad] rounded-[2rem] font-black text-sm uppercase tracking-widest hover:shadow-3xl transition-all active:scale-95 italic">ÖNERİLERİ UYGULA</button>
+
+          <div className="space-y-6">
+            {PANELS_RIGHT.map((p) => (
+              <Panel
+                key={p.type}
+                title={p.title}
+                showHelp={p.showHelp}
+                accountList={byType(p.type)}
+              />
+            ))}
+          </div>
         </div>
-      </motion.div>
+      )}
+
+      {/* Hesap tipi seçim modalı */}
+      {typeSelectModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setTypeSelectModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-slate-200 bg-emerald-600 px-5 py-4 text-white">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold">Yeni Hesap Ekle</h2>
+                <button
+                  type="button"
+                  className="rounded-lg p-1.5 transition hover:bg-white/20"
+                  onClick={() => setTypeSelectModalOpen(false)}
+                  aria-label="Kapat"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <p className="mb-4 text-sm text-slate-500">
+                Eklemek istediğiniz hesap tipini seçin.
+              </p>
+              <div className="space-y-1">
+                {ACCOUNT_TYPE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.type}
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    onClick={() => openFormModal(opt.type)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => !saving && setModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                    Yeni Hesap
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold">
+                    {MODAL_TITLES[modalType] || "Yeni Hesap"}
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                  onClick={() => !saving && setModalOpen(false)}
+                  aria-label="Kapat"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4 p-5">
+              <div>
+                <label className={label}>Tanım</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  className={inp}
+                  placeholder="Hesap adı"
+                />
+              </div>
+
+              <div>
+                <label className={label}>Etiket Rengi</label>
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <input
+                    type="color"
+                    value={form.labelColor}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, labelColor: e.target.value }))
+                    }
+                    className="h-10 w-12 cursor-pointer rounded border border-slate-300 bg-white"
+                  />
+                  <span className="text-sm font-medium text-slate-600">
+                    {form.labelColor}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className={label}>Para Birimi</label>
+                <select
+                  value={form.currency}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, currency: e.target.value }))
+                  }
+                  className={inp}
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={label}>Hesap No</label>
+                <input
+                  type="text"
+                  value={form.accountNo}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, accountNo: e.target.value }))
+                  }
+                  className={inp}
+                  placeholder="İsteğe bağlı"
+                />
+              </div>
+
+              <div>
+                <label className={label}>Güncel Bakiye</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={form.balance}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, balance: e.target.value }))
+                  }
+                  className={inp}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => !saving && setModalOpen(false)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Vazgeç
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <CheckIcon className="h-5 w-5" />
+                  )}
+                  Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

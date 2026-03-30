@@ -19,6 +19,8 @@ import {
   AcademicCapIcon,
   CubeIcon,
   IdentificationIcon,
+  Squares2X2Icon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -26,34 +28,40 @@ const COLOR_OPTIONS = ["blue", "emerald", "purple", "rose", "amber", "slate"];
 
 const COLOR_CLASS_MAP = {
   blue: {
-    dot: "bg-blue-500/20",
-    icon: "text-blue-500",
-    pill: "bg-blue-50 text-blue-600",
+    soft: "bg-blue-50 border-blue-100",
+    iconWrap: "bg-blue-100 text-blue-700",
+    badge: "bg-blue-100 text-blue-700",
+    accent: "from-blue-600 to-indigo-700",
   },
   emerald: {
-    dot: "bg-emerald-500/20",
-    icon: "text-emerald-500",
-    pill: "bg-emerald-50 text-emerald-600",
+    soft: "bg-emerald-50 border-emerald-100",
+    iconWrap: "bg-emerald-100 text-emerald-700",
+    badge: "bg-emerald-100 text-emerald-700",
+    accent: "from-emerald-500 to-emerald-700",
   },
   purple: {
-    dot: "bg-purple-500/20",
-    icon: "text-purple-500",
-    pill: "bg-purple-50 text-purple-600",
+    soft: "bg-purple-50 border-purple-100",
+    iconWrap: "bg-purple-100 text-purple-700",
+    badge: "bg-purple-100 text-purple-700",
+    accent: "from-purple-500 to-violet-700",
   },
   rose: {
-    dot: "bg-rose-500/20",
-    icon: "text-rose-500",
-    pill: "bg-rose-50 text-rose-600",
+    soft: "bg-rose-50 border-rose-100",
+    iconWrap: "bg-rose-100 text-rose-700",
+    badge: "bg-rose-100 text-rose-700",
+    accent: "from-rose-500 to-pink-700",
   },
   amber: {
-    dot: "bg-amber-500/20",
-    icon: "text-amber-500",
-    pill: "bg-amber-50 text-amber-600",
+    soft: "bg-amber-50 border-amber-100",
+    iconWrap: "bg-amber-100 text-amber-700",
+    badge: "bg-amber-100 text-amber-800",
+    accent: "from-amber-400 to-orange-500",
   },
   slate: {
-    dot: "bg-slate-500/20",
-    icon: "text-slate-500",
-    pill: "bg-slate-50 text-slate-600",
+    soft: "bg-slate-50 border-slate-200",
+    iconWrap: "bg-slate-100 text-slate-700",
+    badge: "bg-slate-100 text-slate-700",
+    accent: "from-slate-700 to-slate-900",
   },
 };
 
@@ -72,6 +80,121 @@ function normalizeTagsInput(text) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-400 to-orange-500 text-white",
+    slate: "from-slate-800 to-slate-900 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, children, right }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        {right}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  icon: Icon,
+  tone = "white",
+  className = "",
+  type = "button",
+  disabled = false,
+}) {
+  const tones = {
+    green:
+      "bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-white",
+    blue: "bg-sky-500 hover:bg-sky-600 border-sky-600 text-white",
+    white:
+      "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+    rose: "bg-rose-600 hover:bg-rose-700 border-rose-700 text-white",
+  };
+
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tones[tone]} ${className}`}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function ModalShell({ title, children, onClose, footer }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={onClose}
+        aria-label="Kapat"
+      />
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]">
+        <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                Not İşlemi
+              </p>
+              <h2 className="mt-1 text-lg font-bold">{title}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-white/10 bg-white/10 p-2 transition hover:bg-white/15"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5">{children}</div>
+
+        {footer ? (
+          <div className="border-t border-slate-200 bg-slate-50 px-5 py-4">
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default function NotesPage() {
@@ -107,12 +230,20 @@ export default function NotesPage() {
       if (searchTerm) params.set("q", searchTerm);
       if (filterCategory !== "all") params.set("category", filterCategory);
       params.set("limit", "100");
-      const res = await fetch(`/api/business/notes?${params.toString()}`, { cache: "no-store" });
+
+      const res = await fetch(`/api/business/notes?${params.toString()}`, {
+        cache: "no-store",
+      });
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) throw new Error(data.error || "Notlar alınamadı.");
 
       setNotes(Array.isArray(data.notes) ? data.notes : []);
-      setCategories(Array.isArray(data.categories) && data.categories.length ? data.categories : ["all"]);
+      setCategories(
+        Array.isArray(data.categories) && data.categories.length
+          ? data.categories
+          : ["all"]
+      );
       setSummary({
         total: Number(data.summary?.total || 0),
         thisWeek: Number(data.summary?.thisWeek || 0),
@@ -136,6 +267,7 @@ export default function NotesPage() {
 
   const noteSummaryText = useMemo(() => {
     if (!notes.length) return "Henüz not bulunmuyor. İlk notunuzu ekleyin.";
+
     const topCategory = Object.entries(
       notes.reduce((acc, item) => {
         const key = String(item.category || "Genel");
@@ -149,7 +281,10 @@ export default function NotesPage() {
       .map((tag) => String(tag || "").trim())
       .filter(Boolean)[0];
 
-    const tagText = recentTag ? `Öne çıkan etiket: ${recentTag}.` : "Henüz etiket bulunmuyor.";
+    const tagText = recentTag
+      ? `Öne çıkan etiket: ${recentTag}.`
+      : "Henüz etiket bulunmuyor.";
+
     return `En yoğun kategori: ${topCategory || "Genel"}. ${tagText}`;
   }, [notes]);
 
@@ -181,6 +316,7 @@ export default function NotesPage() {
 
   async function submitForm(e) {
     e.preventDefault();
+
     if (!form.title.trim()) {
       toast.error("Not başlığı zorunlu.");
       return;
@@ -193,7 +329,10 @@ export default function NotesPage() {
     setSaving(true);
     try {
       const method = editingNote ? "PATCH" : "POST";
-      const targetUrl = editingNote ? `/api/business/notes/${editingNote.id}` : "/api/business/notes";
+      const targetUrl = editingNote
+        ? `/api/business/notes/${editingNote.id}`
+        : "/api/business/notes";
+
       const payload = {
         title: form.title,
         content: form.content,
@@ -209,6 +348,7 @@ export default function NotesPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) throw new Error(data.error || "Not kaydedilemedi.");
 
       toast.success(editingNote ? "Not güncellendi." : "Not oluşturuldu.");
@@ -222,11 +362,17 @@ export default function NotesPage() {
   }
 
   async function deleteNote(noteId) {
+    if (!confirm("Bu not silinsin mi?")) return;
+
     setSaving(true);
     try {
-      const res = await fetch(`/api/business/notes/${noteId}`, { method: "DELETE" });
+      const res = await fetch(`/api/business/notes/${noteId}`, {
+        method: "DELETE",
+      });
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) throw new Error(data.error || "Not silinemedi.");
+
       toast.success("Not arşivlendi.");
       await fetchNotes();
     } catch (err) {
@@ -245,7 +391,11 @@ export default function NotesPage() {
         body: JSON.stringify({ isPinned: !note.isPinned }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Önemli not durumu güncellenemedi.");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Önemli not durumu güncellenemedi.");
+      }
+
       await fetchNotes();
     } catch (err) {
       toast.error(err.message || "Önemli not durumu güncellenemedi.");
@@ -254,318 +404,373 @@ export default function NotesPage() {
     }
   }
 
-  return (
-    <div className="space-y-12 pb-24 max-w-[1600px] mx-auto px-6 font-sans antialiased text-gray-900">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#004aad] rounded-[4rem] p-10 md:p-14 text-white relative overflow-hidden shadow-3xl"
-      >
-        <div className="absolute top-0 right-0 p-12 opacity-10 blur-3xl pointer-events-none">
-          <DocumentTextIcon className="w-96 h-96 text-white" />
-        </div>
-
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 rounded-[2.5rem] bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-2xl border border-white/10">
-                <PencilIcon className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-4xl md:text-5xl font-black tracking-tight uppercase leading-none italic">Dijital Not Defteri</h1>
-                <p className="text-blue-200 text-[10px] font-black uppercase tracking-[0.4em] mt-1">Business Notes Hub</p>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="px-10 py-6 bg-white text-[#004aad] rounded-[2.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-black hover:text-white transition-all shadow-2xl flex items-center gap-4 active:scale-95"
-          >
-            <PlusIcon className="w-6 h-6" /> YENİ NOT
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 mt-14 pt-10 border-t border-white/10">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-2">Toplam Arşiv</p>
-            <span className="text-4xl font-black text-white tracking-tighter italic">{summary.total} Not</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">Haftalık Fikir</p>
-            <span className="text-4xl font-black text-white tracking-tighter italic">+{summary.thisWeek} Yeni</span>
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-2">Kritik Notlar</p>
-            <div className="flex items-center gap-3">
-              <span className="text-4xl font-black text-white tracking-tighter italic">{summary.important} Adet</span>
-              <BoltIcon className="w-6 h-6 text-amber-400" />
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-2">Kategorizasyon</p>
-            <span className="text-4xl font-black text-white tracking-tighter italic">{summary.categories} Birim</span>
-          </div>
-        </div>
-      </motion.div>
-
-      <div className="bg-white p-8 rounded-[3.5rem] border border-gray-100 shadow-xl shadow-gray-200/40 mx-2 flex flex-col lg:flex-row gap-6">
-        <div className="flex-1 relative group">
-          <MagnifyingGlassIcon className="absolute left-8 top-1/2 -translate-y-1/2 w-7 h-7 text-gray-400 group-focus-within:text-[#004aad] transition-colors" />
-          <input
-            type="text"
-            placeholder="Not başlığı, içerik veya etiketlerde ara..."
-            className="w-full h-20 pl-20 pr-8 bg-gray-50/50 rounded-[2.5rem] outline-none focus:ring-4 focus:ring-[#004aad]/5 font-black text-lg border-2 border-transparent focus:border-[#004aad]/10 transition-all text-gray-900 placeholder:text-gray-400 italic"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {categories.map((cat) => (
-            <button
-              type="button"
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={`px-8 py-6 rounded-[2rem] font-black text-[10px] uppercase tracking-widest transition-all ${
-                filterCategory === cat ? "bg-[#004aad] text-white shadow-2xl scale-105" : "bg-gray-50 text-gray-400 hover:text-[#004aad]"
-              }`}
-            >
-              {cat === "all" ? "TÜMÜ" : String(cat).toUpperCase()}
-            </button>
-          ))}
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-8rem)] bg-slate-50 px-4 pb-16 pt-8">
+        <div className="mx-auto flex max-w-6xl justify-center py-24">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-600" />
         </div>
       </div>
+    );
+  }
 
-      {error ? (
-        <div className="mx-2 rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-rose-700 font-semibold">
-          {error}
-        </div>
-      ) : null}
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mx-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-80 rounded-[3rem] bg-gray-100 animate-pulse" />
-          ))}
-        </div>
-      ) : notes.length === 0 ? (
-        <div className="mx-2 rounded-[3rem] border border-gray-100 bg-white p-12 text-center text-gray-500 font-semibold">
-          Not bulunamadı.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mx-2">
-          <AnimatePresence mode="popLayout">
-            {notes.map((note, idx) => {
-              const color = COLOR_CLASS_MAP[note.color] || COLOR_CLASS_MAP.blue;
-              const NoteIcon = getIconByCategory(note.category);
-              const tags = Array.isArray(note.tags) ? note.tags : [];
-              return (
-                <motion.div
-                  key={note.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: idx * 0.04 }}
-                  className="bg-white rounded-[4.5rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-gray-200/50 transition-all group relative overflow-hidden flex flex-col p-10"
-                >
-                  <div className={`absolute top-0 right-0 w-32 h-32 opacity-20 rounded-full blur-2xl -mr-16 -mt-16 ${color.dot}`} />
-
-                  <div className="flex items-start justify-between mb-8">
-                    <div className={`w-16 h-16 rounded-[1.8rem] bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:scale-110 transition-transform shadow-inner ${color.icon}`}>
-                      <NoteIcon className="w-8 h-8" />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => togglePinned(note)}
-                        className={`p-3 rounded-xl transition-all ${note.isPinned ? "bg-amber-50 text-amber-500" : "bg-gray-50 text-gray-400 hover:bg-amber-50 hover:text-amber-500"}`}
-                      >
-                        <BoltIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(note)}
-                        className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-black hover:text-white transition-all"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => deleteNote(note.id)}
-                        className="p-3 bg-rose-50 text-rose-400 rounded-xl hover:bg-rose-500 hover:text-white transition-all disabled:opacity-50"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 space-y-6">
-                    <div className="space-y-1">
-                      <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${color.pill}`}>
-                        {note.category}
-                      </span>
-                      <h3 className="text-2xl font-black text-gray-950 uppercase tracking-tighter italic leading-none mt-2">
-                        {note.title}
-                      </h3>
-                    </div>
-                    <p className="text-sm font-medium text-gray-500 italic leading-relaxed line-clamp-4">
-                      "{note.content}"
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 pt-4">
-                      {tags.map((tag) => (
-                        <span key={tag} className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-gray-100">
-                          <TagIcon className="w-3 h-3" /> {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-10 pt-8 border-t border-gray-50 flex items-center justify-between text-[10px] font-black text-gray-400 uppercase italic">
-                    <div className="flex items-center gap-2">
-                      <ClockIcon className="w-4 h-4 text-[#004aad]" />
-                      <span>{new Date(note.createdAt).toLocaleDateString("tr-TR")}</span>
-                    </div>
-                    <span className="text-[#004aad]">{note.author?.name || "İsimsiz"}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="bg-gray-950 rounded-[4rem] p-12 text-white relative overflow-hidden group mx-2"
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#004aad]/20 to-transparent pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-white/10 rounded-[2.5rem] flex items-center justify-center border border-white/10 shadow-2xl">
-              <ArchiveBoxIcon className="w-10 h-10 text-blue-300" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-3xl font-black uppercase tracking-tighter italic leading-none">
-                Not Özeti
-              </h3>
-              <p className="text-gray-300 max-w-xl text-sm leading-relaxed">{noteSummaryText}</p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-gray-950/80 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-[3rem] p-8 md:p-10 shadow-4xl overflow-hidden"
-            >
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-3xl font-black text-gray-950 uppercase italic tracking-tighter leading-none">
-                  {editingNote ? "Notu Düzenle" : "Yeni Not"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
+  return (
+    <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+                  <DocumentTextIcon className="h-4 w-4" />
+                  Not Yönetimi
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  Dijital Not Defteri
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Toplantı, operasyon, pazarlama ve strateji notlarınızı tek merkezde
+                  yönetin. Etiketleyin, sabitleyin ve hızlıca bulun.
+                </p>
               </div>
 
-              <form className="space-y-6" onSubmit={submitForm}>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Not Başlığı</label>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                    className="w-full h-14 px-5 bg-gray-50 rounded-2xl outline-none font-semibold text-gray-950 border-2 border-transparent focus:border-[#004aad]/10"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Kategori</label>
-                    <input
-                      type="text"
-                      value={form.category}
-                      onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                      className="w-full h-14 px-5 bg-gray-50 rounded-2xl outline-none font-semibold text-gray-950 border-2 border-transparent focus:border-[#004aad]/10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Renk Teması</label>
-                    <select
-                      value={form.color}
-                      onChange={(e) => setForm((prev) => ({ ...prev, color: e.target.value }))}
-                      className="w-full h-14 px-5 bg-gray-50 rounded-2xl outline-none font-semibold text-gray-950 border-2 border-transparent focus:border-[#004aad]/10"
-                    >
-                      {COLOR_OPTIONS.map((color) => (
-                        <option key={color} value={color}>
-                          {color.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Etiketler (virgülle ayır)</label>
-                  <input
-                    type="text"
-                    value={form.tagsText}
-                    onChange={(e) => setForm((prev) => ({ ...prev, tagsText: e.target.value }))}
-                    className="w-full h-14 px-5 bg-gray-50 rounded-2xl outline-none font-semibold text-gray-950 border-2 border-transparent focus:border-[#004aad]/10"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Not İçeriği</label>
-                  <textarea
-                    rows="5"
-                    value={form.content}
-                    onChange={(e) => setForm((prev) => ({ ...prev, content: e.target.value }))}
-                    className="w-full p-5 bg-gray-50 rounded-2xl outline-none font-medium text-gray-900 border-2 border-transparent focus:border-[#004aad]/10 resize-none"
-                  />
-                </div>
-
-                <label className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={form.isPinned}
-                    onChange={(e) => setForm((prev) => ({ ...prev, isPinned: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  Önemli not olarak sabitle
-                </label>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full py-4 bg-[#004aad] text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-black transition-all shadow-2xl disabled:opacity-60"
-                >
-                  {saving ? "KAYDEDİLİYOR..." : editingNote ? "NOTU GÜNCELLE" : "NOTU KAYDET"}
-                </button>
-              </form>
-            </motion.div>
+              <div className="flex flex-wrap gap-3">
+                <ActionButton onClick={openCreateModal} icon={PlusIcon} tone="green">
+                  Yeni Not Ekle
+                </ActionButton>
+              </div>
+            </div>
           </div>
-        )}
+
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Toplam Not"
+              value={summary.total}
+              sub="Tüm not kayıtları"
+              icon={Squares2X2Icon}
+              tone="blue"
+            />
+            <StatCard
+              title="Bu Hafta"
+              value={summary.thisWeek}
+              sub="Yeni eklenen notlar"
+              icon={ClockIcon}
+              tone="emerald"
+            />
+            <StatCard
+              title="Önemli"
+              value={summary.important}
+              sub="Sabitlenmiş notlar"
+              icon={BoltIcon}
+              tone="amber"
+            />
+            <StatCard
+              title="Kategori"
+              value={summary.categories}
+              sub="Kullanılan kategori sayısı"
+              icon={ArchiveBoxIcon}
+              tone="slate"
+            />
+          </div>
+        </section>
+
+        <SectionCard
+          title="Not Özeti"
+          subtitle="Arşiv içinden kısa görünüm"
+        >
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm font-medium text-slate-700">
+            {noteSummaryText}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Filtreler"
+          subtitle="Arama ve kategori bazlı daraltma"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="relative max-w-xl">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Not başlığı, içerik veya etiketlerde ara..."
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-slate-400"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {categories.map((cat) => (
+                <button
+                  type="button"
+                  key={cat}
+                  onClick={() => setFilterCategory(cat)}
+                  className={`rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] transition ${
+                    filterCategory === cat
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {cat === "all" ? "Tümü" : String(cat)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+
+        {error ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700">
+            {error}
+          </div>
+        ) : null}
+
+        <SectionCard
+          title="Not Kartları"
+          subtitle="Düzenlemek için ilgili karttaki butonları kullanın"
+        >
+          {notes.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-14 text-center">
+              <p className="text-sm font-medium text-slate-500">
+                Not bulunamadı.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <AnimatePresence mode="popLayout">
+                {notes.map((note, idx) => {
+                  const color = COLOR_CLASS_MAP[note.color] || COLOR_CLASS_MAP.blue;
+                  const NoteIcon = getIconByCategory(note.category);
+                  const tags = Array.isArray(note.tags) ? note.tags : [];
+
+                  return (
+                    <motion.div
+                      key={note.id}
+                      layout
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className={`relative overflow-hidden rounded-[24px] border bg-white p-5 shadow-sm transition hover:shadow-md ${color.soft}`}
+                    >
+                      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/50 blur-2xl" />
+
+                      <div className="relative flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color.iconWrap}`}
+                          >
+                            <NoteIcon className="h-6 w-6" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${color.badge}`}
+                              >
+                                {note.category || "Genel"}
+                              </span>
+                              {note.isPinned ? (
+                                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                                  Önemli
+                                </span>
+                              ) : null}
+                            </div>
+
+                            <h3 className="mt-2 line-clamp-2 text-lg font-bold tracking-tight text-slate-900">
+                              {note.title}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => togglePinned(note)}
+                            className={`rounded-lg p-2 transition ${
+                              note.isPinned
+                                ? "bg-amber-100 text-amber-700"
+                                : "text-slate-400 hover:bg-amber-50 hover:text-amber-600"
+                            }`}
+                            title="Sabitlenmiş not"
+                          >
+                            <BoltIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(note)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            title="Düzenle"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => deleteNote(note.id)}
+                            className="rounded-lg p-2 text-rose-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                            title="Sil"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="relative mt-4 line-clamp-5 text-sm leading-6 text-slate-600">
+                        {note.content}
+                      </p>
+
+                      {tags.length > 0 ? (
+                        <div className="relative mt-4 flex flex-wrap gap-2">
+                          {tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-600"
+                            >
+                              <TagIcon className="h-3 w-3" />
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="relative mt-5 flex items-center justify-between border-t border-slate-200/80 pt-4 text-xs font-semibold text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <ClockIcon className="h-4 w-4 text-slate-400" />
+                          <span>
+                            {new Date(note.createdAt).toLocaleDateString("tr-TR")}
+                          </span>
+                        </div>
+                        <span>{note.author?.name || "İsimsiz"}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      <AnimatePresence>
+        {isModalOpen ? (
+          <ModalShell
+            title={editingNote ? "Notu Düzenle" : "Yeni Not"}
+            onClose={() => setIsModalOpen(false)}
+            footer={
+              <div className="flex justify-end gap-3">
+                <ActionButton
+                  onClick={() => setIsModalOpen(false)}
+                  tone="white"
+                >
+                  Vazgeç
+                </ActionButton>
+                <ActionButton
+                  type="submit"
+                  onClick={submitForm}
+                  icon={CheckCircleIcon}
+                  tone="green"
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Kaydediliyor..."
+                    : editingNote
+                    ? "Notu Güncelle"
+                    : "Notu Kaydet"}
+                </ActionButton>
+              </div>
+            }
+          >
+            <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={submitForm}>
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Not Başlığı
+                </span>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Kategori
+                </span>
+                <input
+                  type="text"
+                  value={form.category}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, category: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Renk Teması
+                </span>
+                <select
+                  value={form.color}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, color: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                >
+                  {COLOR_OPTIONS.map((color) => (
+                    <option key={color} value={color}>
+                      {color.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Etiketler
+                </span>
+                <input
+                  type="text"
+                  value={form.tagsText}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, tagsText: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                  placeholder="Örn: toplantı, ürün, kampanya"
+                />
+              </label>
+
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Not İçeriği
+                </span>
+                <textarea
+                  rows="7"
+                  value={form.content}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, content: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-400 resize-none"
+                />
+              </label>
+
+              <label className="md:col-span-2 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={form.isPinned}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, isPinned: e.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Önemli not olarak sabitle
+              </label>
+            </form>
+          </ModalShell>
+        ) : null}
       </AnimatePresence>
     </div>
   );

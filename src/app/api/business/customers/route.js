@@ -3,130 +3,140 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
-    try {
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.businessId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+function toNum(v) {
+  if (v === null || v === undefined || v === "") return 0;
+  const n = parseFloat(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
 
-        const businessId = session.user.businessId;
-
-        // Fetch all related data
-        const [orders, leads, reviews] = await Promise.all([
-            prisma.order.findMany({ where: { businessId } }),
-            prisma.lead.findMany({ where: { businessId } }),
-            prisma.review.findMany({ where: { businessId } })
-        ]);
-
-        // Merge logic: Group by Email (primary) or Phone
-        const customersMap = new Map();
-
-        const getCustomerKey = (email, phone) => email?.toLowerCase() || phone || "anonymous";
-
-        // Process Orders
-        orders.forEach(order => {
-            const key = getCustomerKey(null, null); // Orders currently don't have email in schema, using name or orderId is tricky
-            // Since order schema only has customerName, we'll use name as temporary key if email/phone missing
-            const nameKey = order.customerName || "Bilinmeyen Müşteri";
-
-            if (!customersMap.has(nameKey)) {
-                customersMap.set(nameKey, {
-                    id: order.id,
-                    name: nameKey,
-                    email: "-",
-                    phone: "-",
-                    totalOrders: 0,
-                    totalSpent: 0,
-                    loyaltyPoints: 0,
-                    satisfaction: 0,
-                    reviewCount: 0,
-                    category: "Regular",
-                    customerCode: `CUST-${order.id.substring(0, 4).toUpperCase()}`,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameKey)}&background=random`,
-                    lastActivity: order.createdAt
-                });
-            }
-
-            const c = customersMap.get(nameKey);
-            c.totalOrders += 1;
-            c.totalSpent += order.total;
-            c.loyaltyPoints += Math.floor(order.total / 10);
-            if (order.createdAt > c.lastActivity) c.lastActivity = order.createdAt;
-        });
-
-        // Process Leads (Potential customers)
-        leads.forEach(lead => {
-            const key = lead.email || lead.name;
-            if (!customersMap.has(key)) {
-                customersMap.set(key, {
-                    id: lead.id,
-                    name: lead.name,
-                    email: lead.email || "-",
-                    phone: lead.phone || "-",
-                    totalOrders: 0,
-                    totalSpent: 0,
-                    loyaltyPoints: 0,
-                    satisfaction: 0,
-                    reviewCount: 0,
-                    category: "New",
-                    customerCode: `LEAD-${lead.id.substring(0, 4).toUpperCase()}`,
-                    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(lead.name)}&background=random`,
-                    lastActivity: lead.createdAt
-                });
-            } else {
-                const c = customersMap.get(key);
-                if (lead.email) c.email = lead.email;
-                if (lead.phone) c.phone = lead.phone;
-                if (lead.createdAt > c.lastActivity) c.lastActivity = lead.createdAt;
-            }
-        });
-
-        // Process Reviews
-        reviews.forEach(review => {
-            const key = review.reviewerEmail || review.reviewerName;
-            if (customersMap.has(key)) {
-                const c = customersMap.get(key);
-                c.satisfaction = ((c.satisfaction * c.reviewCount) + review.rating) / (c.reviewCount + 1);
-                c.reviewCount += 1;
-            }
-        });
-
-        const customersList = Array.from(customersMap.values()).map(c => {
-            // Logic for categorization
-            if (c.totalSpent > 5000 || c.totalOrders > 20) c.category = "VIP";
-            else if (c.totalOrders === 0) c.category = "New";
-            else c.category = "Regular";
-
-            c.satisfaction = c.satisfaction > 0 ? c.satisfaction.toFixed(1) : "5.0";
-
-            // Churn risk logic: if last activity > 30 days
-            const daysSinceLastActivity = (new Date() - new Date(c.lastActivity)) / (1000 * 60 * 60 * 24);
-            c.churnRisk = daysSinceLastActivity > 30 ? "high" : daysSinceLastActivity > 15 ? "medium" : "low";
-
-            return c;
-        });
-
-        // Stats
-        const stats = {
-            total: customersList.length,
-            active: customersList.filter(c => c.churnRisk !== "high").length,
-            vip: customersList.filter(c => c.category === "VIP").length,
-            newThisMonth: customersList.filter(c => {
-                const firstActivity = new Date(c.lastActivity);
-                const startOfMonth = new Date();
-                startOfMonth.setDate(1);
-                return firstActivity >= startOfMonth;
-            }).length,
-            totalRevenue: customersList.reduce((sum, c) => sum + c.totalSpent, 0),
-            avgSatisfaction: customersList.length > 0
-                ? (customersList.reduce((sum, c) => sum + parseFloat(c.satisfaction), 0) / customersList.length).toFixed(1)
-                : "5.0"
-        };
-
-        return NextResponse.json({ customers: customersList, stats });
-    } catch (error) {
-        console.error("Customers GET Error:", error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+export async function GET(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const businessId = session.user.businessId;
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status") || "active";
+    const customerClass = searchParams.get("class") || "all";
+    const q = (searchParams.get("q") || "").trim();
+
+    const where = { businessId };
+    if (status === "active") where.isActive = true;
+    else if (status === "inactive") where.isActive = false;
+    // status === "all" → isActive filtresi yok
+
+    if (customerClass && customerClass !== "all") {
+      where.customerClass = customerClass;
+    }
+
+    if (q.length >= 3) {
+      where.name = { contains: q };
+    }
+
+    const rows = await prisma.business_customer.findMany({
+      where,
+      orderBy: { name: "asc" },
+      take: 2000,
+    });
+
+    const customers = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      isActive: r.isActive,
+      customerClass: r.customerClass,
+      openBalance: Number(r.openBalance),
+      checkNoteBalance: Number(r.checkNoteBalance),
+      integrationLabel: r.integrationLabel,
+    }));
+
+    const totalAll = await prisma.business_customer.count({ where: { businessId } });
+
+    return NextResponse.json({
+      customers,
+      totalCount: totalAll,
+      filteredCount: customers.length,
+    });
+  } catch (e) {
+    console.error("Customers GET:", e);
+    const code = e?.code;
+    const msg = String(e?.message || "");
+    const missingTable =
+      code === "P2021" ||
+      (/business_customer/i.test(msg) && /doesn't exist|does not exist|Unknown table/i.test(msg));
+    let error = "Sunucu hatası";
+    if (missingTable) {
+      error =
+        "Müşteri tablosu veritabanında yok. Proje klasöründe çalıştırın: npx prisma migrate deploy (veya geliştirme için: npx prisma migrate dev)";
+    } else if (process.env.NODE_ENV === "development") {
+      error = msg.slice(0, 200) || error;
+    }
+    return NextResponse.json({ error }, { status: 500 });
+  }
+}
+
+export async function POST(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.businessId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const businessId = session.user.businessId;
+    const body = await request.json();
+
+    const created = await prisma.business_customer.create({
+      data: {
+        businessId,
+        name: (body.name || "Yeni müşteri").trim().slice(0, 500),
+        isActive: body.isActive !== false,
+        customerClass: (body.customerClass || "GENEL").slice(0, 64),
+        openBalance: toNum(body.openBalance),
+        checkNoteBalance: toNum(body.checkNoteBalance),
+        integrationLabel: body.integrationLabel?.slice(0, 64) || null,
+        imageUrl: body.imageUrl || null,
+        email: body.email || null,
+        mobilePhone: body.mobilePhone || null,
+        phone2: body.phone2 || null,
+        otherAccess: body.otherAccess || null,
+        authorizedPerson: body.authorizedPerson || null,
+        address: body.address || null,
+        shippingAddresses: body.shippingAddresses ?? undefined,
+        taxOffice: body.taxOffice || null,
+        taxId: body.taxId || null,
+        taxExempt: !!body.taxExempt,
+        bankInfo: body.bankInfo || null,
+        currency: (body.currency || "TRY").slice(0, 8),
+        riskLimit: toNum(body.riskLimit),
+        maturityDays:
+          body.maturityDays != null && body.maturityDays !== ""
+            ? parseInt(body.maturityDays, 10) || null
+            : null,
+        fixedDiscountPct:
+          body.fixedDiscountPct != null && body.fixedDiscountPct !== ""
+            ? toNum(body.fixedDiscountPct)
+            : null,
+        priceListMode: body.priceListMode || null,
+        openingBalance: toNum(body.openingBalance),
+        otherNotes: body.otherNotes || null,
+        branchesJson: body.branchesJson ?? undefined,
+      },
+    });
+
+    return NextResponse.json({ customer: created });
+  } catch (e) {
+    console.error("Customers POST:", e);
+    const msg = String(e?.message || "");
+    const missingTable =
+      e?.code === "P2021" || /business_customer/i.test(msg);
+    return NextResponse.json(
+      {
+        error: missingTable
+          ? "Önce veritabanı migration çalıştırın: npx prisma migrate dev"
+          : process.env.NODE_ENV === "development"
+            ? msg.slice(0, 200)
+            : "Kayıt başarısız",
+      },
+      { status: 500 }
+    );
+  }
 }

@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    Search, Filter, MessageSquare, Phone, MoreVertical,
-    CheckCircle2, Clock, AlertCircle, ArrowRight, ExternalLink,
-    Zap, Star, MapPin, Calendar, Loader2, ChevronDown, Users
+  Search,
+  MessageSquare,
+  Phone,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  ArrowRight,
+  Zap,
+  Star,
+  MapPin,
+  Calendar,
+  ChevronDown,
+  Users,
+  Briefcase,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -13,301 +26,572 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 const STATUS_CONFIG = {
-    NEW: { label: "YENİ", color: "bg-blue-100 text-blue-700", icon: Zap },
-    CONTACTED: { label: "İLETİŞİME GEÇİLDİ", color: "bg-amber-100 text-amber-700", icon: MessageSquare },
-    QUOTED: { label: "TEKLİF VERİLDİ", color: "bg-purple-100 text-purple-700", icon: Clock },
-    REPLIED: { label: "YANITLANDI", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
-    CLOSED: { label: "KAZANILDI", color: "bg-emerald-600 text-white", icon: Star },
-    LOST: { label: "KAYBEDİLDİ", color: "bg-slate-100 text-slate-500", icon: AlertCircle },
+  NEW: {
+    label: "Yeni",
+    pill: "border-blue-200 bg-blue-50 text-blue-700",
+    icon: Zap,
+  },
+  CONTACTED: {
+    label: "İletişime Geçildi",
+    pill: "border-amber-200 bg-amber-50 text-amber-700",
+    icon: MessageSquare,
+  },
+  QUOTED: {
+    label: "Teklif Verildi",
+    pill: "border-purple-200 bg-purple-50 text-purple-700",
+    icon: Clock,
+  },
+  REPLIED: {
+    label: "Yanıtlandı",
+    pill: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    icon: CheckCircle2,
+  },
+  CLOSED: {
+    label: "Kazanıldı",
+    pill: "border-emerald-200 bg-emerald-600 text-white",
+    icon: Star,
+  },
+  LOST: {
+    label: "Kaybedildi",
+    pill: "border-slate-200 bg-slate-100 text-slate-500",
+    icon: AlertCircle,
+  },
 };
 
+function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
+  const tones = {
+    blue: "from-blue-600 to-indigo-700 text-white",
+    emerald: "from-emerald-500 to-emerald-700 text-white",
+    amber: "from-amber-500 to-orange-600 text-white",
+    rose: "from-rose-500 to-pink-700 text-white",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+    >
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+            {title}
+          </p>
+          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
+          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+        </div>
+        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, subtitle, children, right }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
+        </div>
+        {right}
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
 export default function LeadsClient() {
-    const [leads, setLeads] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState("ALL");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedLead, setSelectedLead] = useState(null);
-    const [isUpdating, setIsUpdating] = useState(false);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-    useEffect(() => {
-        fetchLeads();
-    }, [filter]);
+  useEffect(() => {
+    fetchLeads();
+  }, [filter]);
 
-    const fetchLeads = async () => {
-        setLoading(true);
-        try {
-            const url = filter === "ALL" ? "/api/business/leads" : `/api/business/leads?status=${filter}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.success) {
-                setLeads(data.leads);
-            }
-        } catch (error) {
-            toast.error("Talepler yüklenirken bir hata oluştu.");
-        } finally {
-            setLoading(false);
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const url =
+        filter === "ALL"
+          ? "/api/business/leads"
+          : `/api/business/leads?status=${filter}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.success) {
+        setLeads(data.leads || []);
+        if (!selectedLead && data.leads?.length) {
+          setSelectedLead(data.leads[0]);
+        } else if (selectedLead) {
+          const freshSelected = (data.leads || []).find((l) => l.id === selectedLead.id);
+          setSelectedLead(freshSelected || data.leads?.[0] || null);
         }
-    };
+      }
+    } catch (error) {
+      toast.error("Talepler yüklenirken bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const updateStatus = async (leadId, newStatus) => {
-        setIsUpdating(true);
-        try {
-            const res = await fetch("/api/business/leads", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ leadId, status: newStatus }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                toast.success("Talep durumu güncellendi.");
-                setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
-                if (selectedLead?.id === leadId) setSelectedLead({ ...selectedLead, status: newStatus });
-            }
-        } catch (error) {
-            toast.error("Güncelleme başarısız.");
-        } finally {
-            setIsUpdating(false);
+  const updateStatus = async (leadId, newStatus) => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch("/api/business/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId, status: newStatus }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Talep durumu güncellendi.");
+        setLeads((prev) =>
+          prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)),
+        );
+        if (selectedLead?.id === leadId) {
+          setSelectedLead({ ...selectedLead, status: newStatus });
         }
-    };
+      }
+    } catch (error) {
+      toast.error("Güncelleme başarısız.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
-    const filteredLeads = leads.filter(l =>
-        l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        l.phone?.includes(searchTerm)
-    );
+  const filteredLeads = leads.filter((l) => {
+    const name = l.name?.toLowerCase?.() || "";
+    const message = l.message?.toLowerCase?.() || "";
+    const phone = l.phone || "";
+    const search = searchTerm.toLowerCase();
 
     return (
-        <div className="space-y-8 font-inter antialiased">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-black text-slate-950 italic uppercase tracking-tight">Talep Merkezi</h1>
-                    <p className="mt-2 text-slate-500 font-bold text-sm leading-relaxed">
-                        Gelen müşteri taleplerini yönetin, teklif verin ve kazanca dönüştürün.
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <div className="relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="İsim veya mesajda ara..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-200 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold text-sm w-full md:w-64"
-                        />
-                    </div>
-                    <select
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                        className="px-4 py-3 rounded-2xl bg-white border border-slate-200 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-black text-[10px] uppercase tracking-widest cursor-pointer"
-                    >
-                        <option value="ALL">Tüm Talepler</option>
-                        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                            <option key={key} value={key}>{cfg.label}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* Lead List */}
-                <div className="lg:col-span-5 space-y-4">
-                    {loading ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="h-32 rounded-[24px] bg-white animate-pulse border border-slate-100" />
-                        ))
-                    ) : filteredLeads.length === 0 ? (
-                        <div className="bg-white rounded-[32px] p-12 border border-dashed border-slate-200 text-center space-y-4">
-                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                                <Search className="w-8 h-8 text-slate-300" />
-                            </div>
-                            <h3 className="text-lg font-black text-slate-950 uppercase italic">Talep Bulunamadı</h3>
-                            <p className="text-sm text-slate-500 font-bold">Aradığınız kriterlere uygun sonuç yok.</p>
-                        </div>
-                    ) : (
-                        filteredLeads.map(lead => (
-                            <motion.div
-                                layout
-                                key={lead.id}
-                                onClick={() => setSelectedLead(lead)}
-                                className={`group p-5 rounded-[24px] border transition-all cursor-pointer relative overflow-hidden ${selectedLead?.id === lead.id
-                                        ? "bg-white border-blue-600 shadow-xl shadow-blue-500/10 ring-1 ring-blue-600"
-                                        : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-lg shadow-sm"
-                                    }`}
-                            >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${STATUS_CONFIG[lead.status]?.color}`}>
-                                                {STATUS_CONFIG[lead.status]?.label}
-                                            </span>
-                                            <span className="text-[10px] text-slate-400 font-bold">
-                                                {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true, locale: tr })}
-                                            </span>
-                                        </div>
-                                        <h4 className="text-base font-black text-slate-950 truncate">{lead.name}</h4>
-                                        <p className="mt-1 text-sm text-slate-500 font-medium line-clamp-1 leading-relaxed">
-                                            {lead.message}
-                                        </p>
-                                    </div>
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${selectedLead?.id === lead.id ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
-                                        }`}>
-                                        <ChevronDown className={`w-5 h-5 transition-transform ${selectedLead?.id === lead.id ? "rotate-90" : "-rotate-90"}`} />
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))
-                    )}
-                </div>
-
-                {/* Lead Detail View */}
-                <div className="lg:col-span-7 sticky top-8">
-                    <AnimatePresence mode="wait">
-                        {!selectedLead ? (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-slate-50 rounded-[40px] border border-dashed border-slate-200 p-20 flex flex-col items-center justify-center text-center space-y-6"
-                            >
-                                <div className="w-24 h-24 bg-white rounded-3xl shadow-sm flex items-center justify-center">
-                                    <ArrowRight className="w-10 h-10 text-slate-300 -rotate-45" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-xl font-black text-slate-950 uppercase italic tracking-tight">Detayları Gör</h3>
-                                    <p className="text-slate-500 font-bold max-w-xs mx-auto">Talebin detaylarını ve iletişim bilgilerini görmek için soldan bir kart seçin.</p>
-                                </div>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.98 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="bg-white rounded-[40px] border border-slate-100 shadow-2xl p-8 md:p-10 space-y-10"
-                            >
-                                {/* Detail Header */}
-                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center">
-                                                <Users className="w-7 h-7 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-2xl font-black text-slate-950">{selectedLead.name}</h2>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${STATUS_CONFIG[selectedLead.status]?.color}`}>
-                                                        {STATUS_CONFIG[selectedLead.status]?.label}
-                                                    </span>
-                                                    <div className="h-1 w-1 rounded-full bg-slate-300" />
-                                                    <span className="text-xs text-slate-400 font-bold">
-                                                        {new Date(selectedLead.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => window.open(`tel:${selectedLead.phone}`)}
-                                            className="p-4 rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 hover:bg-slate-100 transition-all group"
-                                        >
-                                            <Phone className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                const phone = selectedLead.phone?.replace(/[^0-9]/g, '');
-                                                window.open(`https://wa.me/90${phone}`, "_blank");
-                                                if (selectedLead.status === 'NEW') updateStatus(selectedLead.id, 'CONTACTED');
-                                            }}
-                                            className="px-6 py-4 rounded-2xl bg-[#25D366] text-white font-black uppercase tracking-widest text-xs flex items-center gap-2 hover:bg-[#20bd5aa0] transition-all shadow-lg shadow-[#25D366]/20 active:scale-95"
-                                        >
-                                            <MessageSquare className="w-4 h-4 fill-current" />
-                                            WhatsApp
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Content Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Mesaj</label>
-                                            <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 text-slate-700 font-semibold leading-relaxed">
-                                                {selectedLead.message}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Telefon</label>
-                                                <p className="font-bold text-slate-900">{selectedLead.phone || "Belirtilmedi"}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">E-posta</label>
-                                                <p className="font-bold text-slate-900 truncate">{selectedLead.email || "Belirtilmedi"}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        <div className="p-6 rounded-[32px] bg-blue-50 border border-blue-100 space-y-4">
-                                            <div className="flex items-center gap-2">
-                                                <Zap className="w-4 h-4 text-blue-600 fill-blue-600" />
-                                                <h4 className="text-xs font-black text-blue-900 uppercase tracking-widest">Hızlı İşlemler</h4>
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-2">
-                                                {[
-                                                    { id: 'CONTACTED', label: 'İletişime Geçildi' },
-                                                    { id: 'QUOTED', label: 'Teklif Verildi' },
-                                                    { id: 'CLOSED', label: 'Kazandım' },
-                                                    { id: 'LOST', label: 'Kaybettim' }
-                                                ].map(action => (
-                                                    <button
-                                                        key={action.id}
-                                                        disabled={selectedLead.status === action.id || isUpdating}
-                                                        onClick={() => updateStatus(selectedLead.id, action.id)}
-                                                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold transition-all ${selectedLead.status === action.id
-                                                                ? "bg-blue-600 text-white"
-                                                                : "bg-white text-slate-600 hover:bg-slate-100"
-                                                            } disabled:opacity-50`}
-                                                    >
-                                                        {action.label}
-                                                        {selectedLead.status === action.id && <CheckCircle2 className="w-4 h-4" />}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-white">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
-                                                <MapPin className="w-5 h-5 text-slate-400" />
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bölge</p>
-                                                <p className="text-xs font-bold text-slate-900">
-                                                    {selectedLead.district ? `${selectedLead.district}, ${selectedLead.city}` : selectedLead.city || "Konum Belirtilmedi"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Footer Note */}
-                                <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-slate-400">
-                                        <Calendar className="w-4 h-4" />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Oluşturulma: {new Date(selectedLead.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
-                                    </div>
-                                    <Link href="/business/dashboard" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1">
-                                        Dashboard'a Dön <ArrowRight className="w-3 h-3" />
-                                    </Link>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </div>
-        </div>
+      name.includes(search) || message.includes(search) || phone.includes(searchTerm)
     );
+  });
+
+  const stats = useMemo(() => {
+    return {
+      total: leads.length,
+      fresh: leads.filter((l) => l.status === "NEW").length,
+      contacted: leads.filter((l) =>
+        ["CONTACTED", "QUOTED", "REPLIED"].includes(l.status),
+      ).length,
+      won: leads.filter((l) => l.status === "CLOSED").length,
+    };
+  }, [leads]);
+
+  const selectedStatus = selectedLead ? STATUS_CONFIG[selectedLead.status] : null;
+
+  return (
+    <div className="min-h-[calc(100vh-8rem)] px-4 pb-16 pt-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_14px_35px_rgba(15,23,42,0.06)]">
+          <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-6 py-6 text-white">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+              <div className="max-w-3xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
+                  <Briefcase className="h-4 w-4" />
+                  Müşteri Takip Sistemi
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  Talep Merkezi
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Gelen müşteri taleplerini görüntüleyin, iletişim kurun, teklif verin
+                  ve süreci kazanca dönüştürün.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:w-[380px]">
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
+                    Aktif Filtre
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {filter === "ALL" ? "Tüm Talepler" : STATUS_CONFIG[filter]?.label}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
+                    Görünen Sonuç
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {filteredLeads.length} kayıt
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Toplam Talep"
+              value={stats.total}
+              sub="Tüm müşteri istekleri"
+              icon={Users}
+              tone="blue"
+            />
+            <StatCard
+              title="Yeni"
+              value={stats.fresh}
+              sub="Henüz işlenmemiş talepler"
+              icon={Zap}
+              tone="amber"
+            />
+            <StatCard
+              title="İşlemde"
+              value={stats.contacted}
+              sub="İletişim veya teklif aşamasında"
+              icon={Target}
+              tone="rose"
+            />
+            <StatCard
+              title="Kazanılan"
+              value={stats.won}
+              sub="Satışa dönüşen kayıtlar"
+              icon={TrendingUp}
+              tone="emerald"
+            />
+          </div>
+        </section>
+
+        <SectionCard
+          title="Arama ve filtreleme"
+          subtitle="İsim, mesaj veya telefon üzerinden talep bulun"
+        >
+          <div className="flex flex-col gap-3 lg:flex-row">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="İsim, mesaj veya telefon ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/60"
+              />
+            </div>
+
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="h-12 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/60"
+            >
+              <option value="ALL">Tüm Talepler</option>
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>
+                  {cfg.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </SectionCard>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <SectionCard
+              title="Talep listesi"
+              subtitle="Soldan bir kayıt seçerek detaylarını görüntüleyin"
+            >
+              <div className="space-y-4">
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-28 animate-pulse rounded-[24px] border border-slate-200 bg-slate-100"
+                    />
+                  ))
+                ) : filteredLeads.length === 0 ? (
+                  <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
+                      <Search className="h-7 w-7 text-slate-300" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Talep bulunamadı</h3>
+                    <p className="mt-2 text-sm font-medium text-slate-500">
+                      Aradığınız kriterlere uygun sonuç yok.
+                    </p>
+                  </div>
+                ) : (
+                  filteredLeads.map((lead) => {
+                    const status = STATUS_CONFIG[lead.status];
+                    return (
+                      <motion.button
+                        layout
+                        key={lead.id}
+                        type="button"
+                        onClick={() => setSelectedLead(lead)}
+                        className={`group w-full rounded-[24px] border p-5 text-left transition ${
+                          selectedLead?.id === lead.id
+                            ? "border-blue-300 bg-blue-50/60 shadow-sm"
+                            : "border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              <span
+                                className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-bold ${status?.pill}`}
+                              >
+                                {status?.label}
+                              </span>
+                              <span className="text-[11px] font-semibold text-slate-400">
+                                {formatDistanceToNow(new Date(lead.createdAt), {
+                                  addSuffix: true,
+                                  locale: tr,
+                                })}
+                              </span>
+                            </div>
+
+                            <h4 className="truncate text-base font-bold text-slate-900">
+                              {lead.name}
+                            </h4>
+                            <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">
+                              {lead.message}
+                            </p>
+                          </div>
+
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+                              selectedLead?.id === lead.id
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-slate-400 group-hover:bg-slate-100"
+                            }`}
+                          >
+                            <ChevronDown
+                              className={`h-5 w-5 transition-transform ${
+                                selectedLead?.id === lead.id ? "rotate-90" : "-rotate-90"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </motion.button>
+                    );
+                  })
+                )}
+              </div>
+            </SectionCard>
+          </div>
+
+          <div className="lg:col-span-7">
+            <AnimatePresence mode="wait">
+              {!selectedLead ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <SectionCard title="Talep detayı">
+                    <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                      <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-[24px] bg-white shadow-sm">
+                        <ArrowRight className="h-8 w-8 -rotate-45 text-slate-300" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-900">Detayları Gör</h3>
+                      <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-slate-500">
+                        Talebin detaylarını ve iletişim bilgilerini görmek için soldan bir
+                        kart seçin.
+                      </p>
+                    </div>
+                  </SectionCard>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={selectedLead.id}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="space-y-6"
+                >
+                  <SectionCard
+                    title="Talep detayı"
+                    subtitle="Seçilen müşteri kaydının ayrıntıları"
+                    right={
+                      <span
+                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${selectedStatus?.pill}`}
+                      >
+                        {selectedStatus?.label}
+                      </span>
+                    }
+                  >
+                    <div className="space-y-8">
+                      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                            <Users className="h-7 w-7" />
+                          </div>
+                          <div>
+                            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                              {selectedLead.name}
+                            </h2>
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                              <span>
+                                {new Date(selectedLead.createdAt).toLocaleDateString("tr-TR", {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                })}
+                              </span>
+                              <span className="h-1 w-1 rounded-full bg-slate-300" />
+                              <span>
+                                {formatDistanceToNow(new Date(selectedLead.createdAt), {
+                                  addSuffix: true,
+                                  locale: tr,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => window.open(`tel:${selectedLead.phone}`)}
+                            className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-800 transition hover:bg-slate-100"
+                          >
+                            <Phone className="h-5 w-5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const phone = selectedLead.phone?.replace(/[^0-9]/g, "");
+                              window.open(`https://wa.me/90${phone}`, "_blank");
+                              if (selectedLead.status === "NEW") {
+                                updateStatus(selectedLead.id, "CONTACTED");
+                              }
+                            }}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-[#25D366] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90"
+                          >
+                            <MessageSquare className="h-4 w-4 fill-current" />
+                            WhatsApp
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                              Mesaj
+                            </label>
+                            <div className="mt-2 rounded-[24px] border border-slate-200 bg-slate-50 p-5 text-sm leading-7 text-slate-700">
+                              {selectedLead.message}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                Telefon
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-slate-800">
+                                {selectedLead.phone || "Belirtilmedi"}
+                              </p>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                E-posta
+                              </p>
+                              <p className="mt-2 truncate text-sm font-semibold text-slate-800">
+                                {selectedLead.email || "Belirtilmedi"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-6">
+                          <div className="rounded-[24px] border border-blue-100 bg-blue-50 p-5">
+                            <div className="mb-4 flex items-center gap-2">
+                              <Zap className="h-4 w-4 text-blue-600" />
+                              <h4 className="text-xs font-bold uppercase tracking-[0.16em] text-blue-900">
+                                Hızlı İşlemler
+                              </h4>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2">
+                              {[
+                                { id: "CONTACTED", label: "İletişime Geçildi" },
+                                { id: "QUOTED", label: "Teklif Verildi" },
+                                { id: "CLOSED", label: "Kazandım" },
+                                { id: "LOST", label: "Kaybettim" },
+                              ].map((action) => (
+                                <button
+                                  key={action.id}
+                                  disabled={
+                                    selectedLead.status === action.id || isUpdating
+                                  }
+                                  onClick={() =>
+                                    updateStatus(selectedLead.id, action.id)
+                                  }
+                                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                                    selectedLead.status === action.id
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-white text-slate-700 hover:bg-slate-100"
+                                  } disabled:opacity-50`}
+                                >
+                                  {action.label}
+                                  {selectedLead.status === action.id && (
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                                <MapPin className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                                  Bölge
+                                </p>
+                                <p className="mt-2 text-sm font-semibold text-slate-800">
+                                  {selectedLead.district
+                                    ? `${selectedLead.district}, ${selectedLead.city}`
+                                    : selectedLead.city || "Konum belirtilmedi"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-4 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                          <Calendar className="h-4 w-4" />
+                          Oluşturulma:
+                          {new Date(selectedLead.createdAt).toLocaleTimeString("tr-TR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+
+                        <Link
+                          href="/business/dashboard"
+                          className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-blue-600 hover:underline"
+                        >
+                          Dashboard'a Dön
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    </div>
+                  </SectionCard>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

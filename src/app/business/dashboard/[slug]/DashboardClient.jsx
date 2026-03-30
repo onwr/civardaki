@@ -3,413 +3,753 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-    DollarSign,
-    TrendingUp,
-    Users,
-    Package,
-    ShoppingCart,
-    MessageSquare,
-    Star,
-    BarChart3,
-    AlertTriangle,
-    ChevronRight,
-    ShieldCheck,
-    Banknote,
-    Target,
-    Eye,
-    Zap,
-    GripVertical,
-    EyeOff,
-    CalendarDays,
-    Settings,
+  ShoppingCart,
+  MessageSquare,
+  BarChart3,
+  ShieldCheck,
+  Banknote,
+  CalendarDays,
+  Settings,
+  Gavel,
+  Tag,
+  Megaphone,
+  ExternalLink,
+  ChevronDown,
+  Store,
+  ArrowRight,
+  Sparkles,
+  Wallet,
+  TrendingUp,
+  BellRing,
+  Clock3,
+  ReceiptText,
+  MapPin,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import { useSocket } from "@/components/providers/SocketProvider";
-import DashboardReferralCard from "@/components/dashboard/DashboardReferralCard";
 import DashboardSubscriptionWidget from "@/components/dashboard/DashboardSubscriptionWidget";
 import OnboardingCompletion from "@/components/business/OnboardingCompletion";
 import BroadcastSlot from "@/components/broadcast/BroadcastSlot";
-import { useDashboardPreferences } from "@/hooks/useDashboardPreferences";
+
+const MONTHS_TR = [
+  "Ocak",
+  "Şubat",
+  "Mart",
+  "Nisan",
+  "Mayıs",
+  "Haziran",
+  "Temmuz",
+  "Ağustos",
+  "Eylül",
+  "Ekim",
+  "Kasım",
+  "Aralık",
+];
+
+const DAYS_TR = [
+  "Pazar",
+  "Pazartesi",
+  "Salı",
+  "Çarşamba",
+  "Perşembe",
+  "Cuma",
+  "Cumartesi",
+];
 
 const formatMoney = (value) => {
-    if (value == null || isNaN(value)) return "0₺";
-    return new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 }).format(value);
+  if (value == null || Number.isNaN(value)) return "₺0,00";
+  return new Intl.NumberFormat("tr-TR", {
+    style: "currency",
+    currency: "TRY",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 };
 
-function SimpleDashboardCard({ card }) {
-    return (
-        <Link href={card.href} className={`group block p-6 rounded-2xl border ${card.border} ${card.bg} hover:shadow-lg transition-all duration-200`}>
-            <div className="flex items-start justify-between">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${card.bg} ${card.color} border ${card.border}`}>
-                    <card.icon className="w-6 h-6" />
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
-            </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">{card.title}</p>
-            <p className="text-2xl font-black text-slate-900 mt-1 tracking-tight">{card.value}</p>
-            {card.sub && <p className="text-sm text-slate-500 mt-1">{card.sub}</p>}
-        </Link>
-    );
+function SurfaceCard({ children, className = "" }) {
+  return (
+    <div
+      className={`rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-sm shadow-[0_10px_35px_rgba(15,23,42,0.06)] ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
-function SortableDashboardCard({ card, isHidden, onToggle }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: card.id });
-    const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
-    return (
-        <div ref={setNodeRef} style={style} className={`p-6 rounded-2xl border ${card.border} ${card.bg} ${isHidden ? "opacity-60" : ""} hover:shadow-lg transition-all`}>
-            <div className="flex items-start justify-between gap-2">
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1.5 rounded-lg text-slate-400 hover:bg-slate-200/50 touch-none shrink-0">
-                    <GripVertical className="w-5 h-5" />
-                </div>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${card.bg} ${card.color} border ${card.border}`}>
-                    <card.icon className="w-6 h-6" />
-                </div>
-                <button
-                    type="button"
-                    onClick={() => onToggle(card.id, !isHidden)}
-                    className={`p-2 rounded-lg shrink-0 ${isHidden ? "bg-slate-200 text-slate-500" : "bg-emerald-100 text-emerald-600"}`}
-                    title={isHidden ? "Göster" : "Gizle"}
-                >
-                    {isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-            </div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-4">{card.title}</p>
-            <p className="text-2xl font-black text-slate-900 mt-1 tracking-tight">{card.value}</p>
-            {card.sub && <p className="text-sm text-slate-500 mt-1">{card.sub}</p>}
+function StatusPill({ label, tone = "default" }) {
+  const tones = {
+    default: "bg-white/10 text-white border-white/15",
+    success: "bg-emerald-500/15 text-emerald-100 border-emerald-400/20",
+    danger: "bg-rose-500/15 text-rose-100 border-rose-400/20",
+    warning: "bg-amber-500/15 text-amber-100 border-amber-400/20",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${tones[tone]}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MetricCard({ title, value, subtitle, icon: Icon, tone = "blue" }) {
+  const toneStyles = {
+    blue: "from-blue-600 via-indigo-600 to-slate-900",
+    emerald: "from-emerald-500 via-teal-600 to-slate-900",
+    rose: "from-rose-500 via-red-600 to-slate-900",
+    cyan: "from-cyan-500 via-sky-600 to-slate-900",
+  };
+
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${toneStyles[tone]} p-5 text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)]`}
+    >
+      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
+      <div className="absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-white/5 blur-2xl" />
+
+      <div className="relative flex h-full flex-col justify-between gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">
+              {title}
+            </p>
+            <p className="mt-3 text-2xl font-bold tracking-tight tabular-nums">
+              {value}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <Icon className="h-5 w-5 text-white" />
+          </div>
         </div>
-    );
+
+        {subtitle ? (
+          <p className="text-xs text-white/75">{subtitle}</p>
+        ) : (
+          <div />
+        )}
+      </div>
+    </div>
+  );
 }
 
-function DashboardCardsGrid({ allOrderedCards, statCards, customizeMode, preferences, onDragEnd, sensors, toggleVisibility }) {
-    const hiddenSet = new Set(preferences.hidden || []);
-    if (!customizeMode) {
-        return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {statCards.map((card) => (
-                    <SimpleDashboardCard key={card.id} card={card} />
-                ))}
-            </div>
-        );
-    }
-    return (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-            <SortableContext items={allOrderedCards.map((c) => c.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {allOrderedCards.map((card) => (
-                        <SortableDashboardCard
-                            key={card.id}
-                            card={card}
-                            isHidden={hiddenSet.has(card.id)}
-                            onToggle={(id, hide) => { toggleVisibility(id, hide); toast.success(hide ? "Kart gizlendi." : "Kart gösterildi."); }}
-                        />
-                    ))}
-                </div>
-            </SortableContext>
-        </DndContext>
-    );
+function MiniStat({ label, value, icon: Icon }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          {label}
+        </p>
+        <Icon className="h-4 w-4 text-slate-400" />
+      </div>
+      <p className="text-lg font-bold text-slate-900 tabular-nums">{value}</p>
+    </div>
+  );
 }
 
-export default function DashboardClient({ slug }) {
-    const { data: session, status } = useSession();
-    const { socket, isConnected } = useSocket();
-    const [loading, setLoading] = useState(true);
-    const [data, setData] = useState(null);
-    const [refreshKey, setRefreshKey] = useState(0);
+function QuickLinkCard({ href, title, desc, icon: Icon, iconClassName }) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-[24px] border border-slate-200/80 bg-white/90 p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_34px_rgba(15,23,42,0.10)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div
+          className={`rounded-2xl p-3 ${iconClassName || "bg-slate-100 text-slate-700"}`}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+      </div>
 
-    useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                const res = await fetch("/api/business/dashboard-summary", { cache: "no-store" });
-                if (cancelled) return;
-                if (res.ok) {
-                    const json = await res.json();
-                    setData(json);
-                }
-            } catch (err) {
-                console.error("Dashboard fetch error:", err);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => { cancelled = true; };
-    }, [refreshKey]);
+      <div className="mt-4">
+        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{desc}</p>
+      </div>
+    </Link>
+  );
+}
 
-    useEffect(() => {
-        if (!socket || !isConnected) return;
-        const onNewOrder = () => setRefreshKey((k) => k + 1);
-        socket.on("new_order", onNewOrder);
-        return () => socket.off("new_order", onNewOrder);
-    }, [socket, isConnected]);
+function hasBusinessMapCoords(business) {
+  const lat = business?.latitude;
+  const lng = business?.longitude;
+  return (
+    typeof lat === "number" &&
+    typeof lng === "number" &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng)
+  );
+}
 
-    useEffect(() => {
-        const onFocus = () => setRefreshKey((k) => k + 1);
-        window.addEventListener("focus", onFocus);
-        return () => window.removeEventListener("focus", onFocus);
-    }, []);
+function businessMapEmbedSrc(lat, lng) {
+  const q = `${lat},${lng}`;
+  return `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=16&hl=tr&output=embed`;
+}
 
-    const searchParams = useSearchParams();
-    const { preferences, updateOrder, toggleVisibility } = useDashboardPreferences();
-    const [customizeMode, setCustomizeMode] = useState(() => searchParams.get("customize") === "1");
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
+function SidebarListCard({
+  title,
+  tone = "green",
+  icon: Icon,
+  emptyText,
+  items = [],
+}) {
+  const headTone = {
+    green: "from-emerald-600 to-emerald-500",
+    blue: "from-blue-600 to-indigo-600",
+    red: "from-rose-600 to-red-600",
+  };
 
-    useEffect(() => {
-        setCustomizeMode(searchParams.get("customize") === "1");
-    }, [searchParams]);
+  return (
+    <SurfaceCard className="overflow-hidden">
+      <div className={`bg-gradient-to-r ${headTone[tone]} px-4 py-3 text-white`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 opacity-90" />
+            <span className="text-sm font-bold">{title}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 opacity-70" />
+        </div>
+      </div>
 
-    const business = data?.business;
-    const m = data?.metrics;
+      <div className="p-4">
+        {items.length === 0 ? (
+          <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
+            {emptyText}
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((row) => (
+              <li
+                key={row.id}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-3"
+              >
+                <span className="truncate text-sm font-medium text-slate-700">
+                  {row.title}
+                </span>
+                <span className="shrink-0 text-sm font-bold text-slate-900 tabular-nums">
+                  {formatMoney(row.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </SurfaceCard>
+  );
+}
 
-    if (status === "loading" || loading) {
-        return (
-            <div className="space-y-10 animate-pulse">
-                <div className="h-48 bg-slate-200 rounded-[2.5rem]" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                        <div key={i} className="h-36 bg-slate-100 rounded-2xl" />
-                    ))}
-                </div>
-            </div>
-        );
-    }
+function DashboardOverview({ business, m, isConnected }) {
+  const now = new Date();
+  const title = `${now.getDate()} ${MONTHS_TR[now.getMonth()]} ${now.getFullYear()} ${DAYS_TR[now.getDay()]}`;
+  const monthLabel = MONTHS_TR[now.getMonth()];
+  const usd =
+    m?.fxTryPerUsd != null ? Number(m.fxTryPerUsd).toFixed(2) : "—";
+  const eur =
+    m?.fxTryPerEur != null ? Number(m.fxTryPerEur).toFixed(2) : "—";
 
-    if (!data || !business) {
-        return (
-            <div className="rounded-2xl bg-slate-100 border border-slate-200 p-12 text-center">
-                <p className="text-slate-600 font-semibold">Panel verisi yüklenemedi.</p>
-            </div>
-        );
-    }
+  return (
+    <div className="space-y-6 pb-8">
+      <section className="relative overflow-hidden rounded-[32px] border border-slate-800 bg-slate-950 text-white shadow-[0_24px_60px_rgba(2,6,23,0.35)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.25),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_30%)]" />
+        <div className="absolute -right-24 top-0 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
 
-    const statCardsRaw = [
-        { id: "revenue", title: "Günlük Ciro", value: formatMoney(m?.revenueToday), sub: `${m?.orderCountToday ?? 0} sipariş`, icon: DollarSign, href: "/business/orders", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-        { id: "expense", title: "Günlük Masraf", value: formatMoney(m?.expenseToday), sub: "Aylık: " + formatMoney(m?.expenseMonth), icon: Banknote, href: "/business/cash/expenses", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100" },
-        { id: "employees", title: "Çalışan Sayısı", value: m?.employeeCount ?? 0, sub: "Aktif personel", icon: Users, href: "/business/employees", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-        { id: "products", title: "Ürün / Stok", value: m?.productCount ?? 0, sub: `${m?.categoryCount ?? 0} kategori`, icon: Package, href: "/business/products", color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
-        { id: "orders", title: "Sipariş (Bu Ay)", value: m?.orderCountMonth ?? 0, sub: formatMoney(m?.revenueMonth) + " ciro", icon: ShoppingCart, href: "/business/orders", color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-100" },
-        { id: "leads", title: "Müşteri Talepleri", value: m?.leadCountNew ?? 0, sub: `Bugün yeni +${m?.leadCountNewToday ?? 0} · 30 günde ${m?.leadCount30Days ?? 0}`, icon: MessageSquare, href: "/business/leads", color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-100" },
-        { id: "reviews", title: "Değerlendirmeler", value: m?.reviewCount ?? 0, sub: "Onaylı yorum", icon: Star, href: "/business/reviews", color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100" },
-        { id: "views", title: "Profil Görünümü", value: m?.views30Days ?? 0, sub: "Son 30 gün", icon: Eye, href: "/business/analytics", color: "text-slate-600", bg: "bg-slate-100", border: "border-slate-200" },
-        { id: "conversion", title: "Dönüşüm Oranı", value: `%${m?.conversionRate ?? 0}`, sub: "Ziyaret → Talep", icon: Target, href: "/business/analytics", color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-100" },
-        { id: "reservations", title: "Yeni Randevu Talebi", value: m?.pendingReservationCount ?? 0, sub: `Bugün +${m?.newReservationCountToday ?? 0}`, icon: CalendarDays, href: "/business/reservations", color: "text-fuchsia-600", bg: "bg-fuchsia-50", border: "border-fuchsia-100" },
-    ];
-    const cardsById = Object.fromEntries(statCardsRaw.map((c) => [c.id, c]));
-    const orderedIds = Array.isArray(preferences?.order)
-        ? preferences.order
-              .slice()
-              .sort((a, b) => (a?.index ?? 0) - (b?.index ?? 0))
-              .map((o) => o?.id)
-              .filter(Boolean)
-        : [];
-    const allOrderedCards = orderedIds.map((id) => cardsById[id]).filter(Boolean);
-    const statCards = allOrderedCards.filter((c) => !(preferences.hidden || []).includes(c.id));
-
-    const handleDashboardDragEnd = (event) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        const ids = allOrderedCards.map((c) => c.id);
-        const oldIndex = ids.indexOf(active.id);
-        const newIndex = ids.indexOf(over.id);
-        if (oldIndex === -1 || newIndex === -1) return;
-        const newOrder = arrayMove(ids, oldIndex, newIndex).map((id, index) => ({ id, index }));
-        updateOrder(newOrder);
-        toast.success("Kart sırası güncellendi.");
-    };
-
-    return (
-        <div className="space-y-12 pb-20 font-inter">
-            <BroadcastSlot layout="BANNER" audience="BUSINESS" />
-            {/* Tamamlama & Uyarılar */}
-            {business.completion < 100 && (
-                <OnboardingCompletion
-                    score={business.completion}
-                    pendingTasks={business.missingSteps || []}
+        <div className="relative p-6 md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <StatusPill label="İşletme Kontrol Merkezi" />
+                <StatusPill
+                  label={isConnected ? "Canlı senkron aktif" : "Canlı bağlantı yok"}
+                  tone={isConnected ? "success" : "warning"}
                 />
-            )}
+              </div>
 
-            {(m?.leadCountNew ?? 0) > 0 && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
-                            <MessageSquare className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-indigo-900">{m.leadCountNew} yeni hizmet talebi var</h3>
-                            <p className="text-sm text-indigo-700">Yeni gelen talepleri inceleyip hızlıca teklif verin.</p>
-                        </div>
-                    </div>
-                    <Link
-                        href="/business/leads"
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors"
-                    >
-                        Taleplere Git
-                    </Link>
-                </div>
-            )}
+              <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+                {title}
+              </h1>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+                Günlük operasyon, finansal özet ve işletme sağlığını tek ekranda
+                izleyin. Kritik veriler önceliklendirilmiş şekilde sunulur.
+              </p>
 
-            {m?.missedLeadCount > 0 && (
-                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600">
-                            <AlertTriangle className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-rose-900">{m.missedLeadCount} talep yanıt bekliyor</h3>
-                            <p className="text-sm text-rose-700">30 dakikayı aşan yeni talepleri yanıtlayın.</p>
-                        </div>
-                    </div>
-                    <Link
-                        href="/business/leads"
-                        className="px-6 py-3 bg-rose-600 text-white rounded-xl font-semibold text-sm hover:bg-rose-700 transition-colors"
-                    >
-                        Taleplere Git
-                    </Link>
-                </div>
-            )}
+              <div className="mt-5 flex flex-wrap gap-2">
+                <StatusPill label={`USD/TL ${usd}`} />
+                <StatusPill label={`EUR/TL ${eur}`} />
+              </div>
 
-            {(m?.pendingReservationCount ?? 0) > 0 && (
-                <div className="bg-fuchsia-50 border border-fuchsia-200 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-fuchsia-100 rounded-xl flex items-center justify-center text-fuchsia-600">
-                            <CalendarDays className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-fuchsia-900">{m.pendingReservationCount} yeni randevu talebi var</h3>
-                            <p className="text-sm text-fuchsia-700">Yeni gelen rezervasyon taleplerini onaylayın veya güncelleyin.</p>
-                        </div>
-                    </div>
-                    <Link
-                        href="/business/reservations"
-                        className="px-6 py-3 bg-fuchsia-600 text-white rounded-xl font-semibold text-sm hover:bg-fuchsia-700 transition-colors"
-                    >
-                        Rezervasyonlara Git
-                    </Link>
-                </div>
-            )}
-
-            {/* Hero: İşletme adı + Profil & Abonelik */}
-            <section className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                    <div className="flex items-center gap-5 min-w-0">
-                        {business.logoUrl ? (
-                            <img
-                                src={business.logoUrl}
-                                alt={business.name}
-                                className="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover border border-slate-200 shrink-0 bg-slate-50"
-                            />
-                        ) : (
-                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                                <BarChart3 className="w-8 h-8 md:w-10 md:h-10" />
-                            </div>
+              <div className="mt-6 w-full max-w-2xl">
+                <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-300/90" />
+                  İşletme konumu
+                </p>
+                {hasBusinessMapCoords(business) ? (
+                  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                    <div className="aspect-[16/9] min-h-[200px] w-full sm:min-h-[220px]">
+                      <iframe
+                        title="İşletme konumu haritası"
+                        className="h-full w-full border-0"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={businessMapEmbedSrc(
+                          business.latitude,
+                          business.longitude,
                         )}
-                        <div className="min-w-0">
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight truncate">
-                                {business.name}
-                            </h1>
-                            <p className="text-slate-500 text-sm font-medium mt-0.5">Panel özeti · Tüm parametreler</p>
-                        </div>
+                      />
                     </div>
-                    <div className="flex flex-wrap items-stretch gap-4">
-                        <Link
-                            href="/business/onboarding"
-                            className="bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-100 px-5 py-4 flex items-center gap-4 transition-colors min-w-[140px]"
-                        >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${business.completion === 100 ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"}`}>
-                                <ShieldCheck className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profil</p>
-                                <p className="text-lg font-black text-slate-900">%{business.completion ?? 0}</p>
-                            </div>
-                        </Link>
-                        <div className="w-full sm:w-auto sm:min-w-[240px]">
-                            <DashboardSubscriptionWidget subscription={business.subscription} />
-                        </div>
+                    <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                      İşaretli konum
                     </div>
-                </div>
-            </section>
+                  </div>
+                ) : (
+                  <Link
+                    href="/business/onboarding?step=2"
+                    className="flex min-h-[200px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-slate-950/40 px-6 py-10 text-center transition hover:border-emerald-400/35 hover:bg-slate-900/50"
+                  >
+                    <MapPin className="h-10 w-10 text-slate-500" />
+                    <span className="text-base font-semibold text-slate-200">
+                      Konum belirleyin
+                    </span>
+                    <span className="max-w-sm text-xs leading-relaxed text-slate-400">
+                      Haritada işletmenizi göstermek için onboarding veya profil
+                      üzerinden konum bilgisini ekleyin.
+                    </span>
+                  </Link>
+                )}
+              </div>
+            </div>
 
-            {/* Özet Kartlar */}
-            <section>
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-bold text-slate-700 flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-[#004aad]" />
-                        İşletme Özeti
-                    </h2>
-                    <button
-                        type="button"
-                        onClick={() => setCustomizeMode((v) => !v)}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${customizeMode ? "bg-[#004aad] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                    >
-                        {customizeMode ? "Tamamla" : "Özelleştir"}
-                    </button>
-                </div>
-                <DashboardCardsGrid
-                    allOrderedCards={allOrderedCards}
-                    statCards={statCards}
-                    customizeMode={customizeMode}
-                    preferences={preferences}
-                    onDragEnd={handleDashboardDragEnd}
-                    sensors={sensors}
-                    toggleVisibility={toggleVisibility}
-                />
-            </section>
+            <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-[380px] lg:grid-cols-1">
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  {business.logoUrl ? (
+                    <img
+                      src={business.logoUrl}
+                      alt={business.name}
+                      className="h-14 w-14 rounded-2xl border border-white/10 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
+                      <BarChart3 className="h-6 w-6 text-white/80" />
+                    </div>
+                  )}
 
-            {/* Referans */}
-            {(m?.referralStats?.totalInvited > 0 || business.referralCode) && (
-                <DashboardReferralCard
-                    businessInfo={business}
-                    referralStats={m.referralStats}
-                />
-            )}
-
-            {/* Hızlı Erişim */}
-            <section className="bg-white rounded-2xl border border-slate-100 p-8 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-700 mb-6">Hızlı Erişim</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Link href="/business/leads" className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <MessageSquare className="w-5 h-5 text-indigo-500" />
-                        <span className="font-semibold text-slate-800">Talepler</span>
-                    </Link>
-                    <Link href="/business/orders" className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <ShoppingCart className="w-5 h-5 text-cyan-500" />
-                        <span className="font-semibold text-slate-800">Siparişler</span>
-                    </Link>
-                    <Link href="/business/products" className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <Package className="w-5 h-5 text-violet-500" />
-                        <span className="font-semibold text-slate-800">Ürünler</span>
-                    </Link>
-                    <Link href="/business/analytics" className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <TrendingUp className="w-5 h-5 text-teal-500" />
-                        <span className="font-semibold text-slate-800">Analitik</span>
-                    </Link>
-                    <Link href="/business/settings/menu-customization" className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <Settings className="w-5 h-5 text-blue-500" />
-                        <span className="font-semibold text-slate-800">Menü Özelleştirme</span>
-                    </Link>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-bold">{business.name}</h2>
+                    <p className="text-xs text-slate-300">
+                      Profil, üyelik ve işletme görünürlüğü
+                    </p>
+                  </div>
                 </div>
-            </section>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href="/business/onboarding"
+                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                    Profil %{business.completion ?? 0}
+                  </Link>
+
+                  <div className="min-w-[180px] flex-1">
+                    <DashboardSubscriptionWidget subscription={business.subscription} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+                <div className="mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-cyan-300" />
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
+                    Hızlı Durum
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+                      Bugünkü Satış
+                    </p>
+                    <p className="mt-2 text-sm font-bold tabular-nums">
+                      {formatMoney(m?.revenueToday ?? 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
+                      Bugünkü Tahsilat
+                    </p>
+                    <p className="mt-2 text-sm font-bold tabular-nums">
+                      {formatMoney(m?.collectionToday ?? 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6 min-w-0">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+            <MetricCard
+              title={`${monthLabel} Cirosu`}
+              value={formatMoney(m?.revenueCalendarMonth ?? 0)}
+              subtitle="Takvim ayı bazlı toplam gelir"
+              icon={Gavel}
+              tone="blue"
+            />
+            <MetricCard
+              title={`${monthLabel} Masrafları`}
+              value={formatMoney(m?.expenseCalendarMonth ?? 0)}
+              subtitle="Kayıtlı gider hareketleri"
+              icon={Tag}
+              tone="rose"
+            />
+            <MetricCard
+              title="Stok Değeri"
+              value={formatMoney(m?.stockValue ?? 0)}
+              subtitle="Mevcut stokların toplam parasal değeri"
+              icon={Banknote}
+              tone="cyan"
+            />
+            <MetricCard
+              title="Net Varlık Görünümü"
+              value={formatMoney((m?.assetsTotal ?? 0) - (m?.debtsTotal ?? 0))}
+              subtitle="Varlıklar eksi toplam borçlar"
+              icon={TrendingUp}
+              tone="emerald"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <SurfaceCard className="p-5 lg:col-span-1">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Varlıklar
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-700">
+                    İşletme finansal gücü
+                  </h3>
+                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+                  <Wallet className="h-5 w-5" />
+                </div>
+              </div>
+
+              <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+                {formatMoney(m?.assetsTotal ?? 0)}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Nakit, hesap bakiyesi ve tanımlı diğer finansal varlıkların
+                toplam özeti.
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="p-5 lg:col-span-1">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Borçlar
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-700">
+                    Kısa ve orta vadeli yükümlülükler
+                  </h3>
+                </div>
+                <div className="rounded-2xl bg-rose-50 p-3 text-rose-600">
+                  <ReceiptText className="h-5 w-5" />
+                </div>
+              </div>
+
+              <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+                {formatMoney(m?.debtsTotal ?? 0)}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Tedarikçi, kredi ve diğer kayıtlı finansal yükümlülüklerin
+                toplam görünümü.
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="p-5 lg:col-span-1">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Günlük Akış
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-700">
+                    Anlık operasyon özeti
+                  </h3>
+                </div>
+                <div className="rounded-2xl bg-sky-50 p-3 text-sky-600">
+                  <Clock3 className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <MiniStat
+                  label="Bugünkü Satış"
+                  value={formatMoney(m?.revenueToday ?? 0)}
+                  icon={ShoppingCart}
+                />
+                <MiniStat
+                  label="Bugünkü Tahsilat"
+                  value={formatMoney(m?.collectionToday ?? 0)}
+                  icon={Banknote}
+                />
+              </div>
+            </SurfaceCard>
+          </section>
+        </div>
+
+        <aside className="space-y-4 xl:sticky xl:top-6 self-start">
+          <SurfaceCard className="overflow-hidden">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-4 py-3 text-white">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <BellRing className="h-4 w-4 opacity-90" />
+                  <span className="text-sm font-bold">Duyurular</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/70">
+                  <ExternalLink className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                <p className="flex items-start gap-3 text-sm leading-6 text-slate-700">
+                  <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                  Civardaki işletme paneli güncellemeleri, sistem duyuruları ve
+                  önemli bilgilendirmeler burada gösterilecek.
+                </p>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          <SidebarListCard
+            title="Yaklaşan Masraflar"
+            tone="blue"
+            icon={CalendarDays}
+            items={m?.upcomingExpenses ?? []}
+            emptyText="Yaklaşan ödeme kaydınız bulunmuyor."
+          />
+
+          <SidebarListCard
+            title="Yaklaşan Kredi Ödemeleri"
+            tone="red"
+            icon={ReceiptText}
+            items={m?.upcomingLoans ?? []}
+            emptyText="Yaklaşan kredi ödemesi kaydınız bulunmuyor."
+          />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardClient() {
+  const { status } = useSession();
+  const { socket, isConnected } = useSocket();
+
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/business/dashboard-summary", {
+          cache: "no-store",
+        });
+
+        if (cancelled) return;
+
+        if (res.ok) {
+          const json = await res.json();
+          setData(json);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const onNewOrder = () => setRefreshKey((k) => k + 1);
+    socket.on("new_order", onNewOrder);
+
+    return () => socket.off("new_order", onNewOrder);
+  }, [socket, isConnected]);
+
+  useEffect(() => {
+    const onFocus = () => setRefreshKey((k) => k + 1);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const business = data?.business;
+  const m = data?.metrics;
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-52 rounded-[32px] bg-slate-200/80" />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-40 rounded-[28px] bg-slate-200/70" />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-52 rounded-[28px] bg-slate-200/70" />
+          ))}
+        </div>
+      </div>
     );
+  }
+
+  if (!data || !business) {
+    return (
+      <div className="rounded-[28px] border border-slate-200 bg-white p-12 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
+          <BarChart3 className="h-6 w-6 text-slate-400" />
+        </div>
+        <h2 className="mt-4 text-lg font-bold text-slate-900">
+          Panel verisi yüklenemedi
+        </h2>
+        <p className="mt-2 text-sm text-slate-500">
+          Dashboard özet verileri alınamadı. Lütfen tekrar deneyin.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <BroadcastSlot layout="BANNER" audience="BUSINESS" />
+
+      {business.completion < 100 && (
+        <OnboardingCompletion
+          score={business.completion}
+          pendingTasks={business.missingSteps || []}
+        />
+      )}
+
+      {(m?.leadCountNew ?? 0) > 0 && (
+        <div className="rounded-[24px] border border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 p-4 shadow-[0_8px_24px_rgba(99,102,241,0.08)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-indigo-600 p-3 text-white">
+                <MessageSquare className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-indigo-950">
+                  {m.leadCountNew} yeni hizmet talebi
+                </h3>
+                <p className="text-xs text-indigo-700">
+                  Yeni talepler panelinize ulaştı. İnceleyip hızlı dönüş yapın.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/business/leads"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            >
+              Taleplere Git
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {(m?.pendingReservationCount ?? 0) > 0 && (
+        <div className="rounded-[24px] border border-fuchsia-200 bg-gradient-to-r from-fuchsia-50 to-pink-50 p-4 shadow-[0_8px_24px_rgba(217,70,239,0.08)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-fuchsia-600 p-3 text-white">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-fuchsia-950">
+                  {m.pendingReservationCount} randevu talebi
+                </h3>
+                <p className="text-xs text-fuchsia-700">
+                  Onay bekleyen rezervasyonlar mevcut.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/business/reservations"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-fuchsia-700"
+            >
+              Rezervasyonlar
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <DashboardOverview business={business} m={m} isConnected={isConnected} />
+
+      <section className="space-y-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+            Hızlı Erişim
+          </p>
+          <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+            Sık kullanılan modüller
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <QuickLinkCard
+            href="/business/orders"
+            title="Siparişler"
+            desc="Yeni siparişleri, süreç durumlarını ve operasyon akışını yönetin."
+            icon={ShoppingCart}
+            iconClassName="bg-cyan-50 text-cyan-700"
+          />
+          <QuickLinkCard
+            href="/business/products"
+            title="Ürünler"
+            desc="Ürün kataloğu, stok yapısı ve içerik düzenlemelerini yönetin."
+            icon={BarChart3}
+            iconClassName="bg-violet-50 text-violet-700"
+          />
+          <QuickLinkCard
+            href="/business/civardaki-magaza"
+            title="Civardaki Mağaza"
+            desc="Mağaza vitrinini, görünürlüğü ve mağaza içeriklerini düzenleyin."
+            icon={Store}
+            iconClassName="bg-emerald-50 text-emerald-700"
+          />
+          <QuickLinkCard
+            href="/business/settings/menu-customization"
+            title="Menü Ayarları"
+            desc="İşletme menüsünü, gezinme yapısını ve görünür modülleri özelleştirin."
+            icon={Settings}
+            iconClassName="bg-blue-50 text-blue-700"
+          />
+        </div>
+      </section>
+    </div>
+  );
 }
