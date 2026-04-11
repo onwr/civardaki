@@ -32,7 +32,10 @@ export const SocketProvider = ({ children }) => {
         if (businessId) query.businessId = businessId;
         if (userId) query.userId = userId;
 
-        const socketInstance = new ClientIO(process.env.NEXT_PUBLIC_APP_URL || "", {
+        const socketBaseUrl =
+            process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+
+        const socketInstance = new ClientIO(socketBaseUrl, {
             path: "/api/socket/io",
             query,
             addTrailingSlash: false,

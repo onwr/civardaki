@@ -173,9 +173,9 @@ export async function POST(req) {
             eventLocation,
             images = [],
             attributes = [],
-            authorBusinessId,
             contactPhone,
             contactWhatsapp,
+            postAsBusiness,
         } = body;
 
         if (!title || !tab || !type) {
@@ -202,6 +202,21 @@ export async function POST(req) {
 
         const slug = `${slugBase}-${Date.now()}`;
 
+        const sessionBusinessId = session.user.businessId || null;
+        let resolvedAuthorBusinessId = null;
+        if (postAsBusiness === true) {
+            if (!sessionBusinessId) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: "İşletme adına paylaşım için geçerli bir işletme oturumu gerekir.",
+                    },
+                    { status: 403 }
+                );
+            }
+            resolvedAuthorBusinessId = sessionBusinessId;
+        }
+
         const created = await prisma.neighborhood_post.create({
             data: {
                 slug,
@@ -220,7 +235,7 @@ export async function POST(req) {
                 eventEndAt: eventEndAt ? new Date(eventEndAt) : null,
                 eventLocation,
                 authorUserId: session.user.id,
-                authorBusinessId: authorBusinessId || null,
+                authorBusinessId: resolvedAuthorBusinessId,
                 contactPhone,
                 contactWhatsapp,
                 images: {

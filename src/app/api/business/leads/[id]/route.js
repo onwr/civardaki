@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+    loadBusinessLeadCategories,
+    canBusinessAccessLead,
+    serializeLeadForBusiness,
+} from "@/lib/business-lead-visibility";
 
 const allowedStatuses = new Set(["NEW", "REPLIED", "CLOSED"]);
 
@@ -29,46 +34,85 @@ export async function PATCH(req, { params }) {
             return NextResponse.json({ message: "Geçersiz teklif tutarı." }, { status: 400 });
         }
 
-        // Ownership enforced
-        const lead = await prisma.lead.findFirst({
-            where: { id, businessId },
-            select: { id: true, status: true, createdAt: true }
-        });
-        if (!lead) return NextResponse.json({ message: "Not found" }, { status: 404 });
+        const { categoryIds, legacyCategory } = await loadBusinessLeadCategories(prisma, businessId);
 
-        // If a replyText is being set, mark repliedAt and ensure status is at least REPLIED
+        const lead = await prisma.lead.findUnique({
+            where: { id },
+            include: { leadBusinessStates: { where: { businessId } } },
+        });
+
+        if (!lead || !canBusinessAccessLead(lead, businessId, categoryIds, legacyCategory)) {
+            return NextResponse.json({ message: "Not found" }, { status: 404 });
+        }
+
+        const isDirect = lead.businessId === businessId;
+
         const hasReply = replyText !== undefined && replyText !== null && String(replyText).trim().length > 0;
         const effectiveStatus = status || (hasReply ? "REPLIED" : undefined);
 
-        // SPRINT 9C/9G: Response Engine Algorithm + Abuse Guard
+        const prevStatus = isDirect ? lead.status : (lead.leadBusinessStates?.[0]?.status ?? "NEW");
+
         let responseTimeMinutes = null;
-        if (lead.status === "NEW" && effectiveStatus === "REPLIED") {
+        if (prevStatus === "NEW" && effectiveStatus === "REPLIED") {
             const now = new Date();
             responseTimeMinutes = (now.getTime() - lead.createdAt.getTime()) / 60000;
-
-            // 9G-2: Response Time Abuse block
             if (responseTimeMinutes < 1) {
-                responseTimeMinutes = 1; // 1-minute floor
-            } else if (responseTimeMinutes > 1440) { // 24 hours
-                responseTimeMinutes = null; // Ignore unreasonably long delays so they don't break the rolling average
+                responseTimeMinutes = 1;
+            } else if (responseTimeMinutes > 1440) {
+                responseTimeMinutes = null;
             }
         }
 
-        const updated = await prisma.$transaction(async (tx) => {
-            const updatedLead = await tx.lead.update({
-                where: { id },
-                data: {
-                    ...(effectiveStatus ? { status: effectiveStatus } : {}),
-                    ...(adminNote !== undefined ? { adminNote } : {}),
+        await prisma.$transaction(async (tx) => {
+            if (isDirect) {
+                await tx.lead.update({
+                    where: { id },
+                    data: {
+                        ...(effectiveStatus ? { status: effectiveStatus } : {}),
+                        ...(adminNote !== undefined ? { adminNote } : {}),
+                        ...(hasReply ? { replyText: String(replyText).trim(), repliedAt: new Date() } : {}),
+                        ...(quotedPrice !== undefined ? { quotedPrice: quotedPrice !== null ? Number(quotedPrice) : null } : {}),
+                    },
+                });
+            } else {
+                const prev = lead.leadBusinessStates?.[0];
+                const repliedBefore = Boolean(prev?.repliedAt);
+                const nextStatus = effectiveStatus || prev?.status || "NEW";
+
+                const updateData = {
+                    status: nextStatus,
                     ...(hasReply ? { replyText: String(replyText).trim(), repliedAt: new Date() } : {}),
                     ...(quotedPrice !== undefined ? { quotedPrice: quotedPrice !== null ? Number(quotedPrice) : null } : {}),
-                },
-            });
+                };
+                if (effectiveStatus === "REPLIED" && !repliedBefore && !hasReply) {
+                    updateData.repliedAt = new Date();
+                }
+
+                await tx.lead_business_state.upsert({
+                    where: { leadId_businessId: { leadId: id, businessId } },
+                    create: {
+                        leadId: id,
+                        businessId,
+                        status: nextStatus,
+                        ...(hasReply ? { replyText: String(replyText).trim(), repliedAt: new Date() } : {}),
+                        ...(quotedPrice !== undefined ? { quotedPrice: quotedPrice !== null ? Number(quotedPrice) : null } : {}),
+                        ...(effectiveStatus === "REPLIED" && !hasReply ? { repliedAt: new Date() } : {}),
+                    },
+                    update: updateData,
+                });
+
+                if (adminNote !== undefined) {
+                    await tx.lead.update({
+                        where: { id },
+                        data: { adminNote },
+                    });
+                }
+            }
 
             if (responseTimeMinutes !== null) {
                 const b = await tx.business.findUnique({
                     where: { id: businessId },
-                    select: { avgResponseMinutes: true, responseCount: true }
+                    select: { avgResponseMinutes: true, responseCount: true },
                 });
                 if (b) {
                     const newAvg = ((b.avgResponseMinutes * b.responseCount) + responseTimeMinutes) / (b.responseCount + 1);
@@ -76,15 +120,27 @@ export async function PATCH(req, { params }) {
                         where: { id: businessId },
                         data: {
                             avgResponseMinutes: newAvg,
-                            responseCount: { increment: 1 }
-                        }
+                            responseCount: { increment: 1 },
+                        },
                     });
                 }
             }
-            return updatedLead;
         });
 
-        return NextResponse.json({ lead: updated });
+        const fresh = await prisma.lead.findUnique({
+            where: { id },
+            include: {
+                leadBusinessStates: { where: { businessId } },
+            },
+        });
+        const out = isDirect
+            ? (() => {
+                const { leadBusinessStates: _x, ...rest } = fresh;
+                return rest;
+            })()
+            : serializeLeadForBusiness(fresh, businessId);
+
+        return NextResponse.json({ lead: out });
     } catch (e) {
         console.error("PATCH LEAD ERROR:", e);
         return NextResponse.json({ message: "Server error" }, { status: 500 });

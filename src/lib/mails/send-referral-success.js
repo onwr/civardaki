@@ -19,7 +19,7 @@ export async function sendReferralSuccessEmail({ email, businessName, businessId
     <div style="padding:32px;">
       <p style="margin:0 0 16px;font-size:14px;color:#475569;">Tebrikler <strong>${businessName}</strong>,</p>
       <p style="margin:0 0 24px;font-size:14px;color:#475569;">
-        Paylaştığınız davet linki işe yaradı! Sizin referansınız ile <strong>${invitedBizName}</strong> işletmesi Civardaki.com platformuna katıldı.
+        Paylaştığınız davet linki işe yaradı! Sizin ortaklık davetinizle <strong>${invitedBizName}</strong> işletmesi Civardaki.com platformuna katıldı.
       </p>
 
       <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:20px;border-radius:16px;text-align:center;margin-bottom:28px;">

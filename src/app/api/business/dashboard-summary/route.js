@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { computeCompletion } from "@/lib/completion";
 import { calculateQualityScore } from "@/lib/quality-score";
+import { loadBusinessLeadCategories, buildBusinessLeadsWhere } from "@/lib/business-lead-visibility";
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -35,6 +36,23 @@ export async function GET() {
     ]);
 
     if (!business) return NextResponse.json({ message: "Business not found" }, { status: 404 });
+
+    const { categoryIds, legacyCategory } = await loadBusinessLeadCategories(prisma, businessId);
+    const leadVisAll = buildBusinessLeadsWhere({
+        businessId,
+        categoryIds,
+        legacyCategory,
+        status: null,
+        q: null,
+    });
+    const leadVisNew = buildBusinessLeadsWhere({
+        businessId,
+        categoryIds,
+        legacyCategory,
+        status: "NEW",
+        q: null,
+    });
+    const thirtyMinAgoLead = new Date(Date.now() - 30 * 60 * 1000);
 
     const counts = {
         productCount,
@@ -92,17 +110,14 @@ export async function GET() {
         }),
         prisma.lead.count({
             where: {
-                businessId,
-                createdAt: { gte: thirtyDaysAgo }
-            }
+                AND: [leadVisAll, { createdAt: { gte: thirtyDaysAgo } }],
+            },
         }),
-        // SPRINT 9F: Missed Leads (> 30 mins, NEW status)
+        // SPRINT 9F: Missed Leads (> 30 mins, NEW status; dağıtımlıda işletme bazlı NEW)
         prisma.lead.count({
             where: {
-                businessId,
-                status: "NEW",
-                createdAt: { lt: new Date(Date.now() - 30 * 60 * 1000) }
-            }
+                AND: [leadVisNew, { createdAt: { lt: thirtyMinAgoLead } }],
+            },
         }),
         // SPRINT 9F: Competitor Benchmark (Avg Response in Category)
         business.category ? prisma.business.aggregate({
@@ -146,9 +161,13 @@ export async function GET() {
             where: { businessId, type: "EXPENSE", date: { gte: thirtyDaysAgo } },
             _sum: { amount: true }
         }),
-        prisma.lead.count({ where: { businessId, createdAt: { gte: startOfToday } } }),
-        prisma.lead.count({ where: { businessId, status: "NEW" } }),
-        prisma.lead.count({ where: { businessId, status: "NEW", createdAt: { gte: startOfToday } } }),
+        prisma.lead.count({
+            where: { AND: [leadVisAll, { createdAt: { gte: startOfToday } }] },
+        }),
+        prisma.lead.count({ where: { AND: [leadVisNew] } }),
+        prisma.lead.count({
+            where: { AND: [leadVisNew, { createdAt: { gte: startOfToday } }] },
+        }),
         prisma.order.count({ where: { businessId, createdAt: { gte: startOfToday } } }),
         prisma.order.count({ where: { businessId, createdAt: { gte: thirtyDaysAgo } } }),
         prisma.reservation.count({

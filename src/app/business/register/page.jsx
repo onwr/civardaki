@@ -445,12 +445,11 @@ export default function RegisterBusinessPage() {
             <div className="container max-w-2xl mx-auto px-4 mt-5">
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900">
                 <p className="text-sm font-bold">
-                  Referans ile kayıt oluyorsunuz:{" "}
+                  Ortaklık davetiyle kayıt oluyorsunuz:{" "}
                   <span className="font-black">{referralCode}</span>
                 </p>
                 <p className="mt-1 text-xs font-semibold text-emerald-700">
-                  Kayıt tamamlandığında referans takibi otomatik olarak devam
-                  eder.
+                  Kayıt tamamlandığında ortaklık takibi otomatik olarak devam eder.
                 </p>
               </div>
             </div>

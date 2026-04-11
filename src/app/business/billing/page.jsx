@@ -40,6 +40,7 @@ export default async function BillingPage({ searchParams }) {
         <BillingClient
             subscription={dataToSend}
             isExpiredParams={searchParams?.expired === "true"}
+            paymentNotice={searchParams?.payment}
         />
     );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { loadBusinessLeadCategories, buildBusinessLeadsWhere } from "@/lib/business-lead-visibility";
 import { startOfDay, startOfWeek, startOfMonth, startOfYear, subDays, format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -41,6 +42,15 @@ export async function GET(request) {
                 startDate = subDays(now, 7);
         }
 
+        const { categoryIds, legacyCategory } = await loadBusinessLeadCategories(prisma, businessId);
+        const leadVisAll = buildBusinessLeadsWhere({
+            businessId,
+            categoryIds,
+            legacyCategory,
+            status: null,
+            q: null,
+        });
+
         // 1. Fetch Business Events (Views, Calls, etc.)
         const events = await prisma.businessevent.findMany({
             where: {
@@ -49,12 +59,11 @@ export async function GET(request) {
             }
         });
 
-        // 2. Fetch Leads
+        // 2. Fetch Leads (doğrudan + dağıtımlı görünür)
         const leadsCount = await prisma.lead.count({
             where: {
-                businessId,
-                createdAt: { gte: startDate }
-            }
+                AND: [leadVisAll, { createdAt: { gte: startDate } }],
+            },
         });
 
         // 3. Fetch Orders (Revenue)

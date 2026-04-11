@@ -22,9 +22,10 @@ import { toast } from "sonner";
 import { ExpandableMenu } from "@/components/business/ExpandableMenu";
 import { Badge } from "@/components/ui/badge";
 import { defaultNavigation, BusinessTypes } from "@/lib/navigation-config";
+import { isNavHrefActive } from "@/lib/nav-active";
 import { loadMenuPreferences } from "@/lib/menu-preferences";
 import AIAssistant from "@/components/ai/AIAssistant";
-import { Leaf, ChevronDown, ChevronUp } from "lucide-react";
+import { Leaf, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 const AUTH_PAGES = ["/business/register", "/business/login"];
 
@@ -104,11 +105,6 @@ function getNavigationWithPreferences(businessType = BusinessTypes.INDIVIDUAL) {
   return processedItems;
 }
 
-function getIsActive(pathname, href) {
-  if (!href) return false;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
 function getInitials(name = "") {
   const parts = name.trim().split(" ").filter(Boolean);
   if (parts.length === 0) return "İ";
@@ -123,8 +119,12 @@ function LeadNotificationListener() {
     if (!socket || !isConnected) return;
 
     const handleNewLead = (data) => {
+      const topic =
+        (typeof data.title === "string" && data.title.trim()) ||
+        (typeof data.product === "string" && data.product.trim()) ||
+        "Hizmet talebi";
       toast.success("Yeni Müşteri Talebi! 🎯", {
-        description: `${data.name} size "${data.product}" hakkında ulaştı.`,
+        description: `${data.name} size "${topic}" hakkında ulaştı.`,
         duration: 10000,
         action: {
           label: "Talebe Git",
@@ -513,7 +513,7 @@ export default function BusinessLayout({ children }) {
                       <Link
                         href={item.href || "#"}
                         className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${
-                          getIsActive(pathname, item.href)
+                          isNavHrefActive(pathname, item.href, item.activePathMatch)
                             ? "bg-white text-[#004aad] shadow-lg"
                             : "text-blue-100 hover:bg-white hover:text-[#004aad]"
                         }`}
@@ -578,7 +578,7 @@ export default function BusinessLayout({ children }) {
                       type="button"
                       onClick={() => setExpandedItem(item)}
                       className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-                        getIsActive(pathname, item.href)
+                        isNavHrefActive(pathname, item.href, item.activePathMatch)
                           ? "bg-white text-[#004aad] shadow-lg"
                           : "bg-white/10 text-blue-100 hover:bg-white/20"
                       }`}
@@ -602,7 +602,7 @@ export default function BusinessLayout({ children }) {
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
                       className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-                        getIsActive(pathname, item.href)
+                        isNavHrefActive(pathname, item.href, item.activePathMatch)
                           ? "bg-white text-[#004aad] shadow-lg"
                           : "bg-white/10 text-blue-100 hover:bg-white/20"
                       }`}
@@ -659,7 +659,11 @@ export default function BusinessLayout({ children }) {
 
                   <div className="p-6 space-y-2">
                     {expandedItem.children.map((child) => {
-                      const isChildActive = getIsActive(pathname, child.href);
+                      const isChildActive = isNavHrefActive(
+                        pathname,
+                        child.href,
+                        child.activePathMatch,
+                      );
 
                       return (
                         <Link
@@ -809,6 +813,20 @@ export default function BusinessLayout({ children }) {
 
                 <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                   <NotificationDropdown />
+
+                  <Link
+                    href="/business/calendar"
+                    className={`flex items-center justify-center h-10 w-10 rounded-xl border border-gray-100 bg-gray-50/80 text-slate-600 hover:bg-[#004aad]/10 hover:text-[#004aad] hover:border-[#004aad]/20 transition-colors ${
+                      pathname.startsWith("/business/calendar")
+                        ? "ring-2 ring-[#004aad]/30 text-[#004aad] bg-blue-50/80"
+                        : ""
+                    }`}
+                    aria-label="Takvim"
+                    title="Takvim"
+                  >
+                    <Calendar className="h-5 w-5 shrink-0" aria-hidden />
+                    <span className="sr-only">Takvim</span>
+                  </Link>
 
                   <div className="flex items-center space-x-2 bg-gray-50/50 border border-gray-100 rounded-xl px-2 py-1.5 sm:px-3 hover:bg-gray-50 transition-colors cursor-pointer">
                     <div className="text-right hidden md:block">

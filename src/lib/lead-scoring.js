@@ -51,9 +51,10 @@ export function calculateLeadScore(business, leadLocation) {
     score += speedScore;
 
     // 4. Plan Priority (max 10)
-    if (business.subscription?.plan === "PREMIUM") {
+    const planTier = business.subscription?.plan ?? business.businesssubscription?.plan;
+    if (planTier === "PREMIUM") {
         score += 10;
-    } else if (business.subscription?.plan === "BASIC") {
+    } else if (planTier === "BASIC") {
         score += 5;
     }
 

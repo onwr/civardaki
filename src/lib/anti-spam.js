@@ -59,14 +59,45 @@ export function analyzeLeadContent(message = "") {
 }
 
 /**
- * Checks if a lead from the same person (IP/Phone) was sent to the same business recently.
+ * Checks if a lead from the same person (IP/Phone) was sent to the same business recently,
+ * or (dağıtımlı) aynı kategoride kanonik talep var mı.
  */
-export async function checkDuplicateLead({ businessId, phone, email, ipHash, message }) {
+export async function checkDuplicateLead({ businessId, phone, email, ipHash, message, isDistributed, categoryId }) {
     const windowStart = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes
+
+    if (isDistributed && categoryId) {
+        const existing = await prisma.lead.findFirst({
+            where: {
+                isDistributed: true,
+                categoryId,
+                businessId: null,
+                createdAt: { gte: windowStart },
+                OR: [
+                    { phone: phone || "no-phone" },
+                    { email: email || "no-email" },
+                    { ipHash: ipHash }
+                ]
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { message: true, createdAt: true }
+        });
+
+        if (existing) {
+            if (existing.message.trim() === message.trim()) {
+                return { duplicate: true, type: 'identical' };
+            }
+            const twoMinsAgo = new Date(Date.now() - 2 * 60 * 1000);
+            if (existing.createdAt > twoMinsAgo) {
+                return { duplicate: true, type: 'frequency' };
+            }
+        }
+        return { duplicate: false };
+    }
 
     const existing = await prisma.lead.findFirst({
         where: {
             businessId,
+            dismissedAt: null,
             createdAt: { gte: windowStart },
             OR: [
                 { phone: phone || "no-phone" },
@@ -79,11 +110,9 @@ export async function checkDuplicateLead({ businessId, phone, email, ipHash, mes
     });
 
     if (existing) {
-        // If content is identical, it's a hard duplicate
         if (existing.message.trim() === message.trim()) {
             return { duplicate: true, type: 'identical' };
         }
-        // If they sent ANY lead in the last 2 minutes, slow them down
         const twoMinsAgo = new Date(Date.now() - 2 * 60 * 1000);
         if (existing.createdAt > twoMinsAgo) {
             return { duplicate: true, type: 'frequency' };

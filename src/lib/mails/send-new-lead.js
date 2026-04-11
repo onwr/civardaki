@@ -1,8 +1,14 @@
 import { sendLoggedEmail } from "./_shared";
 
-export async function sendNewLeadEmail({ email, businessName, businessId, leadId, leadName, leadPhone, leadEmail, leadProduct, leadMessage }) {
+export async function sendNewLeadEmail({ email, businessName, businessId, leadId, leadName, leadPhone, leadEmail, leadProduct, leadTitle, leadMessage }) {
     const uniqueKey = `lead-created-${leadId}`;
     const subject = `🎯 Yeni Bir Müşteri Talebiniz Var`;
+
+    const titleHtml = leadTitle ? `
+      <tr style="border-bottom:1px solid #e2e8f0;">
+        <td style="padding:12px 16px;color:#64748b;font-size:13px;width:100px;"><strong>Başlık:</strong></td>
+        <td style="padding:12px 16px;font-size:13px;font-weight:700;color:#0f172a;">${leadTitle}</td>
+      </tr>` : "";
 
     const productHtml = leadProduct ? `
       <tr style="border-bottom:1px solid #e2e8f0;">
@@ -47,6 +53,7 @@ export async function sendNewLeadEmail({ email, businessName, businessId, leadId
               <td style="padding:12px 16px;color:#64748b;font-size:13px;width:100px;"><strong>Müşteri:</strong></td>
               <td style="padding:12px 16px;font-size:13px;font-weight:900;color:#0f172a;">${leadName}</td>
             </tr>
+            ${titleHtml}
             ${phoneHtml}
             ${emailHtml}
             ${productHtml}

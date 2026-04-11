@@ -255,6 +255,7 @@ model business {
   businessFihristEntries  business_fihrist_entry[]
   proposalTemplates       business_proposal_template[]
   labelTemplates          business_label_template[]
+  leadBusinessState       lead_business_state[]
 
   @@index([city, district], map: "Business_city_district_idx")
   @@index([slug], map: "Business_slug_idx")
@@ -836,6 +837,7 @@ model category {
   children          category[]         @relation("category_children")
   businesscategory  businesscategory[]
   primaryBusinesses business[]         @relation("BusinessPrimaryCategory")
+  leads             lead[]             @relation("LeadCategory")
 
   @@unique([parentId, name], map: "Category_parentId_name_key")
   @@index([parentId, sortOrder], map: "Category_parentId_sortOrder_idx")
@@ -1429,12 +1431,14 @@ model orderitem {
 
 model lead {
   id                  String      @id @default(cuid())
-  businessId          String
+  businessId          String?
   name                String
   phone               String?
   email               String?
   message             String      @db.Text
+  title               String?     @db.VarChar(200)
   category            String?
+  categoryId          String?
   productId           String?
   productNameSnapshot String?
   source              lead_source @default(BUSINESS_PAGE)
@@ -1443,6 +1447,7 @@ model lead {
   replyText           String?     @db.Text
   quotedPrice         Float?
   repliedAt           DateTime?
+  dismissedAt         DateTime?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
@@ -1461,15 +1466,40 @@ model lead {
   latitude      Float?
   longitude     Float?
 
-  business     business      @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Lead_businessId_fkey")
-  product      product?      @relation(fields: [productId], references: [id], onDelete: SetNull, map: "Lead_productId_fkey")
-  leadreminder leadreminder?
+  business          business?             @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Lead_businessId_fkey")
+  categoryRelation  category?             @relation("LeadCategory", fields: [categoryId], references: [id], onDelete: SetNull, map: "Lead_categoryId_fkey")
+  product           product?              @relation(fields: [productId], references: [id], onDelete: SetNull, map: "Lead_productId_fkey")
+  leadreminder      leadreminder?
+  leadBusinessStates lead_business_state[]
 
   @@index([businessId, createdAt], map: "Lead_businessId_createdAt_idx")
   @@index([businessId, productId], map: "Lead_businessId_productId_idx")
   @@index([businessId, status], map: "Lead_businessId_status_idx")
   @@index([productId], map: "Lead_productId_fkey")
+  @@index([isDistributed, categoryId, createdAt], map: "Lead_distributed_category_createdAt_idx")
+  @@index([categoryId], map: "Lead_categoryId_idx")
   @@map("lead")
+}
+
+model lead_business_state {
+  id          String       @id @default(cuid())
+  leadId      String
+  businessId  String
+  status      lead_status  @default(NEW)
+  dismissedAt DateTime?
+  replyText   String?      @db.Text
+  quotedPrice Float?
+  repliedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  lead     lead     @relation(fields: [leadId], references: [id], onDelete: Cascade, map: "LeadBusinessState_leadId_fkey")
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "LeadBusinessState_businessId_fkey")
+
+  @@unique([leadId, businessId], map: "LeadBusinessState_leadId_businessId_key")
+  @@index([businessId, status], map: "LeadBusinessState_businessId_status_idx")
+  @@index([businessId, dismissedAt], map: "LeadBusinessState_businessId_dismissedAt_idx")
+  @@map("lead_business_state")
 }
 
 model leadreminder {

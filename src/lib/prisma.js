@@ -29,7 +29,8 @@ if (
     typeof prisma.business_masterdata_entry === "undefined" ||
     typeof prisma.business_proposal_template === "undefined" ||
     typeof prisma.business_label_template === "undefined" ||
-    typeof prisma.business_fihrist_entry === "undefined"
+    typeof prisma.business_fihrist_entry === "undefined" ||
+    typeof prisma.lead_business_state === "undefined"
   )
 ) {
   prisma.$disconnect().catch(() => {});

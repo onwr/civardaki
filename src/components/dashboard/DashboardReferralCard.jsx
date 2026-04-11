@@ -8,7 +8,7 @@ export default function DashboardReferralCard({ businessInfo, referralStats }) {
 
     const handleShare = () => {
         if (!businessInfo?.referralCode) {
-            toast.error("Referans kodunuz henüz oluşturulmamış.");
+            toast.error("Ortaklık kodunuz henüz oluşturulmamış.");
             return;
         }
 
@@ -34,7 +34,7 @@ export default function DashboardReferralCard({ businessInfo, referralStats }) {
 
             <div className="flex-1 space-y-4">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black uppercase tracking-widest mb-2">
-                    <SparkleIcon className="w-4 h-4" /> BÜYÜME MOTORU
+                    <SparkleIcon className="w-4 h-4" /> Ortaklık · gelir
                 </div>
                 <h2 className="text-3xl font-black text-indigo-950 tracking-tighter leading-tight">
                     İşletmeni Paylaş, Ağı Büyüt!

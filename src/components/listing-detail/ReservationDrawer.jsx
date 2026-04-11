@@ -508,7 +508,7 @@ export default function ReservationDrawer({
                   </p>
                   <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 w-full max-w-sm mb-6 text-left">
                     <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-200">
-                      <span className="text-slate-500 text-sm font-medium">Referans kodu</span>
+                      <span className="text-slate-500 text-sm font-medium">Talep numarası</span>
                       <span className="font-mono font-bold text-slate-900 tracking-wider">#{referenceCode || "RES-..."}</span>
                     </div>
                     <div className="space-y-2 text-sm">

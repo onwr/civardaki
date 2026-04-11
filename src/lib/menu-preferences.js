@@ -2,6 +2,51 @@
 
 const STORAGE_KEY = "business-menu-preferences-bh-v1";
 
+const LEGACY_NEIGHBORHOOD_MENU_HREF = "/user/neighborhood";
+const NEIGHBORHOOD_MENU_HREF = "/business/neighborhood";
+
+/** Mahalle Panosu işletme yoluna taşındı; kayıtlı menü id'lerini güncelle */
+function migrateNeighborhoodMenuIds(preferences) {
+  if (!preferences || typeof preferences !== "object") return preferences;
+  const next = { ...preferences };
+  if (Array.isArray(next.order)) {
+    next.order = next.order.map((item) =>
+      item && item.id === LEGACY_NEIGHBORHOOD_MENU_HREF
+        ? { ...item, id: NEIGHBORHOOD_MENU_HREF }
+        : item,
+    );
+  }
+  if (Array.isArray(next.hidden)) {
+    next.hidden = next.hidden.map((id) =>
+      id === LEGACY_NEIGHBORHOOD_MENU_HREF ? NEIGHBORHOOD_MENU_HREF : id,
+    );
+  }
+  if (next.children && typeof next.children === "object") {
+    const children = { ...next.children };
+    for (const key of Object.keys(children)) {
+      const block = children[key];
+      if (!block) continue;
+      children[key] = {
+        ...block,
+        order: Array.isArray(block.order)
+          ? block.order.map((item) =>
+              item && item.id === LEGACY_NEIGHBORHOOD_MENU_HREF
+                ? { ...item, id: NEIGHBORHOOD_MENU_HREF }
+                : item,
+            )
+          : block.order,
+        hidden: Array.isArray(block.hidden)
+          ? block.hidden.map((id) =>
+              id === LEGACY_NEIGHBORHOOD_MENU_HREF ? NEIGHBORHOOD_MENU_HREF : id,
+            )
+          : block.hidden,
+      };
+    }
+    next.children = children;
+  }
+  return next;
+}
+
 // Varsayılan menü yapısı - tüm öğeler görünür ve mevcut sırada
 export function getDefaultMenuPreferences(navigation) {
   const order = navigation.map((item, index) => ({
@@ -44,7 +89,7 @@ export function loadMenuPreferences(navigation) {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
+      const parsed = migrateNeighborhoodMenuIds(JSON.parse(stored));
       const defaultPrefs = getDefaultMenuPreferences(navigation);
 
       // Yeni öğeleri mevcut sıraya (order) ekle

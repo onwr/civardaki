@@ -30,6 +30,7 @@ import { useSocket } from "@/components/providers/SocketProvider";
 import DashboardSubscriptionWidget from "@/components/dashboard/DashboardSubscriptionWidget";
 import OnboardingCompletion from "@/components/business/OnboardingCompletion";
 import BroadcastSlot from "@/components/broadcast/BroadcastSlot";
+import DashboardAnalyticsSection from "@/components/business/DashboardAnalyticsSection";
 
 const MONTHS_TR = [
   "Ocak",
@@ -249,7 +250,7 @@ function DashboardOverview({ business, m, isConnected }) {
     m?.fxTryPerEur != null ? Number(m.fxTryPerEur).toFixed(2) : "—";
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[32px] border border-slate-800 bg-slate-950 text-white shadow-[0_24px_60px_rgba(2,6,23,0.35)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.25),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_30%)]" />
         <div className="absolute -right-24 top-0 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
@@ -708,6 +709,8 @@ export default function DashboardClient() {
       )}
 
       <DashboardOverview business={business} m={m} isConnected={isConnected} />
+
+      <DashboardAnalyticsSection />
 
       <section className="space-y-4">
         <div>

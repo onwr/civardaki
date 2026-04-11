@@ -41,6 +41,7 @@ export async function GET() {
         phone: true,
         email: true,
         message: true,
+        title: true,
         category: true,
         city: true,
         district: true,
@@ -68,6 +69,7 @@ export async function GET() {
     const requests = leads.map((lead) => ({
       id: lead.id,
       status: lead.status,
+      title: lead.title || "",
       category: lead.category || "",
       message: lead.message || "",
       city: lead.city || null,

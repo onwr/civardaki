@@ -111,7 +111,7 @@ export default function ReferralPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          toast.error(e.message || "Referans verileri alınamadı.");
+          toast.error(e.message || "Ortaklık ve gelir verileri alınamadı.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -150,14 +150,14 @@ export default function ReferralPage() {
 
   const handleCopy = async () => {
     if (!referralLink) {
-      toast.error("Önce referans kodunuz oluşmalı.");
+      toast.error("Önce ortaklık kodunuz oluşmalı.");
       return;
     }
 
     try {
       await navigator.clipboard.writeText(referralLink);
       setCopied(true);
-      toast.success("Referans linki kopyalandı.");
+      toast.success("Davet linki kopyalandı.");
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Kopyalama başarısız. Tarayıcı iznini kontrol edin.");
@@ -201,21 +201,21 @@ export default function ReferralPage() {
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90">
                   <Share2 className="h-4 w-4" />
-                  Ortaklık Programı
+                  Ortaklık ve gelir
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                  Referans ve Kazanç Merkezi
+                  Ortaklık ve gelir merkezi
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Referans bağlantınızı paylaşarak yeni işletmeler davet edin,
-                  aktif dönüşümleri takip edin ve geçmiş kayıtlarınızı tek ekranda yönetin.
+                  Davet bağlantınızı paylaşarak yeni işletmeler katılsın; aktif dönüşümleri
+                  ve gelir fırsatlarını tek ekranda takip edin.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                 <InfoMiniCard
                   icon={Gift}
-                  label="Referans Kodu"
+                  label="Ortaklık kodu"
                   value={business?.referralCode || "Henüz yok"}
                 />
                 <InfoMiniCard
@@ -250,12 +250,12 @@ export default function ReferralPage() {
             <StatCard
               title="Bekleyen Kayıt"
               value={pendingCount}
-              sub="Henüz aktif olmayan referanslar"
+              sub="Henüz aktif olmayan davetler"
               icon={Gift}
               tone="amber"
             />
             <StatCard
-              title="Referans Kodu"
+              title="Ortaklık kodu"
               value={business?.referralCode || "-"}
               sub="Size özel tanımlanan kod"
               icon={Sparkles}
@@ -267,7 +267,7 @@ export default function ReferralPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <SectionCard
             title="Davet bağlantınız"
-            subtitle="Referans linkinizi kopyalayın veya doğrudan paylaşın"
+            subtitle="Davet linkinizi kopyalayın veya doğrudan paylaşın"
           >
             <div className="space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
@@ -277,7 +277,7 @@ export default function ReferralPage() {
                       <LinkIcon className="h-5 w-5" />
                     </div>
                     <code className="min-w-0 flex-1 truncate font-mono text-sm text-slate-700">
-                      {referralLink || "Referans linki hazırlanıyor..."}
+                      {referralLink || "Davet linki hazırlanıyor..."}
                     </code>
                   </div>
 
@@ -309,15 +309,15 @@ export default function ReferralPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Program özeti" subtitle="Referans sisteminin kısa görünümü">
+          <SectionCard title="Program özeti" subtitle="Ortaklık ve gelir programının kısa özeti">
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Kazanç Mantığı
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Referans linkinizle gelen işletmeler sistem tarafından sizin davetiniz
-                  olarak işaretlenir.
+                  Davet linkinizle gelen işletmeler sistem tarafından sizin ortaklık
+                  davetiniz olarak işaretlenir.
                 </p>
               </div>
 
@@ -336,7 +336,7 @@ export default function ReferralPage() {
 
         <SectionCard
           title="Davet geçmişi"
-          subtitle="Referans bağlantınız üzerinden gelen son kayıtlar"
+          subtitle="Davet bağlantınız üzerinden gelen son kayıtlar"
           right={
             <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600">
               Son {referralHistory.length} kayıt
@@ -347,7 +347,7 @@ export default function ReferralPage() {
             <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center">
               <Users className="mb-4 h-14 w-14 text-slate-300" />
               <p className="text-lg font-semibold text-slate-700">
-                Henüz referans geçmişiniz bulunmuyor
+                Henüz davet geçmişiniz bulunmuyor
               </p>
               <p className="mt-2 text-sm text-slate-500">
                 Linkinizi paylaştığınızda yeni kayıtlar burada görünmeye başlayacak.

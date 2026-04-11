@@ -58,6 +58,19 @@ export async function DELETE(req, { params }) {
     if (!id) return NextResponse.json({ message: "Bad request" }, { status: 400 });
 
     try {
+        const productCount = await prisma.product.count({
+            where: { categoryId: id, businessId: auth.businessId },
+        });
+        if (productCount > 0) {
+            return NextResponse.json(
+                {
+                    message: `Bu kategoride ${productCount} ürün var. Önce ürünleri başka bir kategoriye taşıyın veya kategorilerini kaldırın; aksi halde silme güvenli değildir.`,
+                    productCount,
+                },
+                { status: 409 },
+            );
+        }
+
         const deleted = await prisma.productcategory.deleteMany({
             where: { id, businessId: auth.businessId }
         });

@@ -14,7 +14,7 @@ export default function BusinessActivityPanel({ analytics }) {
     CLICK_PHONE_STICKY: "Yapışkan telefon",
     SCROLL_75: "Kaydırma %75",
     CLICK_SHARE_PROFILE: "Profil paylaşım",
-    CLICK_SHARE_REFERRAL: "Referans paylaşım",
+    CLICK_SHARE_REFERRAL: "Ortaklık paylaşımı",
     CLICK_REQUEST_REVIEW: "Yorum talebi",
   };
 

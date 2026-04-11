@@ -21,7 +21,7 @@ export const userNavigation = [
   { name: "Hesap Kitap", href: "/user/finance", icon: CalculatorIcon },
   { name: "Sepetim", href: "/user/cart", icon: ShoppingCartIcon },
   { name: "Siparişlerim", href: "/user/orders", icon: ClipboardDocumentListIcon },
-  { name: "Randevularım", href: "/user/appointments", icon: CalendarDaysIcon },
+  { name: "Randevu - Rezervasyon", href: "/user/appointments", icon: CalendarDaysIcon },
   { name: "Taleplerim", href: "/user/requests", icon: WrenchScrewdriverIcon },
   { name: "Destek Taleplerim", href: "/user/tickets", icon: LifebuoyIcon },
   { name: "Profilim", href: "/user/profile", icon: UserCircleIcon },

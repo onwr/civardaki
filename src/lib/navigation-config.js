@@ -18,6 +18,7 @@ import {
   Store,
   Wrench,
   UserRoundCheck,
+  Calendar,
 } from "lucide-react";
 
 export const BusinessTypes = {
@@ -26,12 +27,17 @@ export const BusinessTypes = {
 };
 
 const productChildren = [
-  { name: "Ürün / Hizmet Tanımları", href: "/business/products" },
+  {
+    name: "Ürün - Hizmet Ekle",
+    href: "/business/products",
+    activePathMatch: "exact",
+  },
   { name: "Depolar", href: "/business/products/warehouses", allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE] },
   { name: "Üretim", href: "/business/products/production", allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE] },
   { name: "Özel Fiyat Listeleri", href: "/business/products/price-lists", badge: { text: "yeni", variant: "new" } },
   { name: "Kataloglarınız", href: "/business/products/catalogs" },
   { name: "Ürün Varyantları", href: "/business/products/variants" },
+  { name: "Ürün Kategorileri", href: "/business/products/categories" },
 ];
 
 const cashChildren = [
@@ -88,9 +94,9 @@ const civardakiExtrasChildren = [
   { name: "Analitik", href: "/business/analytics" },
   { name: "Değerlendirmeler", href: "/business/reviews" },
   { name: "Destek Taleplerim", href: "/business/tickets" },
-  { name: "Referans Sistemi", href: "/business/referrals" },
-  { name: "Mahalle Panosu", href: "/user/neighborhood" },
-  { name: "Randevular", href: "/business/reservations" },
+  { name: "Ortaklık ve gelir", href: "/business/referrals" },
+  { name: "Mahalle Panosu", href: "/business/neighborhood" },
+  { name: "Randevu - Rezervasyon", href: "/business/reservations" },
 ];
 
 export const defaultNavigation = [
@@ -98,6 +104,12 @@ export const defaultNavigation = [
     name: "Ana Sayfa",
     href: "/business/dashboard",
     icon: Home,
+    allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
+  },
+  {
+    name: "Takvim",
+    href: "/business/calendar",
+    icon: Calendar,
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
   },
   {
@@ -109,7 +121,6 @@ export const defaultNavigation = [
   },
   {
     name: "Civardaki Araçları",
-    href: "/business/leads",
     icon: Wrench,
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
     children: civardakiExtrasChildren,
@@ -134,7 +145,6 @@ export const defaultNavigation = [
   },
   {
     name: "Ürünler",
-    href: "/business/products",
     icon: Tags,
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
     children: productChildren,
@@ -159,7 +169,6 @@ export const defaultNavigation = [
   },
   {
     name: "Nakit Yönetimi",
-    href: "/business/cash/accounts",
     icon: TurkishLira,
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
     children: cashChildren,

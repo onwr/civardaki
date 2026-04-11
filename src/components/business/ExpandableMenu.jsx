@@ -6,21 +6,27 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { isNavHrefActive } from "@/lib/nav-active";
 
 export function ExpandableMenu({ item, pathname }) {
   const isDisabled = Boolean(item.disabled);
 
   const [isExpanded, setIsExpanded] = useState(
     !isDisabled &&
-      (item.children?.some((child) => pathname?.startsWith(child.href)) || false)
+      (item.children?.some((child) =>
+        isNavHrefActive(pathname, child.href, child.activePathMatch),
+      ) ||
+        false),
   );
 
   const isActive =
     !isDisabled &&
-    (pathname === item.href || pathname?.startsWith(item.href + "/"));
+    isNavHrefActive(pathname, item.href, item.activePathMatch);
   const hasActiveChild =
     !isDisabled &&
-    item.children?.some((child) => pathname?.startsWith(child.href));
+    item.children?.some((child) =>
+      isNavHrefActive(pathname, child.href, child.activePathMatch),
+    );
 
   const toggleExpand = (e) => { 
     e.preventDefault();
@@ -167,7 +173,11 @@ export function ExpandableMenu({ item, pathname }) {
           >
             <div className="ml-7 mt-1 space-y-1 pl-3 py-2 border-l border-white/10">
               {item.children.map((child) => {
-                const isChildActive = pathname === child.href || pathname?.startsWith(child.href + "/");
+                const isChildActive = isNavHrefActive(
+                  pathname,
+                  child.href,
+                  child.activePathMatch,
+                );
                 return (
                   <Link
                     key={child.href}
