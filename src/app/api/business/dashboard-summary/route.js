@@ -288,21 +288,31 @@ export async function GET() {
 
     let fxTryPerUsd = null;
     let fxTryPerEur = null;
-    try {
-        const [usdRes, eurRes] = await Promise.all([
-            fetch("https://open.er-api.com/v6/latest/USD", { signal: AbortSignal.timeout(4000) }),
-            fetch("https://open.er-api.com/v6/latest/EUR", { signal: AbortSignal.timeout(4000) }),
-        ]);
-        if (usdRes.ok) {
-            const ju = await usdRes.json();
-            if (ju.result === "success" && ju.rates?.TRY) fxTryPerUsd = ju.rates.TRY;
+
+    async function fetchTryRate(code) {
+        try {
+            const res = await fetch(`https://open.er-api.com/v6/latest/${code}`, {
+                signal: AbortSignal.timeout(4000),
+                cache: "no-store",
+            });
+            if (!res.ok) return null;
+            const j = await res.json();
+            if (j.result === "success" && j.rates?.TRY != null) return j.rates.TRY;
+        } catch (_) {
+            /* kurlar isteğe bağlı */
         }
-        if (eurRes.ok) {
-            const je = await eurRes.json();
-            if (je.result === "success" && je.rates?.TRY) fxTryPerEur = je.rates.TRY;
-        }
-    } catch (_) {
-        /* kurlar isteğe bağlı */
+        return null;
+    }
+
+    const [usdSettled, eurSettled] = await Promise.allSettled([
+        fetchTryRate("USD"),
+        fetchTryRate("EUR"),
+    ]);
+    if (usdSettled.status === "fulfilled" && usdSettled.value != null) {
+        fxTryPerUsd = usdSettled.value;
+    }
+    if (eurSettled.status === "fulfilled" && eurSettled.value != null) {
+        fxTryPerEur = eurSettled.value;
     }
 
     const stockValue = (productsForStock || []).reduce((sum, p) => {
