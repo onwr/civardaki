@@ -32,8 +32,23 @@ export const SocketProvider = ({ children }) => {
         if (businessId) query.businessId = businessId;
         if (userId) query.userId = userId;
 
-        const socketBaseUrl =
-            process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+        const fromEnv = (
+            process.env.NEXT_PUBLIC_SOCKET_URL ||
+            process.env.NEXT_PUBLIC_APP_URL ||
+            ""
+        ).trim();
+        const isLocalPage =
+            typeof window !== "undefined" &&
+            (window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1");
+        let socketBaseUrl = fromEnv;
+        if (typeof window !== "undefined") {
+            const pointsToLoopback =
+                /localhost|127\.0\.0\.1/.test(socketBaseUrl) && !isLocalPage;
+            if (!socketBaseUrl || pointsToLoopback) {
+                socketBaseUrl = window.location.origin;
+            }
+        }
 
         const socketInstance = new ClientIO(socketBaseUrl, {
             path: "/api/socket/io",

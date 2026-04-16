@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -71,6 +71,9 @@ export default function OnboardingPage() {
   const [districts, setDistricts] = useState([]);
   const [categoriesTree, setCategoriesTree] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const [brandUpload, setBrandUpload] = useState(null);
+  const logoFileRef = useRef(null);
+  const coverFileRef = useRef(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -129,6 +132,27 @@ export default function OnboardingPage() {
     }
     setDistricts(getDistricts(form.city));
   }, [form.city]);
+
+  const uploadBrandImage = async (file, type) => {
+    if (!file) return;
+    setBrandUpload(type);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("type", type);
+      const res = await fetch("/api/business/upload", { method: "POST", body: fd });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message || "Yükleme başarısız.");
+      toast.success(type === "LOGO" ? "Logo yüklendi." : "Kapak görseli yüklendi.");
+      await load();
+    } catch (e) {
+      toast.error(e?.message || "Yükleme hatası.");
+    } finally {
+      setBrandUpload(null);
+      if (type === "LOGO" && logoFileRef.current) logoFileRef.current.value = "";
+      if (type === "COVER" && coverFileRef.current) coverFileRef.current.value = "";
+    }
+  };
 
   const save = async (fields) => {
     setSaving(true);
@@ -450,7 +474,7 @@ export default function OnboardingPage() {
                 <div className="md:col-span-2">
                   <label className={labelClass}>Website</label>
                   <input
-                    value={form.website}v 
+                    value={form.website}
                     onChange={(e) =>
                       setForm((p) => ({ ...p, website: e.target.value }))
                     }
@@ -496,6 +520,26 @@ export default function OnboardingPage() {
           {/* STEP 3 — Marka Görseli */}
           {step === 3 && (
             <div className="space-y-8">
+              <input
+                ref={logoFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadBrandImage(f, "LOGO");
+                }}
+              />
+              <input
+                ref={coverFileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void uploadBrandImage(f, "COVER");
+                }}
+              />
               <div>
                 <h2 className="text-xl font-black text-gray-900 tracking-tight">
                   Marka Görseli
@@ -516,12 +560,17 @@ export default function OnboardingPage() {
                   <p className="font-bold text-gray-900">
                     {counts.hasLogo ? "Logo Yüklendi" : "Logo Yükle"}
                   </p>
-                  <Link
-                    href="/business/settings"
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#004aad] text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors"
+                  <button
+                    type="button"
+                    disabled={!!brandUpload}
+                    onClick={() => logoFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#004aad] text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    {brandUpload === "LOGO" ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : null}
                     {counts.hasLogo ? "Değiştir" : "Logo Yükle"}
-                  </Link>
+                  </button>
                 </div>
                 <div
                   className={`rounded-2xl border-2 border-dashed p-8 text-center space-y-4 transition-all ${counts.hasCover ? "border-emerald-300 bg-emerald-50/50" : "border-gray-200 bg-gray-50/50"}`}
@@ -534,12 +583,17 @@ export default function OnboardingPage() {
                   <p className="font-bold text-gray-900">
                     {counts.hasCover ? "Kapak Yüklendi" : "Kapak Görseli"}
                   </p>
-                  <Link
-                    href="/business/settings"
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-200 text-gray-700 text-xs font-bold uppercase tracking-wider hover:bg-gray-300 transition-colors"
+                  <button
+                    type="button"
+                    disabled={!!brandUpload}
+                    onClick={() => coverFileRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-200 text-gray-700 text-xs font-bold uppercase tracking-wider hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    {brandUpload === "COVER" ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : null}
                     {counts.hasCover ? "Değiştir" : "Kapak Yükle"}
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>

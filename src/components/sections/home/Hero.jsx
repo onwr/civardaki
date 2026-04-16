@@ -249,7 +249,10 @@ export default function HeroSection() {
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/60" />
-            <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10 mix-blend-overlay" />
+            <div
+              className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.14)_1px,transparent_0)] bg-[length:22px_22px]"
+              aria-hidden
+            />
           </motion.div>
         </div>
 
