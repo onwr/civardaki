@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   PlusIcon,
   ArrowPathIcon,
@@ -108,6 +109,7 @@ function TableSkeleton() {
 }
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -218,9 +220,8 @@ export default function CustomersPage() {
     setModalOpen(true);
   };
 
-  const openEdit = (id) => {
-    setEditId(id);
-    setModalOpen(true);
+  const openDetail = (id) => {
+    router.push(`/business/customers/${id}`);
   };
 
   const year = new Date().getFullYear();
@@ -477,7 +478,7 @@ export default function CustomersPage() {
                     className={`cursor-pointer border-b border-slate-100 transition hover:bg-sky-50/70 ${
                       index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
                     }`}
-                    onClick={() => openEdit(row.id)}
+                    onClick={() => openDetail(row.id)}
                   >
                     <td className="px-4 py-3.5 md:px-5">
                       <div className="flex items-center justify-between gap-3">

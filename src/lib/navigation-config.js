@@ -19,6 +19,7 @@ import {
   Wrench,
   UserRoundCheck,
   Calendar,
+  ClipboardList,
 } from "lucide-react";
 
 export const BusinessTypes = {
@@ -89,9 +90,7 @@ const reportsChildren = [
 const civardakiExtrasChildren = [
   { name: "Hizmet Talepleri", href: "/business/leads" },
   { name: "Siparişler", href: "/business/orders" },
-  { name: "İş Planlama", href: "/business/planning", allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE] },
   { name: "Notlar", href: "/business/notes", allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE] },
-  { name: "Analitik", href: "/business/analytics" },
   { name: "Değerlendirmeler", href: "/business/reviews" },
   { name: "Destek Taleplerim", href: "/business/tickets" },
   { name: "Ortaklık ve gelir", href: "/business/referrals" },
@@ -113,10 +112,22 @@ export const defaultNavigation = [
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
   },
   {
+    name: "İş Planlama",
+    href: "/business/planning",
+    icon: ClipboardList,
+    allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
+  },
+  {
     name: "Civardaki Mağaza",
     href: "/business/civardaki-magaza",
     icon: Store,
     badge: { text: "yeni", variant: "new" },
+    allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
+  },
+  {
+    name: "Analitik",
+    href: "/business/analytics",
+    icon: BarChart3,
     allowedTypes: [BusinessTypes.INDIVIDUAL, BusinessTypes.CORPORATE],
   },
   {

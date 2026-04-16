@@ -90,66 +90,12 @@ export async function POST(req) {
                 department: department.name,
                 status: "ACTIVE",
                 performance: 100,
-                avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(name)}`
             }
         });
 
         return NextResponse.json(employee);
     } catch (error) {
         console.error("Employees POST Error:", error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
-    }
-}
-
-export async function PATCH(req) {
-    try {
-        const session = await requireBusinessSession();
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const body = await req.json();
-        const { id, departmentId, ...updateData } = body;
-        if (!id) {
-            return NextResponse.json({ error: "Çalışan kimliği gerekli." }, { status: 400 });
-        }
-
-        if (updateData.salary) updateData.salary = parseFloat(updateData.salary);
-        delete updateData.tcNo;
-
-        if (departmentId !== undefined) {
-            if (!departmentId) {
-                updateData.departmentId = null;
-                updateData.department = null;
-            } else {
-                const department = await prisma.employee_department.findFirst({
-                    where: { id: departmentId, businessId: session.user.businessId, isActive: true },
-                    select: { id: true, name: true },
-                });
-                if (!department) {
-                    return NextResponse.json({ error: "Departman bulunamadı." }, { status: 404 });
-                }
-                updateData.departmentId = department.id;
-                updateData.department = department.name;
-            }
-        }
-
-        const exists = await prisma.employee.findFirst({
-            where: { id, businessId: session.user.businessId },
-            select: { id: true },
-        });
-        if (!exists) {
-            return NextResponse.json({ error: "Çalışan bulunamadı." }, { status: 404 });
-        }
-
-        const employee = await prisma.employee.update({
-            where: { id },
-            data: updateData,
-        });
-
-        return NextResponse.json(employee);
-    } catch (error) {
-        console.error("Employees PATCH Error:", error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }

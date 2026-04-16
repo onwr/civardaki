@@ -44,6 +44,7 @@ export function emptyProductForm() {
     categoryId: "",
     imageUrl: "",
     isActive: true,
+    publishedOnMarketplace: false,
     stock: "",
     maxOrderQty: "",
     productType: "STOCKED",
@@ -210,6 +211,7 @@ function MoneyField({
   placeholder = "0,00",
   suffix = "TL",
   suffixClassName = "",
+  disabled = false,
 }) {
   const handleChange = (e) => {
     let v = e.target.value.replace(/[^\d.,]/g, "");
@@ -237,8 +239,9 @@ function MoneyField({
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
-          className={`${inpMoney} min-h-[44px] text-right tabular-nums`}
+          className={`${inpMoney} min-h-[44px] text-right tabular-nums disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400`}
           placeholder={placeholder}
+          disabled={disabled}
         />
         <span
           className={`flex min-h-[44px] w-14 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-2 text-center text-sm font-semibold tabular-nums text-slate-600 ${suffixClassName}`}
@@ -480,6 +483,25 @@ export default function ProductFormWizard({
                         />
                         Aktif olarak yayınla
                       </label>
+
+                      <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={!!prodForm.publishedOnMarketplace}
+                          onChange={(e) =>
+                            setProdForm((p) => ({
+                              ...p,
+                              publishedOnMarketplace: e.target.checked,
+                            }))
+                          }
+                          className="rounded border-slate-300"
+                        />
+                        Civardaki'de yayınla
+                      </label>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Bu seçenek açık değilse satış fiyatı alanları düzenlenemez ve ürün
+                        işletme vitrininizde görünmez.
+                      </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
@@ -523,6 +545,7 @@ export default function ProductFormWizard({
                       }
                       placeholder="0,00"
                       suffix="TL"
+                      disabled={!prodForm.publishedOnMarketplace}
                     />
 
                     <MoneyField
@@ -534,6 +557,7 @@ export default function ProductFormWizard({
                       }
                       placeholder="İsteğe bağlı"
                       suffix="TL"
+                      disabled={!prodForm.publishedOnMarketplace}
                     />
 
                     <div>

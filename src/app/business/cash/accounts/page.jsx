@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   PlusIcon,
   QuestionMarkCircleIcon,
@@ -24,15 +25,51 @@ const ACCOUNT_TYPE_OPTIONS = [
 ];
 
 const PANELS_LEFT = [
-  { type: "CASH", title: "KASA TANIMLARI", showHelp: false },
-  { type: "POS", title: "POS HESAPLARI", showHelp: true },
-  { type: "CREDIT_CARD", title: "KREDİ KARTLARI", showHelp: true },
+  {
+    type: "CASH",
+    title: "KASA TANIMLARI",
+    showHelp: true,
+    helpText:
+      "İşletmenizdeki fiziksel kasaları burada ayrı ayrı tanımlayabilirsiniz. Nakit giriş-çıkışlar bu hesaplarda takip edilir ve kasa bakiyesi anlık güncellenir.",
+  },
+  {
+    type: "POS",
+    title: "POS HESAPLARI",
+    showHelp: true,
+    helpText:
+      "Her POS cihazınız için ayrı bir hesap açabilirsiniz. Kredi kartı ile tahsilat yaptığınızda tahsilat tutarları bu hesaplarda birikir. Bloke çözülme tarihinde çözülen tutarı Hesaplar Arası Transfer ile banka hesabınıza alabilirsiniz.",
+  },
+  {
+    type: "CREDIT_CARD",
+    title: "KREDİ KARTLARI",
+    showHelp: true,
+    helpText:
+      "İşletme kredi kartlarınızı burada yönetebilirsiniz. Kartla yapılan ödemeleri ve kart bazlı hareketleri ayrı izleyerek nakit akışını daha doğru takip edebilirsiniz.",
+  },
 ];
 
 const PANELS_RIGHT = [
-  { type: "BANK", title: "BANKA HESAPLARI", showHelp: false },
-  { type: "PARTNER", title: "ŞİRKET ORTAKLARI HESAPLARI", showHelp: false },
-  { type: "CREDIT", title: "VERESİYE HESAPLARI", showHelp: true },
+  {
+    type: "BANK",
+    title: "BANKA HESAPLARI",
+    showHelp: true,
+    helpText:
+      "Banka hesaplarınızı ayrı ayrı tanımlayarak havale/EFT girişlerini, ödemeleri ve transferleri banka bazında takip edebilirsiniz.",
+  },
+  {
+    type: "PARTNER",
+    title: "ŞİRKET ORTAKLARI HESAPLARI",
+    showHelp: true,
+    helpText:
+      "Ortaklara ait para giriş-çıkışlarını bu hesaplarda takip edebilirsiniz. Ortak bazlı bakiye ve borç-alacak takibini net şekilde görmenizi sağlar.",
+  },
+  {
+    type: "CREDIT",
+    title: "VERESİYE HESAPLARI",
+    showHelp: true,
+    helpText:
+      "Veresiye işlemlerinde müşteriden tahsil edilmemiş tutarları burada izleyebilirsiniz. Tahsilat aldıkça ilgili hareketi işleyip veresiye bakiyesini düşürebilirsiniz.",
+  },
 ];
 
 const MODAL_TITLES = {
@@ -121,7 +158,11 @@ function ActionButton({
 
 function AccountCard({ acc }) {
   return (
-    <div className="min-w-[170px] rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <Link
+      href={`/business/cash/accounts/${acc.id}`}
+      className="min-w-[170px] rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/30 hover:shadow-md"
+      title={`${acc.name} hareketlerine git`}
+    >
       <div className="flex items-center gap-2">
         <span
           className="h-3.5 w-3.5 shrink-0 rounded"
@@ -139,13 +180,33 @@ function AccountCard({ acc }) {
       <p className="mt-3 text-lg font-bold text-slate-900">
         {formatCurrency(acc.currency || "TRY", acc.balance)}
       </p>
-    </div>
+    </Link>
   );
 }
 
-function Panel({ title, showHelp, accountList }) {
+function calculatePanelTotal(accountList = []) {
+  const totals = accountList.reduce((acc, item) => {
+    const currency = item.currency || "TRY";
+    acc[currency] = (acc[currency] || 0) + (Number(item.balance) || 0);
+    return acc;
+  }, {});
+
+  const orderedCurrencies = ["TRY", "EUR", "USD"];
+  const parts = orderedCurrencies
+    .filter((currency) => totals[currency] != null)
+    .map((currency) => formatCurrency(currency, totals[currency]));
+
+  return parts.length > 0 ? parts.join(" · ") : formatCurrency("TRY", 0);
+}
+
+function Panel({ title, showHelp, helpText, accountList }) {
+  const panelTotal = useMemo(
+    () => calculatePanelTotal(accountList),
+    [accountList],
+  );
+
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+    <section className="overflow-visible rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-900 px-5 py-4 text-white">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/65">
@@ -154,15 +215,26 @@ function Panel({ title, showHelp, accountList }) {
           <h2 className="mt-1 text-base font-bold">{title}</h2>
         </div>
 
-        {showHelp ? (
-          <button
-            type="button"
-            className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
-            aria-label="Yardım"
-          >
-            <QuestionMarkCircleIcon className="h-5 w-5" />
-          </button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <span className="rounded-xl border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
+            {panelTotal}
+          </span>
+          {showHelp ? (
+            <div className="group relative">
+              <button
+                type="button"
+                className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                aria-label="Yardım"
+              >
+                <QuestionMarkCircleIcon className="h-5 w-5" />
+              </button>
+
+              <div className="pointer-events-none absolute right-0 top-12 z-20 hidden w-72 rounded-md border border-white/30 bg-[#5f95a1] px-4 py-3 text-sm leading-6 text-white shadow-xl group-hover:block">
+                {helpText || "Bu alan için bilgilendirme metni yakında eklenecek."}
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="p-5">
@@ -387,6 +459,7 @@ export default function AccountsPage() {
                 key={p.type}
                 title={p.title}
                 showHelp={p.showHelp}
+                helpText={p.helpText}
                 accountList={byType(p.type)}
               />
             ))}
@@ -406,6 +479,7 @@ export default function AccountsPage() {
                 key={p.type}
                 title={p.title}
                 showHelp={p.showHelp}
+                helpText={p.helpText}
                 accountList={byType(p.type)}
               />
             ))}

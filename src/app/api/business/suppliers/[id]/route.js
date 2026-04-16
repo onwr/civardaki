@@ -12,6 +12,9 @@ function toNum(v) {
 async function assertOwn(businessId, id) {
   return prisma.business_supplier.findFirst({
     where: { id, businessId },
+    include: {
+      category: { select: { id: true, name: true } },
+    },
   });
 }
 
@@ -28,6 +31,8 @@ export async function GET(_req, { params }) {
       supplier: {
         ...row,
         openingBalance: Number(row.openingBalance),
+        categoryId: row.categoryId || null,
+        categoryName: row.category?.name || null,
       },
     });
   } catch (e) {
@@ -64,6 +69,7 @@ export async function PATCH(request, { params }) {
           : null;
     }
     if (body.openingBalance !== undefined) data.openingBalance = toNum(body.openingBalance);
+    if (body.categoryId !== undefined) data.categoryId = body.categoryId || null;
     if (body.authorizedPerson !== undefined) data.authorizedPerson = body.authorizedPerson || null;
     if (body.email !== undefined) data.email = body.email || null;
     if (body.address !== undefined) data.address = body.address || null;
@@ -74,9 +80,17 @@ export async function PATCH(request, { params }) {
     const updated = await prisma.business_supplier.update({
       where: { id },
       data,
+      include: {
+        category: { select: { id: true, name: true } },
+      },
     });
 
-    return NextResponse.json({ supplier: updated });
+    return NextResponse.json({
+      supplier: {
+        ...updated,
+        categoryName: updated.category?.name || null,
+      },
+    });
   } catch (e) {
     console.error("Supplier PATCH:", e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

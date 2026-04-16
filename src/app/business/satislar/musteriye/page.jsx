@@ -4,6 +4,12 @@ import { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  parseMoneyInput,
+  stripDiscountLines,
+  sumLineTotals,
+  makeDiscountLineItem,
+} from "@/lib/sales-cart-helpers";
+import {
   BoltIcon,
   ArrowUturnLeftIcon,
   PlusIcon,
@@ -91,12 +97,14 @@ function MusteriyeContent() {
   const searchParams = useSearchParams();
 
   const customerId = searchParams.get("customerId") || "";
-  const customerName = safeDecode(searchParams.get("customerName") || "");
+  const customerNameFromUrl = safeDecode(searchParams.get("customerName") || "");
   const saleKind =
     searchParams.get("saleKind") || "TO_REGISTERED_CUSTOMER";
 
   const [saving, setSaving] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  /** Tam müşteri ünvanı (API veya URL); tek alan `name` (ad soyad birlikte) */
+  const [resolvedCustomerName, setResolvedCustomerName] = useState(customerNameFromUrl);
 
   const [accounts, setAccounts] = useState([]);
   const [products, setProducts] = useState([]);
@@ -113,6 +121,9 @@ function MusteriyeContent() {
   const [items, setItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
+  const [selectedUnitPrice, setSelectedUnitPrice] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
+  const [discountTl, setDiscountTl] = useState("");
 
   useEffect(() => {
     if (!customerId) {
@@ -124,25 +135,40 @@ function MusteriyeContent() {
 
     (async () => {
       setPageLoading(true);
+      setResolvedCustomerName(customerNameFromUrl || "");
       try {
-        const [accountsRes, productsRes] = await Promise.all([
+        const [accountsRes, productsRes, customerRes] = await Promise.all([
           fetch("/api/business/cash/accounts"),
           fetch("/api/business/products?limit=200"),
+          fetch(`/api/business/customers/${customerId}`),
         ]);
 
-        const [accountsData, productsData] = await Promise.all([
+        const [accountsData, productsData, customerData] = await Promise.all([
           accountsRes.json(),
           productsRes.json(),
+          customerRes.json(),
         ]);
 
         if (cancelled) return;
 
         setAccounts(Array.isArray(accountsData) ? accountsData : []);
         setProducts(productsData?.items || []);
+
+        const fromApi = customerRes.ok && customerData?.customer?.name
+          ? String(customerData.customer.name).trim()
+          : "";
+        if (fromApi) {
+          setResolvedCustomerName(fromApi);
+        } else if (customerNameFromUrl) {
+          setResolvedCustomerName(customerNameFromUrl);
+        } else {
+          setResolvedCustomerName("");
+        }
       } catch (e) {
         if (cancelled) return;
         setAccounts([]);
         setProducts([]);
+        setResolvedCustomerName(customerNameFromUrl || "");
       } finally {
         if (!cancelled) setPageLoading(false);
       }
@@ -151,11 +177,23 @@ function MusteriyeContent() {
     return () => {
       cancelled = true;
     };
-  }, [customerId, router]);
+  }, [customerId, customerNameFromUrl, router]);
 
-  const totalAmount = useMemo(
-    () => items.reduce((sum, it) => sum + (Number(it.total) || 0), 0),
-    [items]
+  useEffect(() => {
+    if (!selectedProduct) {
+      setSelectedUnitPrice("");
+      return;
+    }
+    const product = products.find((p) => p.id === selectedProduct);
+    const price = Number(product?.discountPrice ?? product?.price ?? 0);
+    setSelectedUnitPrice(String(price));
+  }, [selectedProduct, products]);
+
+  const totalAmount = useMemo(() => sumLineTotals(items), [items]);
+
+  const productLineCount = useMemo(
+    () => items.filter((it) => !it.isDiscount).length,
+    [items],
   );
 
   const totalCollected = Number(
@@ -169,7 +207,8 @@ function MusteriyeContent() {
     }
 
     const product = products.find((p) => p.id === selectedProduct);
-    const qty = Number(selectedQty) || 0;
+    const qty = parseMoneyInput(selectedQty);
+    const price = parseMoneyInput(selectedUnitPrice);
 
     if (qty <= 0) {
       alert("Miktar 0'dan büyük olmalıdır.");
@@ -177,26 +216,75 @@ function MusteriyeContent() {
     }
 
     const name = product?.name || "Ürün / Hizmet";
-    const price = Number(product?.discountPrice ?? product?.price ?? 0);
-    const total = price * qty;
+    const total = qty * price;
 
-    setItems((prev) => [
-      ...prev,
-      {
-        id:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random()}`,
-        productId: product?.id || null,
-        name,
-        quantity: qty,
-        unitPrice: price,
-        total,
-      },
-    ]);
+    setItems((prev) => {
+      const base = stripDiscountLines(prev);
+      return [
+        ...base,
+        {
+          id:
+            typeof crypto !== "undefined" && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random()}`,
+          productId: product?.id || null,
+          name,
+          quantity: qty,
+          unitPrice: price,
+          total,
+        },
+      ];
+    });
 
     setSelectedProduct("");
     setSelectedQty(1);
+    setSelectedUnitPrice("");
+  };
+
+  const updateLine = (id, field, rawValue) => {
+    setItems((prev) => {
+      const next = prev.map((it) => {
+        if (it.id !== id || it.isDiscount) return it;
+        if (field === "quantity") {
+          const q = parseMoneyInput(rawValue);
+          const total = q * (Number(it.unitPrice) || 0);
+          return { ...it, quantity: q, total };
+        }
+        if (field === "unitPrice") {
+          const p = parseMoneyInput(rawValue);
+          const total = (Number(it.quantity) || 0) * p;
+          return { ...it, unitPrice: p, total };
+        }
+        return it;
+      });
+      return stripDiscountLines(next);
+    });
+  };
+
+  const applyDiscount = () => {
+    const base = stripDiscountLines(items);
+    const gross = sumLineTotals(base);
+    if (gross <= 0) {
+      alert("İskonto için önce pozitif tutarlı ürün satırları ekleyin.");
+      return;
+    }
+    const pct = parseMoneyInput(discountPercent);
+    const tl = parseMoneyInput(discountTl);
+    const fromPct = gross * (pct / 100);
+    const D = Math.min(gross, fromPct + tl);
+    if (D <= 0) {
+      alert("İskonto tutarı 0'dan büyük olmalıdır.");
+      return;
+    }
+    const row = makeDiscountLineItem(D);
+    if (!row) return;
+    setItems([...base, row]);
+  };
+
+  const clearDiscount = () => {
+    setItems((prev) => stripDiscountLines(prev));
+    setDiscountPercent("");
+    setDiscountTl("");
   };
 
   const removeLine = (id) => {
@@ -208,8 +296,13 @@ function MusteriyeContent() {
   };
 
   const handleSave = async () => {
-    if (items.length === 0) {
+    const linesForSave = stripDiscountLines(items);
+    if (linesForSave.length === 0) {
       alert("En az bir ürün/hizmet ekleyin.");
+      return;
+    }
+    if (sumLineTotals(linesForSave) <= 0) {
+      alert("Satış toplamı 0'dan büyük olmalıdır.");
       return;
     }
 
@@ -223,7 +316,7 @@ function MusteriyeContent() {
           saleKind,
           documentType: "ORDER",
           customerId,
-          customerName: customerName || undefined,
+          customerName: resolvedCustomerName || customerNameFromUrl || undefined,
           saleDate: new Date(saleDate).toISOString(),
           totalAmount,
           collectionAmount: totalCollected,
@@ -269,11 +362,14 @@ function MusteriyeContent() {
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
-              {customerName || "Seçili müşteri"}
+              {pageLoading && !resolvedCustomerName
+                ? "Yükleniyor…"
+                : resolvedCustomerName || "Müşteri adı alınamadı"}
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
-              Seçili müşteri için satış oluşturun, ürün ekleyin ve tahsilat
-              bilgisini tek ekrandan yönetin.
+              {resolvedCustomerName
+                ? `${resolvedCustomerName} için satış oluşturun, ürün ekleyin ve tahsilat bilgisini tek ekrandan yönetin.`
+                : "Satış oluşturun, ürün ekleyin ve tahsilat bilgisini tek ekrandan yönetin."}
             </p>
           </div>
 
@@ -302,7 +398,11 @@ function MusteriyeContent() {
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Müşteri"
-          value={customerName || "Seçili Cari"}
+          value={
+            pageLoading && !resolvedCustomerName
+              ? "Yükleniyor…"
+              : resolvedCustomerName || "—"
+          }
           sub="Satışın bağlanacağı müşteri"
           icon={UserCircleIcon}
           tone="blue"
@@ -323,8 +423,8 @@ function MusteriyeContent() {
         />
         <StatCard
           title="Satır Sayısı"
-          value={String(items.length)}
-          sub="Eklenen ürün / hizmet kalemi"
+          value={String(productLineCount)}
+          sub="Ürün / hizmet satırı (iskonto ayrı)"
           icon={CubeIcon}
           tone="slate"
         />
@@ -434,7 +534,7 @@ function MusteriyeContent() {
           </div>
 
           <div className="space-y-5 p-5">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_90px_110px]">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,120px)_100px_110px]">
               <div>
                 <label className={label}>Ürün seçin</label>
                 <select
@@ -452,11 +552,23 @@ function MusteriyeContent() {
               </div>
 
               <div>
+                <label className={label}>Birim fiyat (₺)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className={inp}
+                  value={selectedUnitPrice}
+                  onChange={(e) => setSelectedUnitPrice(e.target.value)}
+                  placeholder="0,00"
+                  disabled={!selectedProduct}
+                />
+              </div>
+
+              <div>
                 <label className={label}>Miktar</label>
                 <input
-                  type="number"
-                  min={0.01}
-                  step={0.01}
+                  type="text"
+                  inputMode="decimal"
                   className={inp}
                   value={selectedQty}
                   onChange={(e) => setSelectedQty(e.target.value)}
@@ -471,6 +583,51 @@ function MusteriyeContent() {
                   className="inline-flex w-full items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
                 >
                   Ekle
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className={label}>Genel iskonto</p>
+              <p className="mb-3 text-xs text-slate-500">
+                Yüzde ve sabit TL birlikte uygulanır; toplam iskonto satış ara toplamını geçemez.
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto] lg:items-end">
+                <div>
+                  <label className={label}>İskonto %</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={inp}
+                    value={discountPercent}
+                    onChange={(e) => setDiscountPercent(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className={label}>İskonto ₺</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className={inp}
+                    value={discountTl}
+                    onChange={(e) => setDiscountTl(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={applyDiscount}
+                  className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Uygula
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDiscount}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  Kaldır
                 </button>
               </div>
             </div>
@@ -536,16 +693,49 @@ function MusteriyeContent() {
                         key={it.id}
                         className={`border-b border-slate-100 ${
                           index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-                        }`}
+                        } ${it.isDiscount ? "bg-amber-50/40" : ""}`}
                       >
                         <td className="px-4 py-3.5 font-medium text-slate-900">
                           {it.name}
+                          {it.isDiscount ? (
+                            <span className="ml-2 text-[10px] font-bold uppercase text-amber-700">
+                              İskonto
+                            </span>
+                          ) : null}
                         </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                          {it.quantity}
+                        <td className="px-2 py-2 text-right">
+                          {it.isDiscount ? (
+                            <span className="inline-block px-2 py-1.5 text-sm tabular-nums text-slate-600">
+                              1
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className={`${inp} w-24 text-right tabular-nums`}
+                              value={String(it.quantity)}
+                              onChange={(e) =>
+                                updateLine(it.id, "quantity", e.target.value)
+                              }
+                            />
+                          )}
                         </td>
-                        <td className="px-4 py-3.5 text-right tabular-nums text-slate-700">
-                          {fmtTry(it.unitPrice)}
+                        <td className="px-2 py-2 text-right">
+                          {it.isDiscount ? (
+                            <span className="inline-block px-2 py-1.5 text-sm tabular-nums text-slate-700">
+                              {fmtTry(it.unitPrice)}
+                            </span>
+                          ) : (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className={`${inp} w-28 text-right tabular-nums`}
+                              value={String(it.unitPrice)}
+                              onChange={(e) =>
+                                updateLine(it.id, "unitPrice", e.target.value)
+                              }
+                            />
+                          )}
                         </td>
                         <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-slate-900">
                           {fmtTry(it.total)}

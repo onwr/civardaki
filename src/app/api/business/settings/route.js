@@ -33,6 +33,9 @@ export async function GET() {
                     cargoSettings: true,
                     securitySettings: true,
                     notificationSettings: true,
+                    businesssubscription: {
+                        select: { status: true, plan: true, expiresAt: true },
+                    },
                 },
             }),
             prisma.media.findFirst({ where: { businessId, type: "LOGO" }, select: { url: true } }),
@@ -44,6 +47,7 @@ export async function GET() {
         }
 
         // Parse JSON fields if they are stored as strings
+        const sub = biz.businesssubscription;
         const formattedBiz = {
             ...biz,
             businessType: biz.type,
@@ -52,7 +56,16 @@ export async function GET() {
             cargoSettings: biz.cargoSettings ? JSON.parse(biz.cargoSettings) : null,
             securitySettings: biz.securitySettings ? JSON.parse(biz.securitySettings) : null,
             notificationSettings: biz.notificationSettings ? JSON.parse(biz.notificationSettings) : null,
+            subscription: sub
+                ? {
+                      status: sub.status,
+                      plan: sub.plan,
+                      expiresAt: sub.expiresAt,
+                  }
+                : null,
         };
+
+        delete formattedBiz.businesssubscription;
 
         return NextResponse.json(formattedBiz);
     } catch (error) {

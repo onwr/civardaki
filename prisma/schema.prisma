@@ -227,8 +227,11 @@ model business {
   employee              employee[]
   employeeDepartments   employee_department[]
   employeeLeaveRequests employee_leave_request[]
+  employeeDocuments     employee_document[]
+  employeeEvaluations   employee_evaluation[]
   calendar_event        calendar_event[]
   cash_account          cash_account[]
+  cash_account_document cash_account_document[]
   cash_transaction      cash_transaction[]
   financial_transaction financial_transaction[]
   neighborhoodPosts     neighborhood_post[]
@@ -242,7 +245,10 @@ model business {
   planningProjects        planning_project[]
   planningTasks           planning_task[]
   businessCustomers       business_customer[]
+  customerDocuments       customer_document[]
   businessSuppliers       business_supplier[]
+  supplierCategories      supplier_category[]
+  supplierDocuments       supplier_document[]
   businessSales           business_sale[]
   businessPurchases       business_purchase[]
   expenseCategories       expense_category[]
@@ -581,6 +587,7 @@ model business_customer {
   updatedAt DateTime @updatedAt
 
   business     business       @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessCustomer_businessId_fkey")
+  documents    customer_document[]
   business_sales business_sale[]
 
   @@index([businessId], map: "BusinessCustomer_businessId_idx")
@@ -588,10 +595,32 @@ model business_customer {
   @@map("business_customer")
 }
 
+model customer_document {
+  id         String   @id @default(cuid())
+  businessId String
+  customerId String
+  title      String
+  url        String
+  fileId     String?
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business          @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CustomerDocument_businessId_fkey")
+  customer business_customer @relation(fields: [customerId], references: [id], onDelete: Cascade, map: "CustomerDocument_customerId_fkey")
+
+  @@index([businessId], map: "CustomerDocument_businessId_idx")
+  @@index([customerId], map: "CustomerDocument_customerId_idx")
+  @@index([createdAt], map: "CustomerDocument_createdAt_idx")
+  @@map("customer_document")
+}
+
 /// Tedarikçi (BizimHesap tarzı; panel içi)
 model business_supplier {
   id          String   @id @default(cuid())
   businessId  String
+  categoryId  String?
   name        String
   isActive    Boolean  @default(true)
   imageUrl    String?
@@ -616,11 +645,50 @@ model business_supplier {
   updatedAt DateTime @updatedAt
 
   business         business         @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "BusinessSupplier_businessId_fkey")
+  category         supplier_category? @relation(fields: [categoryId], references: [id], onDelete: SetNull, map: "BusinessSupplier_categoryId_fkey")
+  documents        supplier_document[]
   business_purchases business_purchase[]
 
   @@index([businessId], map: "BusinessSupplier_businessId_idx")
+  @@index([categoryId], map: "BusinessSupplier_categoryId_idx")
   @@index([businessId, isActive], map: "BusinessSupplier_businessId_isActive_idx")
   @@map("business_supplier")
+}
+
+model supplier_category {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business  business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "SupplierCategory_businessId_fkey")
+  suppliers business_supplier[]
+
+  @@unique([businessId, name], map: "SupplierCategory_businessId_name_key")
+  @@index([businessId], map: "SupplierCategory_businessId_idx")
+  @@map("supplier_category")
+}
+
+model supplier_document {
+  id         String   @id @default(cuid())
+  businessId String
+  supplierId String
+  title      String
+  url        String
+  fileId     String?
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business          @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "SupplierDocument_businessId_fkey")
+  supplier business_supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade, map: "SupplierDocument_supplierId_fkey")
+
+  @@index([businessId], map: "SupplierDocument_businessId_idx")
+  @@index([supplierId], map: "SupplierDocument_supplierId_idx")
+  @@index([createdAt], map: "SupplierDocument_createdAt_idx")
+  @@map("supplier_document")
 }
 
 /// Panel satış belgesi (BizimHesap Satışlar)
@@ -1661,16 +1729,61 @@ model employee {
   departmentId String?
   avatar      String?
   tcNo        String?
+  performanceNotes String?  @db.Text
+  kpiTargets       String?  @db.Text
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
   business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "Employee_businessId_fkey")
   departmentRef employee_department? @relation(fields: [departmentId], references: [id], onDelete: SetNull, map: "Employee_departmentId_fkey")
   leaveRequests employee_leave_request[]
+  documents     employee_document[]
+  evaluations   employee_evaluation[]
 
   @@index([businessId], map: "Employee_businessId_idx")
   @@index([departmentId], map: "Employee_departmentId_idx")
   @@map("employee")
+}
+
+model employee_document {
+  id         String   @id @default(cuid())
+  businessId String
+  employeeId String
+  title      String
+  url        String
+  fileId     String?
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmployeeDocument_businessId_fkey")
+  employee employee @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeeDocument_employeeId_fkey")
+
+  @@index([businessId], map: "EmployeeDocument_businessId_idx")
+  @@index([employeeId], map: "EmployeeDocument_employeeId_idx")
+  @@map("employee_document")
+}
+
+model employee_evaluation {
+  id            String   @id @default(cuid())
+  businessId    String
+  employeeId    String
+  reviewDate    DateTime @default(now())
+  periodLabel   String?
+  overallScore  Int      @default(0)
+  criteriaJson  Json?
+  strengths     String?  @db.Text
+  improvements  String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "EmployeeEvaluation_businessId_fkey")
+  employee employee @relation(fields: [employeeId], references: [id], onDelete: Cascade, map: "EmployeeEvaluation_employeeId_fkey")
+
+  @@index([businessId], map: "EmployeeEvaluation_businessId_idx")
+  @@index([employeeId], map: "EmployeeEvaluation_employeeId_idx")
+  @@map("employee_evaluation")
 }
 
 model employee_department {
@@ -2010,12 +2123,34 @@ model cash_account {
   business        business           @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashAccount_businessId_fkey")
   transactions    cash_transaction[] @relation("accountTransactions")
   to_transactions cash_transaction[] @relation("toAccountTransactions")
+  documents       cash_account_document[]
   business_sales     business_sale[]
   business_purchases business_purchase[]
   business_loans     business_loan[]
 
   @@index([businessId], map: "CashAccount_businessId_idx")
   @@map("cash_account")
+}
+
+model cash_account_document {
+  id        String   @id @default(cuid())
+  businessId String
+  accountId String
+  title     String
+  url       String
+  fileId    String?
+  mimeType  String?
+  sizeBytes Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business business    @relation(fields: [businessId], references: [id], onDelete: Cascade, map: "CashAccountDocument_businessId_fkey")
+  account  cash_account @relation(fields: [accountId], references: [id], onDelete: Cascade, map: "CashAccountDocument_accountId_fkey")
+
+  @@index([businessId], map: "CashAccountDocument_businessId_idx")
+  @@index([accountId], map: "CashAccountDocument_accountId_idx")
+  @@index([createdAt], map: "CashAccountDocument_createdAt_idx")
+  @@map("cash_account_document")
 }
 
 /// Nakit / masraf modülü proje ağacı (alt proje destekli)

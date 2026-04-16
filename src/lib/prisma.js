@@ -30,7 +30,13 @@ if (
     typeof prisma.business_proposal_template === "undefined" ||
     typeof prisma.business_label_template === "undefined" ||
     typeof prisma.business_fihrist_entry === "undefined" ||
-    typeof prisma.lead_business_state === "undefined"
+    typeof prisma.lead_business_state === "undefined" ||
+    typeof prisma.cash_account_document === "undefined" ||
+    typeof prisma.supplier_category === "undefined" ||
+    typeof prisma.supplier_document === "undefined" ||
+    typeof prisma.customer_document === "undefined" ||
+    typeof prisma.employee_document === "undefined" ||
+    typeof prisma.employee_evaluation === "undefined"
   )
 ) {
   prisma.$disconnect().catch(() => {});

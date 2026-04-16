@@ -32,6 +32,9 @@ export async function GET(request) {
       where,
       orderBy: { name: "asc" },
       take: 2000,
+      include: {
+        category: { select: { id: true, name: true } },
+      },
     });
 
     const suppliers = rows.map((r) => ({
@@ -39,6 +42,8 @@ export async function GET(request) {
       name: r.name,
       isActive: r.isActive,
       openingBalance: Number(r.openingBalance),
+      categoryId: r.categoryId || null,
+      categoryName: r.category?.name || null,
     }));
 
     const totalAll = await prisma.business_supplier.count({ where: { businessId } });
@@ -89,6 +94,7 @@ export async function POST(request) {
             ? parseInt(body.maturityDays, 10) || null
             : null,
         openingBalance: toNum(body.openingBalance),
+        categoryId: body.categoryId || null,
         authorizedPerson: body.authorizedPerson || null,
         email: body.email || null,
         address: body.address || null,

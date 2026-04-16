@@ -1,0 +1,108 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/prisma";
+import { customerCategory, CUSTOMER_NOTE_OPS } from "@/lib/customer-transaction";
+
+async function getContext(params) {
+  const session = await getServerSession(authOptions);
+  const businessId = session?.user?.businessId;
+  if (!businessId) return { error: "Unauthorized", status: 401 };
+
+  const resolved = await params;
+  const customerId = resolved?.id;
+  if (!customerId) return { error: "Müşteri bulunamadı.", status: 400 };
+
+  const customer = await prisma.business_customer.findFirst({
+    where: { id: customerId, businessId },
+    select: { id: true, name: true },
+  });
+  if (!customer) return { error: "Müşteri bulunamadı.", status: 404 };
+  return { businessId, customerId, customer };
+}
+
+export async function POST(req, { params }) {
+  try {
+    const ctx = await getContext(params);
+    if (ctx.error) return NextResponse.json({ error: ctx.error }, { status: ctx.status });
+
+    const body = await req.json();
+    const operation = String(body?.operation || "");
+    const accountId = String(body?.accountId || "");
+    const amount = Number(body?.amount || 0);
+    const description = String(body?.description || "").trim();
+    const date = body?.date ? new Date(body.date) : new Date();
+
+    if (!Object.values(CUSTOMER_NOTE_OPS).includes(operation)) {
+      return NextResponse.json({ error: "Geçersiz senet işlemi." }, { status: 400 });
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "Tutar zorunludur." }, { status: 400 });
+    }
+
+    const result = await prisma.$transaction(async (db) => {
+      const txType = operation === CUSTOMER_NOTE_OPS.GIVEN ? "EXPENSE" : "INCOME";
+      const note = await db.cash_promissory_note.create({
+        data: {
+          businessId: ctx.businessId,
+          direction: operation === CUSTOMER_NOTE_OPS.GIVEN ? "ISSUED" : "RECEIVED",
+          status: "IN_PORTFOLIO",
+          noteNumber: body?.noteNumber ? String(body.noteNumber) : null,
+          amount,
+          issueDate: body?.issueDate ? new Date(body.issueDate) : date,
+          dueDate: body?.dueDate ? new Date(body.dueDate) : null,
+          drawerName: body?.drawerName ? String(body.drawerName) : null,
+          payeeName: operation === CUSTOMER_NOTE_OPS.GIVEN ? ctx.customer.name : (body?.payeeName ? String(body.payeeName) : null),
+          notes: JSON.stringify({
+            source: "customer-note",
+            customerId: ctx.customerId,
+            operation,
+            description,
+          }),
+        },
+      });
+
+      if (accountId) {
+        const account = await db.cash_account.findFirst({
+          where: { id: accountId, businessId: ctx.businessId },
+          select: { id: true },
+        });
+        if (!account) throw new Error("Kasa/Hesap bulunamadı.");
+
+        await db.cash_transaction.create({
+          data: {
+            businessId: ctx.businessId,
+            accountId,
+            type: txType,
+            amount,
+            category: customerCategory(ctx.customerId, "NOTE", operation),
+            description:
+              description ||
+              `${ctx.customer.name} / ${operation === CUSTOMER_NOTE_OPS.GIVEN ? "Müşteriye Verilen Senet" : "Müşteriden Alınan Senet"}`,
+            date,
+            notes: JSON.stringify({
+              source: "customer-note",
+              customerId: ctx.customerId,
+              operation,
+            }),
+          },
+        });
+
+        await db.cash_account.update({
+          where: { id: accountId },
+          data: {
+            balance: txType === "EXPENSE" ? { decrement: amount } : { increment: amount },
+          },
+        });
+      }
+
+      return note;
+    });
+
+    return NextResponse.json({ item: result }, { status: 201 });
+  } catch (error) {
+    const message = error?.message || "Server error";
+    console.error("Customer notes POST Error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

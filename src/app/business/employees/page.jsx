@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserGroupIcon,
@@ -20,6 +21,7 @@ import {
   BoltIcon,
   PencilSquareIcon,
   Squares2X2Icon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -205,6 +207,9 @@ export default function EmployeesPage() {
     departmentId: "",
   });
 
+  const [newEmployeeAvatarFile, setNewEmployeeAvatarFile] = useState(null);
+  const [newEmployeeAvatarPreview, setNewEmployeeAvatarPreview] = useState(null);
+
   const [leaveForm, setLeaveForm] = useState({
     employeeId: "",
     leaveType: "annual",
@@ -254,6 +259,22 @@ export default function EmployeesPage() {
     fetchInitialData();
   }, [fetchInitialData]);
 
+  useEffect(() => {
+    if (!isEmployeeModalOpen) {
+      setNewEmployeeAvatarFile(null);
+    }
+  }, [isEmployeeModalOpen]);
+
+  useEffect(() => {
+    if (!newEmployeeAvatarFile) {
+      setNewEmployeeAvatarPreview(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(newEmployeeAvatarFile);
+    setNewEmployeeAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [newEmployeeAvatarFile]);
+
   const handleAddEmployee = async (e) => {
     e.preventDefault();
 
@@ -273,7 +294,53 @@ export default function EmployeesPage() {
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "Çalışan kaydedilemedi.");
 
-      toast.success("Yeni çalışan başarıyla kaydedildi.");
+      const newId = result?.id;
+      const hadAvatarFile = Boolean(newEmployeeAvatarFile);
+      let avatarOk = false;
+      if (newEmployeeAvatarFile && newId) {
+        try {
+          const fd = new FormData();
+          fd.append("file", newEmployeeAvatarFile);
+          fd.append("type", "GALLERY");
+          const uploadRes = await fetch("/api/business/upload", {
+            method: "POST",
+            body: fd,
+          });
+          const uploadData = await uploadRes.json().catch(() => ({}));
+          if (uploadRes.ok && uploadData.url) {
+            const patchRes = await fetch(`/api/business/employees/${newId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ avatar: uploadData.url }),
+            });
+            const patchData = await patchRes.json().catch(() => ({}));
+            if (patchRes.ok) avatarOk = true;
+            else
+              toast.warning(
+                patchData.error ||
+                  "Çalışan kaydedildi; profil fotoğrafı kaydedilemedi. Detay sayfasından tekrar deneyebilirsiniz.",
+              );
+          } else {
+            toast.warning(
+              uploadData.message ||
+                "Çalışan kaydedildi; profil fotoğrafı yüklenemedi. Detay sayfasından tekrar deneyebilirsiniz.",
+            );
+          }
+        } catch {
+          toast.warning(
+            "Çalışan kaydedildi; profil fotoğrafı işlenirken hata oluştu. Detay sayfasından yükleyebilirsiniz.",
+          );
+        }
+      }
+
+      setNewEmployeeAvatarFile(null);
+      if (avatarOk) {
+        toast.success("Yeni çalışan kaydedildi ve profil fotoğrafı eklendi.");
+      } else if (hadAvatarFile && !avatarOk) {
+        /* uyarı mesajları yukarıda gösterildi */
+      } else {
+        toast.success("Yeni çalışan başarıyla kaydedildi.");
+      }
       setIsEmployeeModalOpen(false);
 
       setEmployeeForm({
@@ -601,17 +668,13 @@ export default function EmployeesPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-4">
-                        <div className="h-16 w-16 overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
-                          <img
-                            src={
-                              emp.avatar ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                emp.name || "C"
-                              )}&background=E2E8F0&color=0F172A`
-                            }
-                            alt={emp.name}
-                            className="h-full w-full object-cover"
-                          />
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-200/90 text-slate-500 shadow-sm">
+                          {emp.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={emp.avatar} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <UserCircleIcon className="h-11 w-11" aria-hidden />
+                          )}
                         </div>
 
                         <div className="min-w-0">
@@ -679,7 +742,13 @@ export default function EmployeesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 flex gap-2">
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <Link
+                        href={`/business/employees/${emp.id}`}
+                        className="inline-flex flex-1 min-w-[6rem] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      >
+                        Detay
+                      </Link>
                       <ActionButton
                         onClick={() => {
                           setLeaveForm((prev) => ({ ...prev, employeeId: emp.id }));
@@ -687,7 +756,7 @@ export default function EmployeesPage() {
                         }}
                         icon={CalendarDaysIcon}
                         tone="blue"
-                        className="flex-1 justify-center"
+                        className="flex-1 min-w-[6rem] justify-center"
                       >
                         İzin
                       </ActionButton>
@@ -766,6 +835,38 @@ export default function EmployeesPage() {
             }
           >
             <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleAddEmployee}>
+              <div className="md:col-span-2 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-200/90 text-slate-500">
+                  {newEmployeeAvatarPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={newEmployeeAvatarPreview}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-12 w-12" aria-hidden />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <span className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Profil fotoğrafı (isteğe bağlı)
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setNewEmployeeAvatarFile(f);
+                    }}
+                    className="w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-800"
+                  />
+                  <p className="text-xs text-slate-500">
+                    JPEG, PNG veya WebP; en fazla 5 MB. Boş bırakırsanız kartta varsayılan simge kullanılır; sonra detay
+                    sayfasından da ekleyebilirsiniz.
+                  </p>
+                </div>
+              </div>
               <label className="space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   Ad Soyad

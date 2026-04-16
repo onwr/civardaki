@@ -709,6 +709,7 @@ export default function ProductManager() {
         categoryId: prodForm.categoryId || null,
         imageUrl: prodForm.imageUrl || null,
         isActive: prodForm.isActive,
+        publishedOnMarketplace: !!prodForm.publishedOnMarketplace,
         stock:
           prodForm.stock === "" || prodForm.stock === null
             ? null

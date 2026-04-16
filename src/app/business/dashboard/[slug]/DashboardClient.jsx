@@ -10,52 +10,25 @@ import {
   Banknote,
   CalendarDays,
   Settings,
-  Gavel,
-  Tag,
   Megaphone,
   ExternalLink,
   ChevronDown,
   Store,
   ArrowRight,
-  Sparkles,
   Wallet,
-  TrendingUp,
   BellRing,
   Clock3,
   ReceiptText,
-  MapPin,
+  CircleUser,
+  ClipboardList,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useSocket } from "@/components/providers/SocketProvider";
-import DashboardSubscriptionWidget from "@/components/dashboard/DashboardSubscriptionWidget";
 import OnboardingCompletion from "@/components/business/OnboardingCompletion";
 import BroadcastSlot from "@/components/broadcast/BroadcastSlot";
 import DashboardAnalyticsSection from "@/components/business/DashboardAnalyticsSection";
-
-const MONTHS_TR = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-];
-
-const DAYS_TR = [
-  "Pazar",
-  "Pazartesi",
-  "Salı",
-  "Çarşamba",
-  "Perşembe",
-  "Cuma",
-  "Cumartesi",
-];
+import DashboardTopSummarySection from "@/components/business/DashboardTopSummarySection";
+import DashboardModuleSummaries from "@/components/business/DashboardModuleSummaries";
 
 const formatMoney = (value) => {
   if (value == null || Number.isNaN(value)) return "₺0,00";
@@ -73,64 +46,6 @@ function SurfaceCard({ children, className = "" }) {
       className={`rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-sm shadow-[0_10px_35px_rgba(15,23,42,0.06)] ${className}`}
     >
       {children}
-    </div>
-  );
-}
-
-function StatusPill({ label, tone = "default" }) {
-  const tones = {
-    default: "bg-white/10 text-white border-white/15",
-    success: "bg-emerald-500/15 text-emerald-100 border-emerald-400/20",
-    danger: "bg-rose-500/15 text-rose-100 border-rose-400/20",
-    warning: "bg-amber-500/15 text-amber-100 border-amber-400/20",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${tones[tone]}`}
-    >
-      {label}
-    </span>
-  );
-}
-
-function MetricCard({ title, value, subtitle, icon: Icon, tone = "blue" }) {
-  const toneStyles = {
-    blue: "from-blue-600 via-indigo-600 to-slate-900",
-    emerald: "from-emerald-500 via-teal-600 to-slate-900",
-    rose: "from-rose-500 via-red-600 to-slate-900",
-    cyan: "from-cyan-500 via-sky-600 to-slate-900",
-  };
-
-  return (
-    <div
-      className={`relative overflow-hidden rounded-[28px] bg-gradient-to-br ${toneStyles[tone]} p-5 text-white shadow-[0_14px_30px_rgba(15,23,42,0.16)]`}
-    >
-      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-white/5 blur-2xl" />
-
-      <div className="relative flex h-full flex-col justify-between gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">
-              {title}
-            </p>
-            <p className="mt-3 text-2xl font-bold tracking-tight tabular-nums">
-              {value}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-            <Icon className="h-5 w-5 text-white" />
-          </div>
-        </div>
-
-        {subtitle ? (
-          <p className="text-xs text-white/75">{subtitle}</p>
-        ) : (
-          <div />
-        )}
-      </div>
     </div>
   );
 }
@@ -170,22 +85,6 @@ function QuickLinkCard({ href, title, desc, icon: Icon, iconClassName }) {
       </div>
     </Link>
   );
-}
-
-function hasBusinessMapCoords(business) {
-  const lat = business?.latitude;
-  const lng = business?.longitude;
-  return (
-    typeof lat === "number" &&
-    typeof lng === "number" &&
-    Number.isFinite(lat) &&
-    Number.isFinite(lng)
-  );
-}
-
-function businessMapEmbedSrc(lat, lng) {
-  const q = `${lat},${lng}`;
-  return `https://www.google.com/maps?q=${encodeURIComponent(q)}&z=16&hl=tr&output=embed`;
 }
 
 function SidebarListCard({
@@ -241,14 +140,6 @@ function SidebarListCard({
 }
 
 function DashboardOverview({ business, m, isConnected }) {
-  const now = new Date();
-  const title = `${now.getDate()} ${MONTHS_TR[now.getMonth()]} ${now.getFullYear()} ${DAYS_TR[now.getDay()]}`;
-  const monthLabel = MONTHS_TR[now.getMonth()];
-  const usd =
-    m?.fxTryPerUsd != null ? Number(m.fxTryPerUsd).toFixed(2) : "—";
-  const eur =
-    m?.fxTryPerEur != null ? Number(m.fxTryPerEur).toFixed(2) : "—";
-
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[32px] border border-slate-800 bg-slate-950 text-white shadow-[0_24px_60px_rgba(2,6,23,0.35)]">
@@ -256,136 +147,49 @@ function DashboardOverview({ business, m, isConnected }) {
         <div className="absolute -right-24 top-0 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl" />
 
-        <div className="relative p-6 md:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <StatusPill label="İşletme Kontrol Merkezi" />
-                <StatusPill
-                  label={isConnected ? "Canlı senkron aktif" : "Canlı bağlantı yok"}
-                  tone={isConnected ? "success" : "warning"}
-                />
-              </div>
+        <div className="relative">
+          <DashboardTopSummarySection
+            business={business}
+            m={m}
+            isConnected={isConnected}
+            series={m?.topSummarySeries}
+          />
 
-              <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
-                {title}
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
-                Günlük operasyon, finansal özet ve işletme sağlığını tek ekranda
-                izleyin. Kritik veriler önceliklendirilmiş şekilde sunulur.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                <StatusPill label={`USD/TL ${usd}`} />
-                <StatusPill label={`EUR/TL ${eur}`} />
-              </div>
-
-              <div className="mt-6 w-full max-w-2xl">
-                <p className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                  <MapPin className="h-3.5 w-3.5 text-emerald-300/90" />
-                  İşletme konumu
-                </p>
-                {hasBusinessMapCoords(business) ? (
-                  <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                    <div className="aspect-[16/9] min-h-[200px] w-full sm:min-h-[220px]">
-                      <iframe
-                        title="İşletme konumu haritası"
-                        className="h-full w-full border-0"
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={businessMapEmbedSrc(
-                          business.latitude,
-                          business.longitude,
-                        )}
-                      />
-                    </div>
-                    <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/90 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg backdrop-blur-sm">
-                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                      İşaretli konum
-                    </div>
-                  </div>
-                ) : (
-                  <Link
-                    href="/business/onboarding?step=2"
-                    className="flex min-h-[200px] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-slate-950/40 px-6 py-10 text-center transition hover:border-emerald-400/35 hover:bg-slate-900/50"
-                  >
-                    <MapPin className="h-10 w-10 text-slate-500" />
-                    <span className="text-base font-semibold text-slate-200">
-                      Konum belirleyin
-                    </span>
-                    <span className="max-w-sm text-xs leading-relaxed text-slate-400">
-                      Haritada işletmenizi göstermek için onboarding veya profil
-                      üzerinden konum bilgisini ekleyin.
-                    </span>
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            <div className="grid w-full max-w-md gap-3 sm:grid-cols-2 lg:w-[380px] lg:grid-cols-1">
-              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
-                <div className="flex items-center gap-3">
+          <div className="border-t border-white/10 px-6 pb-8 pt-2 md:px-8">
+            <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              <CircleUser className="h-3.5 w-3.5 text-cyan-300/90" />
+              Hesap
+            </p>
+            <div className="w-full rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md md:p-5">
+              <div className="flex min-h-0 min-w-0 flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
                   {business.logoUrl ? (
                     <img
                       src={business.logoUrl}
                       alt={business.name}
-                      className="h-14 w-14 rounded-2xl border border-white/10 object-cover"
+                      className="h-16 w-16 shrink-0 rounded-2xl border border-white/10 object-cover sm:h-[4.5rem] sm:w-[4.5rem]"
                     />
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
-                      <BarChart3 className="h-6 w-6 text-white/80" />
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 sm:h-[4.5rem] sm:w-[4.5rem]">
+                      <BarChart3 className="h-7 w-7 text-white/80" />
                     </div>
                   )}
 
-                  <div className="min-w-0">
-                    <h2 className="truncate text-base font-bold">{business.name}</h2>
-                    <p className="text-xs text-slate-300">
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <h2 className="text-lg font-bold leading-tight text-white sm:text-xl">{business.name}</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">
                       Profil, üyelik ve işletme görünürlüğü
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    href="/business/onboarding"
-                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-emerald-300" />
-                    Profil %{business.completion ?? 0}
-                  </Link>
-
-                  <div className="min-w-[180px] flex-1">
-                    <DashboardSubscriptionWidget subscription={business.subscription} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
-                <div className="mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-cyan-300" />
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
-                    Hızlı Durum
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
-                      Bugünkü Satış
-                    </p>
-                    <p className="mt-2 text-sm font-bold tabular-nums">
-                      {formatMoney(m?.revenueToday ?? 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">
-                      Bugünkü Tahsilat
-                    </p>
-                    <p className="mt-2 text-sm font-bold tabular-nums">
-                      {formatMoney(m?.collectionToday ?? 0)}
-                    </p>
-                  </div>
-                </div>
+                <Link
+                  href="/business/onboarding"
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/15 sm:w-auto sm:justify-center"
+                >
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-300" />
+                  Profil %{business.completion ?? 0}
+                </Link>
               </div>
             </div>
           </div>
@@ -394,37 +198,6 @@ function DashboardOverview({ business, m, isConnected }) {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6 min-w-0">
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-            <MetricCard
-              title={`${monthLabel} Cirosu`}
-              value={formatMoney(m?.revenueCalendarMonth ?? 0)}
-              subtitle="Takvim ayı bazlı toplam gelir"
-              icon={Gavel}
-              tone="blue"
-            />
-            <MetricCard
-              title={`${monthLabel} Masrafları`}
-              value={formatMoney(m?.expenseCalendarMonth ?? 0)}
-              subtitle="Kayıtlı gider hareketleri"
-              icon={Tag}
-              tone="rose"
-            />
-            <MetricCard
-              title="Stok Değeri"
-              value={formatMoney(m?.stockValue ?? 0)}
-              subtitle="Mevcut stokların toplam parasal değeri"
-              icon={Banknote}
-              tone="cyan"
-            />
-            <MetricCard
-              title="Net Varlık Görünümü"
-              value={formatMoney((m?.assetsTotal ?? 0) - (m?.debtsTotal ?? 0))}
-              subtitle="Varlıklar eksi toplam borçlar"
-              icon={TrendingUp}
-              tone="emerald"
-            />
-          </section>
-
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <SurfaceCard className="p-5 lg:col-span-1">
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -608,12 +381,11 @@ export default function DashboardClient() {
   if (status === "loading" || loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-52 rounded-[32px] bg-slate-200/80" />
+        <div className="min-h-[520px] rounded-[32px] bg-slate-200/80" />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-40 rounded-[28px] bg-slate-200/70" />
-          ))}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="h-64 rounded-[24px] bg-slate-200/70" />
+          <div className="h-64 rounded-[24px] bg-slate-200/70" />
         </div>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -643,6 +415,10 @@ export default function DashboardClient() {
 
   return (
     <div className="space-y-6">
+      <DashboardAnalyticsSection />
+
+      <DashboardOverview business={business} m={m} isConnected={isConnected} />
+
       <BroadcastSlot layout="BANNER" audience="BUSINESS" />
 
       {business.completion < 100 && (
@@ -708,9 +484,10 @@ export default function DashboardClient() {
         </div>
       )}
 
-      <DashboardOverview business={business} m={m} isConnected={isConnected} />
-
-      <DashboardAnalyticsSection />
+      <DashboardModuleSummaries
+        navModules={m?.navModules}
+        businessType={business?.businessType}
+      />
 
       <section className="space-y-4">
         <div>
@@ -722,7 +499,14 @@ export default function DashboardClient() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <QuickLinkCard
+            href="/business/planning"
+            title="İş Planlama"
+            desc="Projeler, görevler ve operasyon planını tek yerden takip edin."
+            icon={ClipboardList}
+            iconClassName="bg-amber-50 text-amber-800"
+          />
           <QuickLinkCard
             href="/business/orders"
             title="Siparişler"

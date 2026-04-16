@@ -266,23 +266,8 @@ export default function SatislarPage() {
     <div className="min-h-[calc(100vh-8rem)] space-y-6 text-[13px] text-slate-700">
       <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
-              <DocumentTextIcon className="h-4 w-4" />
-              Satış Yönetimi
-            </div>
-
-            <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
-              Satışlar
-            </h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
-              Perakende, yeni müşteri ve kayıtlı müşteri satışlarını tek
-              merkezden yönetin. Belge tipine ve tarihe göre filtreleyin.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-start gap-3">
             <Link
               href="/business/satislar/perakende"
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
@@ -306,6 +291,21 @@ export default function SatislarPage() {
             >
               Kayıtlı Müşteriye Satış Gir
             </ActionButton>
+          </div>
+
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+              <DocumentTextIcon className="h-4 w-4" />
+              Satış Yönetimi
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
+              Satışlar
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
+              Perakende, yeni müşteri ve kayıtlı müşteri satışlarını tek
+              merkezden yönetin. Belge tipine ve tarihe göre filtreleyin.
+            </p>
           </div>
         </div>
       </section>

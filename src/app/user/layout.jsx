@@ -382,7 +382,7 @@ function SidebarContent({
                       } ${collapsed ? "" : "mr-3"}`}
                   />
                   {!collapsed && (
-                    <span className="text-[11px] font-black uppercase tracking-widest truncate">
+                    <span className="text-[13px] font-black uppercase tracking-wide truncate">
                       {item.name}
                     </span>
                   )}
@@ -395,6 +395,23 @@ function SidebarContent({
 
       {/* Logout Button */}
       <div className="p-4 border-t border-white/10">
+        <Link
+          href="/"
+          onClick={() => setSidebarOpen && setSidebarOpen(false)}
+          className={`mb-2 flex items-center justify-center w-full p-3 rounded-xl transition-all duration-200 group ${
+            collapsed
+              ? "bg-white/10 text-white hover:bg-white/20"
+              : "bg-white/10 text-white hover:bg-white hover:text-[#004aad] gap-3"
+          }`}
+          title="Civardaki Anasayfa"
+        >
+          <HomeIcon className="h-5 w-5" />
+          {!collapsed && (
+            <span className="text-xs font-black uppercase tracking-widest">
+              Civardaki'ye Git
+            </span>
+          )}
+        </Link>
         <button
           onClick={onLogout}
           className={`flex items-center justify-center w-full p-3 rounded-xl transition-all duration-200 group ${collapsed

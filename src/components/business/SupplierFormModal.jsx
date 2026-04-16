@@ -84,7 +84,8 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
   }, [supplierId]);
 
   useEffect(() => {
-    if (open) load();
+    if (!open) return;
+    load().catch((e) => console.error(e));
   }, [open, load]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -124,6 +125,15 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
   const inp =
     "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#17a2b8] focus:ring-1 focus:ring-[#17a2b8] outline-none";
   const label = "block text-sm font-medium text-gray-700 mb-1";
+
+  const FieldHelp = ({ text }) => (
+    <span className="group relative inline-flex items-center">
+      <QuestionMarkCircleIcon className="h-4 w-4 cursor-help text-gray-400" />
+      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium leading-4 text-white shadow-lg group-hover:block">
+        {text}
+      </span>
+    </span>
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
@@ -184,7 +194,8 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                         />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="isActive"
@@ -194,6 +205,7 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                       <label htmlFor="isActive" className="text-sm text-gray-700">
                         Aktif tedarikçi
                       </label>
+                    </div>
                     </div>
                   </div>
                   <div>
@@ -218,7 +230,7 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                     <div>
                       <label className={`${label} inline-flex items-center gap-1`}>
                         Vergi Dairesi
-                        <QuestionMarkCircleIcon className="h-4 w-4 text-gray-400" />
+                        <FieldHelp text="Tedarikçinin resmi vergi dairesi bilgisidir; e-fatura ve resmi belgelerde kullanılır." />
                       </label>
                       <input className={inp} value={form.taxOffice} onChange={(e) => set("taxOffice", e.target.value)} />
                     </div>
@@ -252,7 +264,7 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                     <div>
                       <label className={`${label} inline-flex items-center gap-1`}>
                         Tedarikçi Para Birimi
-                        <QuestionMarkCircleIcon className="h-4 w-4 text-gray-400" />
+                        <FieldHelp text="Bu tedarikçi ile çalışırken varsayılan para birimi olarak kullanılır." />
                       </label>
                       <select className={inp} value={form.currency} onChange={(e) => set("currency", e.target.value)}>
                         <option value="TRY">TL</option>
@@ -263,14 +275,14 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                     <div>
                       <label className={`${label} inline-flex items-center gap-1`}>
                         Vade (gün)
-                        <QuestionMarkCircleIcon className="h-4 w-4 text-gray-400" />
+                        <FieldHelp text="Alış sonrası ödeme için tanımlı gün süresidir. Örn: 30 gün." />
                       </label>
                       <input className={inp} value={form.maturityDays} onChange={(e) => set("maturityDays", e.target.value)} />
                     </div>
                     <div>
                       <label className={`${label} inline-flex items-center gap-1`}>
                         Açılış Bakiyesi
-                        <QuestionMarkCircleIcon className="h-4 w-4 text-gray-400" />
+                        <FieldHelp text="İlk başlangıç bakiyesi. Tedarikçiye borç varsa pozitif, alacak varsa eksi girin." />
                       </label>
                       <input className={inp} value={form.openingBalance} onChange={(e) => set("openingBalance", e.target.value)} />
                       <p className="text-xs text-gray-500 mt-1">tedarikçi size borçlu ise eksi girin</p>

@@ -43,7 +43,7 @@ export function ExpandableMenu({ item, pathname }) {
         >
           <div className="flex items-center flex-1 min-w-0">
             <item.icon className="mr-3 flex-shrink-0 w-4 h-4 text-blue-200/60" />
-            <span className="text-[11px] font-medium tracking-normal truncate">
+            <span className="text-[13px] font-medium tracking-normal truncate">
               {item.name}
             </span>
             {item.badge && (
@@ -77,7 +77,7 @@ export function ExpandableMenu({ item, pathname }) {
               }`}
             />
             <span
-              className={`text-[11px] font-medium tracking-normal truncate ${
+              className={`text-[13px] font-medium tracking-normal truncate ${
                 isActive || hasActiveChild
                   ? "opacity-100"
                   : "opacity-90 group-hover:opacity-100"
@@ -132,7 +132,7 @@ export function ExpandableMenu({ item, pathname }) {
               }`}
             />
             <span
-              className={`text-[11px] font-medium tracking-normal truncate ${
+              className={`text-[13px] font-medium tracking-normal truncate ${
                 hasActiveChild ? "opacity-100" : "opacity-90 group-hover:opacity-100"
               }`}
             >
@@ -182,7 +182,7 @@ export function ExpandableMenu({ item, pathname }) {
                   <Link
                     key={child.href}
                     href={child.href}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-[10px] font-medium transition-all duration-150 ${
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
                       isChildActive
                         ? "text-white translate-x-0.5 bg-white/20 shadow-inner"
                         : "text-blue-200 hover:text-white hover:translate-x-0.5 hover:bg-white/5"

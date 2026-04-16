@@ -21,7 +21,7 @@ export async function getPublicBusinessCatalogBySlug(slug) {
     orderBy: { order: "asc" },
     include: {
       product: {
-        where: { isActive: true },
+        where: { isActive: true, publishedOnMarketplace: true },
         orderBy: { order: "asc" },
         include: { productvariant: { orderBy: { order: "asc" } } },
       },
@@ -29,7 +29,12 @@ export async function getPublicBusinessCatalogBySlug(slug) {
   });
 
   const uncategorized = await prisma.product.findMany({
-    where: { businessId: business.id, categoryId: null, isActive: true },
+    where: {
+      businessId: business.id,
+      categoryId: null,
+      isActive: true,
+      publishedOnMarketplace: true,
+    },
     orderBy: { order: "asc" },
     include: { productvariant: { orderBy: { order: "asc" } } },
   });

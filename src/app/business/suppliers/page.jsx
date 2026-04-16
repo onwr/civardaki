@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   PlusIcon,
   Bars3BottomLeftIcon,
@@ -96,6 +97,7 @@ function TableSkeleton() {
 }
 
 export default function SuppliersPage() {
+  const router = useRouter();
   const [suppliers, setSuppliers] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -103,12 +105,17 @@ export default function SuppliersPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [searchQ, setSearchQ] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
 
   const [sortKey, setSortKey] = useState("name");
   const [sortDir, setSortDir] = useState("asc");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [assigningRowId, setAssigningRowId] = useState("");
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -139,6 +146,21 @@ export default function SuppliersPage() {
     fetchList();
   }, [fetchList]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/business/suppliers/categories");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kategoriler alınamadı");
+      setCategories(data.items || []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (searchInput.length === 0 || searchInput.length >= 3) {
@@ -150,7 +172,16 @@ export default function SuppliersPage() {
   }, [searchInput]);
 
   const sorted = useMemo(() => {
-    const arr = [...suppliers];
+    const filtered =
+      categoryFilter === "ALL"
+        ? suppliers
+        : suppliers.filter((row) =>
+            categoryFilter === "UNCATEGORIZED"
+              ? !row.categoryName
+              : row.categoryId === categoryFilter
+          );
+
+    const arr = [...filtered];
     const dir = sortDir === "asc" ? 1 : -1;
 
     arr.sort((a, b) => {
@@ -164,7 +195,12 @@ export default function SuppliersPage() {
     });
 
     return arr;
-  }, [suppliers, sortKey, sortDir]);
+  }, [suppliers, sortKey, sortDir, categoryFilter]);
+
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ id: c.id, name: c.name })),
+    [categories]
+  );
 
   const summary = useMemo(() => {
     return sorted.reduce(
@@ -195,6 +231,75 @@ export default function SuppliersPage() {
   const openEdit = (id) => {
     setEditId(id);
     setModalOpen(true);
+  };
+
+  const openDetail = (id) => {
+    router.push(`/business/suppliers/${id}`);
+  };
+
+  const createCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setSavingCategory(true);
+    try {
+      const res = await fetch("/api/business/suppliers/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kategori eklenemedi");
+      setNewCategoryName("");
+      await fetchCategories();
+    } catch (e) {
+      alert(e.message || "Kategori eklenemedi");
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    if (!confirm("Kategori silinsin mi?")) return;
+    try {
+      const res = await fetch(`/api/business/suppliers/categories/${categoryId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kategori silinemedi");
+      await Promise.all([fetchCategories(), fetchList()]);
+    } catch (e) {
+      alert(e.message || "Kategori silinemedi");
+    }
+  };
+
+  const assignCategoryToSupplier = async (supplierId, categoryId) => {
+    setAssigningRowId(supplierId);
+    try {
+      const res = await fetch(`/api/business/suppliers/${supplierId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: categoryId || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Kategori atanamadı");
+      setSuppliers((prev) =>
+        prev.map((row) =>
+          row.id === supplierId
+            ? {
+                ...row,
+                categoryId: data?.supplier?.categoryId || null,
+                categoryName: data?.supplier?.category?.name || data?.supplier?.categoryName || null,
+              }
+            : row
+        )
+      );
+    } catch (e) {
+      alert(e.message || "Kategori atanamadı");
+    } finally {
+      setAssigningRowId("");
+    }
   };
 
   return (
@@ -294,6 +399,20 @@ export default function SuppliersPage() {
               />
             </div>
 
+            <select
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-400 sm:w-[220px]"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="ALL">Tüm Kategoriler</option>
+              <option value="UNCATEGORIZED">Kategorisiz</option>
+              {categoryOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+
             <ActionButton
               onClick={fetchList}
               icon={ArrowPathIcon}
@@ -304,6 +423,51 @@ export default function SuppliersPage() {
             </ActionButton>
           </div>
         </div>
+      </section>
+
+      <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-5">
+        <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
+          Kategori Yönetimi
+        </h2>
+        <div className="mt-3 flex flex-col gap-3 md:flex-row">
+          <input
+            type="text"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-slate-400 md:max-w-sm"
+            placeholder="Yeni kategori adı (örn: Toptancı)"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={createCategory}
+            disabled={savingCategory}
+            className="inline-flex items-center justify-center rounded-xl border border-emerald-700 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {savingCategory ? "Ekleniyor..." : "Kategori Ekle"}
+          </button>
+        </div>
+        {categories.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {categories.map((cat) => (
+              <span
+                key={cat.id}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
+              >
+                {cat.name}
+                <button
+                  type="button"
+                  onClick={() => deleteCategory(cat.id)}
+                  className="text-rose-600 hover:text-rose-700"
+                  title="Kategoriyi sil"
+                >
+                  x
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-slate-500">Henüz kategori yok.</p>
+        )}
       </section>
 
       {suppliers.length === 0 && !loading ? (
@@ -339,7 +503,7 @@ export default function SuppliersPage() {
             <div>
               <h3 className="text-base font-bold text-slate-900">Tedarikçi Listesi</h3>
               <p className="mt-1 text-sm text-slate-500">
-                Düzenlemek için satıra tıklayın.
+                Detay için satıra tıklayın.
               </p>
             </div>
 
@@ -354,7 +518,7 @@ export default function SuppliersPage() {
             <table className="min-w-full border-collapse text-left">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-slate-900 text-white">
-                  <th className="w-[70%] px-4 py-3 font-semibold md:px-5">
+                  <th className="w-[55%] px-4 py-3 font-semibold md:px-5">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1.5 hover:opacity-90"
@@ -363,6 +527,10 @@ export default function SuppliersPage() {
                       İsim / Unvan
                       <ArrowsUpDownIcon className="h-4 w-4 opacity-80" />
                     </button>
+                  </th>
+
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap md:px-5">
+                    Kategori
                   </th>
 
                   <th className="px-4 py-3 text-right font-semibold whitespace-nowrap md:px-5">
@@ -388,7 +556,7 @@ export default function SuppliersPage() {
                       className={`cursor-pointer border-b border-slate-100 transition hover:bg-sky-50/70 ${
                         index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
                       }`}
-                      onClick={() => openEdit(row.id)}
+                      onClick={() => openDetail(row.id)}
                     >
                       <td className="px-4 py-3.5 md:px-5">
                         <div className="min-w-0">
@@ -399,6 +567,23 @@ export default function SuppliersPage() {
                             Tedarikçi kaydı
                           </p>
                         </div>
+                      </td>
+
+                      <td className="px-4 py-3.5 text-sm text-slate-600 md:px-5">
+                        <select
+                          className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700"
+                          value={row.categoryId || ""}
+                          disabled={assigningRowId === row.id}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => assignCategoryToSupplier(row.id, e.target.value)}
+                        >
+                          <option value="">Kategorisiz</option>
+                          {categoryOptions.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.name}
+                            </option>
+                          ))}
+                        </select>
                       </td>
 
                       <td className="px-4 py-3.5 text-right font-semibold tabular-nums whitespace-nowrap text-slate-800 md:px-5">

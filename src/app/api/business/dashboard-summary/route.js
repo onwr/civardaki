@@ -5,6 +5,68 @@ import { prisma } from "@/lib/prisma";
 import { computeCompletion } from "@/lib/completion";
 import { calculateQualityScore } from "@/lib/quality-score";
 import { loadBusinessLeadCategories, buildBusinessLeadsWhere } from "@/lib/business-lead-visibility";
+import { buildNavModulesList } from "@/lib/dashboard-nav-modules";
+
+const SHORT_WEEKDAYS_TR = ["Pzr", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+
+/** Son 7 gün (bugün dahil), yerel gece yarısı sınırları. */
+function getLast7LocalDayWindows() {
+    const windows = [];
+    for (let i = 6; i >= 0; i--) {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - i);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        windows.push({
+            start,
+            end,
+            label: SHORT_WEEKDAYS_TR[start.getDay()],
+            dateKey: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`,
+        });
+    }
+    return windows;
+}
+
+async function buildTopSummarySeries(prisma, businessId, dayWindows) {
+    const rows = await Promise.all(
+        dayWindows.map(({ start, end }) =>
+            Promise.all([
+                prisma.order.aggregate({
+                    where: { businessId, createdAt: { gte: start, lt: end } },
+                    _sum: { total: true },
+                }),
+                prisma.financial_transaction.aggregate({
+                    where: {
+                        businessId,
+                        type: "EXPENSE",
+                        date: { gte: start, lt: end },
+                    },
+                    _sum: { amount: true },
+                }),
+                prisma.financial_transaction.aggregate({
+                    where: {
+                        businessId,
+                        type: "INCOME",
+                        date: { gte: start, lt: end },
+                    },
+                    _sum: { amount: true },
+                }),
+            ]),
+        ),
+    );
+
+    return dayWindows.map((w, idx) => {
+        const [ord, exp, inc] = rows[idx];
+        return {
+            label: w.label,
+            date: w.dateKey,
+            revenue: Number(ord._sum.total) || 0,
+            expense: Number(exp._sum.amount) || 0,
+            collection: Number(inc._sum.amount) || 0,
+        };
+    });
+}
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -19,7 +81,7 @@ export async function GET() {
         prisma.business.findUnique({
             where: { id: businessId },
             select: {
-                id: true, name: true, slug: true,
+                id: true, name: true, slug: true, type: true,
                 description: true, category: true,
                 phone: true, email: true, website: true,
                 address: true, city: true, district: true,
@@ -334,11 +396,176 @@ export async function GET() {
         views30Days
     });
 
+    const startOfYear = new Date();
+    startOfYear.setMonth(0, 1);
+    startOfYear.setHours(0, 0, 0, 0);
+    const weekAheadEnd = new Date(startOfToday);
+    weekAheadEnd.setDate(weekAheadEnd.getDate() + 7);
+    const dayAfterToday = new Date(startOfToday);
+    dayAfterToday.setDate(dayAfterToday.getDate() + 1);
+
+    const [
+        orderYearAgg,
+        purchaseTodayAgg,
+        purchaseWeekAgg,
+        purchaseMonthAgg,
+        purchaseYearAgg,
+        customerCount,
+        supplierCount,
+        quoteOpenCount,
+        quoteOpenSumAgg,
+        calendarEventsWeekCount,
+        fihristEntryCount,
+        pendingLeaveRequestCount,
+    ] = await Promise.all([
+        prisma.order.aggregate({
+            where: { businessId, createdAt: { gte: startOfYear } },
+            _sum: { total: true },
+        }),
+        prisma.business_purchase.aggregate({
+            where: {
+                businessId,
+                isCancelled: false,
+                purchaseDate: { gte: startOfToday, lt: dayAfterToday },
+            },
+            _sum: { totalAmount: true },
+        }),
+        prisma.business_purchase.aggregate({
+            where: {
+                businessId,
+                isCancelled: false,
+                purchaseDate: { gte: sevenDaysAgo },
+            },
+            _sum: { totalAmount: true },
+        }),
+        prisma.business_purchase.aggregate({
+            where: {
+                businessId,
+                isCancelled: false,
+                purchaseDate: { gte: startOfMonth },
+            },
+            _sum: { totalAmount: true },
+        }),
+        prisma.business_purchase.aggregate({
+            where: {
+                businessId,
+                isCancelled: false,
+                purchaseDate: { gte: startOfYear },
+            },
+            _sum: { totalAmount: true },
+        }),
+        prisma.business_customer.count({ where: { businessId } }),
+        prisma.business_supplier.count({ where: { businessId } }),
+        prisma.quote.count({
+            where: { businessId, status: { in: ["DRAFT", "SENT"] } },
+        }),
+        prisma.quote.aggregate({
+            where: { businessId, status: { in: ["DRAFT", "SENT"] } },
+            _sum: { total: true },
+        }),
+        prisma.calendar_event.count({
+            where: {
+                businessId,
+                startTime: { gte: startOfToday, lt: weekAheadEnd },
+            },
+        }),
+        prisma.business_fihrist_entry.count({ where: { businessId } }),
+        prisma.employee_leave_request.count({
+            where: { businessId, status: "PENDING" },
+        }),
+    ]);
+
+    const [
+        planningActiveProjectCount,
+        planningOpenTaskCount,
+        businessNoteCount,
+        supportTicketOpenCount,
+        reviewPendingCount,
+        neighborhoodPostCount,
+        referralTotalCount,
+        reservationConfirmedUpcomingCount,
+    ] = await Promise.all([
+        prisma.planning_project.count({ where: { businessId, status: "ACTIVE" } }),
+        prisma.planning_task.count({
+            where: { businessId, status: { in: ["TODO", "IN_PROGRESS"] } },
+        }),
+        prisma.business_note.count({
+            where: { businessId, archivedAt: null },
+        }),
+        prisma.support_ticket.count({
+            where: {
+                businessId,
+                status: { in: ["OPEN", "IN_PROGRESS", "WAITING_REPLY"] },
+            },
+        }),
+        prisma.review.count({ where: { businessId, isApproved: false } }),
+        prisma.neighborhood_post.count({
+            where: { authorBusinessId: businessId, status: { not: "DELETED" } },
+        }),
+        prisma.referral.count({ where: { referrerId: businessId } }),
+        prisma.reservation.count({
+            where: {
+                businessId,
+                status: "CONFIRMED",
+                startAt: { gte: startOfToday },
+            },
+        }),
+    ]);
+
+    const dayWindows = getLast7LocalDayWindows();
+    const topSummarySeries = await buildTopSummarySeries(prisma, businessId, dayWindows);
+
+    const navModules = buildNavModulesList(business.type, {
+        views30Days,
+        productClicks30Days,
+        waClicks30Days,
+        phoneClicks30Days,
+        leadCount30Days,
+        leadCountNew,
+        pendingReservationCount,
+        orderCountToday,
+        orderCountMonth,
+        employeeCount,
+        pendingLeaveRequestCount,
+        customerCount,
+        supplierCount,
+        productCount,
+        categoryCount,
+        stockValue,
+        revenueToday: orderTodayAgg?._sum?.total ?? 0,
+        revenueWeek: orderWeekAgg?._sum?.total ?? 0,
+        revenueCalendarMonth: orderCalendarMonthAgg?._sum?.total ?? 0,
+        revenueYear: orderYearAgg?._sum?.total ?? 0,
+        purchaseTotalToday: purchaseTodayAgg?._sum?.totalAmount ?? 0,
+        purchaseTotalWeek: purchaseWeekAgg?._sum?.totalAmount ?? 0,
+        purchaseTotalCalendarMonth: purchaseMonthAgg?._sum?.totalAmount ?? 0,
+        purchaseTotalYear: purchaseYearAgg?._sum?.totalAmount ?? 0,
+        quoteOpenCount,
+        quoteOpenSum: quoteOpenSumAgg?._sum?.total ?? 0,
+        assetsTotal: cashBalanceAgg?._sum?.balance ?? 0,
+        expenseCalendarMonth: expenseCalendarMonthAgg?._sum?.amount ?? 0,
+        upcomingExpenseCount: (upcomingExpenseDue || []).length,
+        upcomingLoanCount: (upcomingLoanDue || []).length,
+        completionPercent,
+        missingStepsCount: Array.isArray(missingSteps) ? missingSteps.length : 0,
+        fihristEntryCount,
+        calendarEventsWeekCount,
+        planningActiveProjectCount,
+        planningOpenTaskCount,
+        businessNoteCount,
+        supportTicketOpenCount,
+        reviewPendingCount,
+        neighborhoodPostCount,
+        referralTotalCount,
+        reservationConfirmedUpcomingCount,
+    });
+
     return NextResponse.json({
         business: {
             id: business.id,
             name: business.name,
             slug: business.slug,
+            businessType: business.type,
             logoUrl: mediaLogo?.url || null,
             completion: completionPercent,
             missingSteps: missingSteps, // SPRINT 13B
@@ -408,6 +635,16 @@ export async function GET() {
                 amount: r.totalAmount ?? r.amount,
                 dueDate: r.dueDate,
             })),
+            topSummarySeries,
+            navModules,
+            planningActiveProjectCount,
+            planningOpenTaskCount,
+            businessNoteCount,
+            supportTicketOpenCount,
+            reviewPendingCount,
+            neighborhoodPostCount,
+            referralTotalCount,
+            reservationConfirmedUpcomingCount,
         },
         activity: [],
     });

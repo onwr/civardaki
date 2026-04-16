@@ -11,19 +11,22 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   ArrowsPointingOutIcon,
+  HomeIcon,
   MapPinIcon,
   PowerIcon,
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import NotificationDropdown from "@/components/notifications/notification-dropdown";
+import DashboardSubscriptionWidget from "@/components/dashboard/DashboardSubscriptionWidget";
 import { NotificationProvider } from "@/components/providers/notification-provider";
 import { useSocket } from "@/components/providers/SocketProvider";
 import { toast } from "sonner";
 import { ExpandableMenu } from "@/components/business/ExpandableMenu";
 import { Badge } from "@/components/ui/badge";
 import { defaultNavigation, BusinessTypes } from "@/lib/navigation-config";
+import { getNavigationWithPreferences } from "@/lib/business-navigation-menu";
 import { isNavHrefActive } from "@/lib/nav-active";
-import { loadMenuPreferences } from "@/lib/menu-preferences";
+import { playNotificationSound } from "@/lib/notification-sound";
 import AIAssistant from "@/components/ai/AIAssistant";
 import { Leaf, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
@@ -42,69 +45,6 @@ function BusinessLayoutFallback({ message = "Yukleniyor..." }) {
   );
 }
 
-function getNavigationWithPreferences(businessType = BusinessTypes.INDIVIDUAL) {
-  if (typeof window === "undefined") {
-    return defaultNavigation.filter(
-      (item) => !item.allowedTypes || item.allowedTypes.includes(businessType),
-    );
-  }
-
-  const preferences = loadMenuPreferences(defaultNavigation);
-
-  const typeFilteredNavigation = defaultNavigation.filter(
-    (item) => !item.allowedTypes || item.allowedTypes.includes(businessType),
-  );
-
-  const sortedItems = [...preferences.order]
-    .sort((a, b) => a.index - b.index)
-    .map((pref) => {
-      const item = typeFilteredNavigation.find(
-        (nav) =>
-          (nav.href || `menu-${defaultNavigation.indexOf(nav)}`) === pref.id,
-      );
-      return item ? { ...item, _prefId: pref.id } : null;
-    })
-    .filter(Boolean);
-
-  const visibleItems = sortedItems.filter(
-    (item) => !preferences.hidden.includes(item._prefId),
-  );
-
-  const processedItems = visibleItems.map((item) => {
-    if (!item.children) return item;
-
-    const typeFilteredChildren = item.children.filter(
-      (child) =>
-        !child.allowedTypes || child.allowedTypes.includes(businessType),
-    );
-
-    let sortedChildren = typeFilteredChildren;
-
-    if (preferences.children[item._prefId]) {
-      const childPrefs = preferences.children[item._prefId];
-
-      sortedChildren = [...childPrefs.order]
-        .sort((a, b) => a.index - b.index)
-        .map((childPref) => {
-          const child = typeFilteredChildren.find(
-            (c) => c.href === childPref.id,
-          );
-          return child && !childPrefs.hidden.includes(childPref.id)
-            ? child
-            : null;
-        })
-        .filter(Boolean);
-    }
-
-    return {
-      ...item,
-      children: sortedChildren.length > 0 ? sortedChildren : undefined,
-    };
-  });
-
-  return processedItems;
-}
-
 function getInitials(name = "") {
   const parts = name.trim().split(" ").filter(Boolean);
   if (parts.length === 0) return "İ";
@@ -119,6 +59,7 @@ function LeadNotificationListener() {
     if (!socket || !isConnected) return;
 
     const handleNewLead = (data) => {
+      playNotificationSound("lead");
       const topic =
         (typeof data.title === "string" && data.title.trim()) ||
         (typeof data.product === "string" && data.product.trim()) ||
@@ -152,6 +93,7 @@ function OrderNotificationListener() {
     if (!socket || !isConnected) return;
 
     const handleNewOrder = (data) => {
+      playNotificationSound("order");
       toast.success("Yeni sipariş!", {
         description: `${data.customerName} · ${data.orderNumber} · ${Number(data.total || 0).toLocaleString("tr-TR")}₺`,
         duration: 8000,
@@ -189,6 +131,7 @@ export default function BusinessLayout({ children }) {
   const [navigation, setNavigation] = useState(defaultNavigation);
   const [bizPanelExpanded, setBizPanelExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [panelSubscription, setPanelSubscription] = useState(null);
 
   const isAuthPage = AUTH_PAGES.includes(pathname);
 
@@ -213,6 +156,7 @@ export default function BusinessLayout({ children }) {
         const d = await r.json();
         const t = String(d.businessType || d.type || "").toUpperCase();
         if (t === "CORPORATE") setBusinessType(BusinessTypes.CORPORATE);
+        if (!cancelled) setPanelSubscription(d.subscription ?? null);
       } catch (_) {
         /* sessiz */
       }
@@ -220,6 +164,23 @@ export default function BusinessLayout({ children }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      (async () => {
+        try {
+          const r = await fetch("/api/business/settings");
+          if (!r.ok) return;
+          const d = await r.json();
+          setPanelSubscription(d.subscription ?? null);
+        } catch (_) {
+          /* sessiz */
+        }
+      })();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   useEffect(() => {
@@ -560,7 +521,7 @@ export default function BusinessLayout({ children }) {
                       aria-disabled
                     >
                       <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
-                      <span className="text-[11px] sm:text-xs md:text-sm font-medium text-center leading-tight">
+                      <span className="text-xs sm:text-sm md:text-base font-medium text-center leading-tight">
                         {item.name}
                       </span>
 
@@ -584,7 +545,7 @@ export default function BusinessLayout({ children }) {
                       }`}
                     >
                       <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
-                      <span className="text-[11px] sm:text-xs md:text-sm font-medium text-center leading-tight">
+                      <span className="text-xs sm:text-sm md:text-base font-medium text-center leading-tight">
                         {item.name}
                       </span>
 
@@ -608,7 +569,7 @@ export default function BusinessLayout({ children }) {
                       }`}
                     >
                       <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
-                      <span className="text-[11px] sm:text-xs md:text-sm font-medium text-center leading-tight">
+                      <span className="text-xs sm:text-sm md:text-base font-medium text-center leading-tight">
                         {item.name}
                       </span>
 
@@ -698,6 +659,25 @@ export default function BusinessLayout({ children }) {
           </AnimatePresence>
 
           <div className={`mt-4 ${collapsed ? "px-0" : "px-1"}`}>
+            <Link
+              href="/"
+              onClick={() => setSidebarOpen(false)}
+              className={`mb-2 w-full flex items-center ${
+                collapsed ? "justify-center" : "justify-start gap-3"
+              } p-3 rounded-xl transition-all duration-200 group ${
+                collapsed
+                  ? "bg-white/10 text-white hover:bg-white/20"
+                  : "bg-white/10 text-white hover:bg-white hover:text-[#004aad]"
+              }`}
+              title="Civardaki Anasayfa"
+            >
+              <HomeIcon className="h-5 w-5" />
+              {!collapsed && (
+                <span className="text-xs font-black uppercase tracking-widest">
+                  Civardaki'ye Git
+                </span>
+              )}
+            </Link>
             <button
               onClick={handleLogout}
               className={`w-full flex items-center ${
@@ -811,7 +791,8 @@ export default function BusinessLayout({ children }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
+                  <DashboardSubscriptionWidget subscription={panelSubscription} variant="compact" />
                   <NotificationDropdown />
 
                   <Link
