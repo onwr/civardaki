@@ -573,11 +573,18 @@ export default function CustomerDetailPage() {
             <p className="text-xs text-slate-500">Satış kaydı bulunmuyor.</p>
           ) : (
             sales.map((sale) => (
-              <div key={sale.id} className="rounded-md border border-slate-200 px-3 py-2 text-xs">
-                <p className="font-semibold text-slate-800">
-                  ₺{money(sale.totalAmount)} / {new Date(sale.saleDate).toLocaleDateString("tr-TR")}
-                </p>
-                <p className="text-slate-500">
+              <div
+                key={sale.id}
+                onClick={() => router.push(`/business/satislar/${sale.id}`)}
+                className="cursor-pointer rounded-md border border-slate-200 px-3 py-2 text-xs transition hover:bg-slate-50"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-slate-800">
+                    ₺{money(sale.totalAmount)} / {new Date(sale.saleDate).toLocaleDateString("tr-TR")}
+                  </p>
+                  <p className="font-semibold text-sky-600">Düzenle &rarr;</p>
+                </div>
+                <p className="text-slate-500 mt-1">
                   Tahsilat: ₺{money(sale.collectionAmount)} / {sale.cashAccountName || "Hesap yok"}
                 </p>
               </div>

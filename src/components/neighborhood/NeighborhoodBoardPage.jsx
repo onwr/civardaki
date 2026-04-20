@@ -66,6 +66,7 @@ const DEFAULT_FORM = {
   description: "",
   price: "",
   currency: "TL",
+  marketplaceCategory: "",
   location: "",
   city: "",
   district: "",
@@ -492,18 +493,71 @@ export function NeighborhoodBoardPage({ context = "user" }) {
 
   const openCreateModal = () => {
     resetForm();
+    let initialCategory = activeCategory;
+    if (initialCategory === "ALL" || (postAsBusiness && initialCategory === "SECONDHAND")) {
+      initialCategory = postAsBusiness ? "JOBS" : "SECONDHAND";
+    }
     setFormData((prev) => ({
       ...prev,
       cityId: selectedCityId,
       districtId: selectedDistrictId,
       city: selectedCity?.sehir_adi || "",
       district: selectedDistrict?.ilce_adi || "",
+      marketplaceCategory: activeTab === "MARKETPLACE" ? initialCategory : "",
     }));
+    if (activeTab === "MARKETPLACE") {
+      setTimeout(() => handleMarketplaceCategoryChange(initialCategory), 0);
+    }
     setIsCreateModalOpen(true);
   };
 
   const closeCreateModal = () => {
     setIsCreateModalOpen(false);
+  };
+
+  const handleMarketplaceCategoryChange = (val) => {
+    setFormData((prev) => {
+      let newAttrs = [{ label: "", value: "" }];
+      if (val === "VEHICLE") {
+        newAttrs = [
+          { label: "Marka", value: "" },
+          { label: "Seri", value: "" },
+          { label: "Model Düzen", value: "" },
+          { label: "Yıl", value: "" },
+          { label: "Kilometre", value: "" },
+          { label: "Vites", value: "" },
+          { label: "Yakıt", value: "" },
+        ];
+      } else if (val === "REALESTATE") {
+        newAttrs = [
+          { label: "Emlak Tipi", value: "" },
+          { label: "m² (Brüt)", value: "" },
+          { label: "m² (Net)", value: "" },
+          { label: "Oda Sayısı", value: "" },
+          { label: "Bina Yaşı", value: "" },
+          { label: "Bulunduğu Kat", value: "" },
+          { label: "Krediye Uygunluk", value: "" },
+        ];
+      } else if (val === "JOBS") {
+        newAttrs = [
+          { label: "Firma Sektörü", value: "" },
+          { label: "Departman", value: "" },
+          { label: "Çalışma Şekli", value: "" },
+          { label: "Pozisyon Seviyesi", value: "" },
+        ];
+      } else if (val === "SECONDHAND") {
+        newAttrs = [
+          { label: "Kategori", value: "" },
+          { label: "Kimden", value: "" },
+          { label: "Durumu", value: "" },
+        ];
+      }
+      return {
+        ...prev,
+        marketplaceCategory: val,
+        attributes: newAttrs,
+      };
+    });
   };
 
   const handleFormChange = (field, value) => {
@@ -589,7 +643,7 @@ export function NeighborhoodBoardPage({ context = "user" }) {
         ...basePayload,
         tab: "MARKETPLACE",
         type: "LISTING",
-        marketplaceCategory: activeCategory || "ALL",
+        marketplaceCategory: formData.marketplaceCategory || "ALL",
         price: formData.price ? Number(formData.price) : null,
         currency: formData.currency.trim() || "TL",
         description: formData.description.trim() || formData.content.trim() || null,
@@ -1471,6 +1525,23 @@ export function NeighborhoodBoardPage({ context = "user" }) {
 
                     {activeTab === "MARKETPLACE" && (
                       <>
+                        <div className="md:col-span-2">
+                          <label className="mb-2 block text-sm font-semibold text-slate-800">
+                            İlan Kategorisi
+                          </label>
+                          <select
+                            value={formData.marketplaceCategory}
+                            onChange={(e) => handleMarketplaceCategoryChange(e.target.value)}
+                            className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/60"
+                          >
+                            <option value="">Seçiniz</option>
+                            <option value="JOBS">İş İlanları</option>
+                            <option value="VEHICLE">Vasıta</option>
+                            <option value="REALESTATE">Emlak</option>
+                            {!postAsBusiness && <option value="SECONDHAND">İkinci El / Diğer</option>}
+                          </select>
+                        </div>
+                        
                         <div className="md:col-span-2">
                           <label className="mb-2 block text-sm font-semibold text-slate-800">
                             Açıklama

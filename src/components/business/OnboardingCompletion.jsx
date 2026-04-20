@@ -97,7 +97,7 @@ export default function OnboardingCompletion({ score, pendingTasks }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {pendingTasks.map((task, i) => {
                         const label = task.title ?? task.label ?? "Adımı tamamla";
-                        const href = task.linkUrl ?? task.cta ?? "/business/settings";
+                        const href = task.linkUrl ?? task.cta ?? "/business/onboarding";
                         const weight = task.weight ?? Math.round(100 / (pendingTasks.length || 1));
                         return (
                             <Link

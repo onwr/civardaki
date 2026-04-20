@@ -48,6 +48,11 @@ export default function OnboardingPage() {
   const stepParam = parseInt(searchParams.get("step") || "1", 10);
   const [step, setStep] = useState(Math.min(Math.max(stepParam, 1), 4));
 
+  // URL parametresi ile step state'ini sekronize et
+  useEffect(() => {
+    setStep(Math.min(Math.max(stepParam, 1), 4));
+  }, [stepParam]);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState(null);

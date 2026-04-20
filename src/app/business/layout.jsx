@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, useRef, Suspense, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,6 +28,7 @@ import { getNavigationWithPreferences } from "@/lib/business-navigation-menu";
 import { isNavHrefActive } from "@/lib/nav-active";
 import { playNotificationSound } from "@/lib/notification-sound";
 import AIAssistant from "@/components/ai/AIAssistant";
+import AgendaNotesPanel from "@/components/business/AgendaNotesPanel";
 import { Leaf, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 
 const AUTH_PAGES = ["/business/register", "/business/login"];
@@ -50,6 +51,252 @@ function getInitials(name = "") {
   if (parts.length === 0) return "İ";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+/* ── Kullanıcı dropdown menüsü ───────────────────────────────── */
+function UserDropdown({ user, userDisplayName, userRole, panelSubscription, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const [settings, setSettings] = useState(null);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Bileşen mount'ta settings'i çek (nokta göstergesi için erken lazım)
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/business/settings")
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setSettings(d); })
+      .catch(() => { });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Profil doluluk adımları
+  const STEPS = [
+    { key: "phone", label: "Telefon numarası", href: "/business/onboarding?step=2" },
+    { key: "email", label: "E-posta adresi", href: "/business/onboarding?step=2" },
+    { key: "address", label: "İşletme adresi", href: "/business/onboarding?step=2" },
+    { key: "website", label: "Web sitesi", href: "/business/onboarding?step=2" },
+    { key: "vision", label: "İşletme açıklaması", href: "/business/onboarding?step=1" },
+    { key: "logoUrl", label: "Logo yükle", href: "/business/onboarding?step=3" },
+    { key: "coverUrl", label: "Kapak fotoğrafı", href: "/business/onboarding?step=3" },
+  ];
+
+  const completedSteps = settings ? STEPS.filter((s) => Boolean(settings[s.key])).length : 0;
+  const totalSteps = STEPS.length;
+  const percent = Math.round(((completedSteps + 1) / (totalSteps + 1)) * 100);
+  const missingSteps = settings ? STEPS.filter((s) => !settings[s.key]) : [];
+
+  // Progress bar & text renkleri
+  const barColor = percent >= 80 ? "bg-emerald-500" : percent >= 50 ? "bg-amber-500" : "bg-rose-500";
+  const textColor = percent >= 80 ? "text-emerald-600" : percent >= 50 ? "text-amber-600" : "text-rose-600";
+
+  // Trigger nokta: yalnızca settings yüklendiyse ve profil eksikse göster
+  const dotColor = settings && percent < 80
+    ? (percent < 50 ? "bg-rose-500" : "bg-amber-400")
+    : null;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        id="user-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        className={`relative flex items-center gap-2 rounded-2xl border transition-all duration-200 h-[48px] p-1.5 pr-3 sm:pr-4 ${open
+          ? "border-[#004aad]/30 bg-blue-50/50 shadow-inner"
+          : "border-gray-200/80 bg-white hover:border-[#004aad]/20 hover:bg-slate-50 hover:shadow-sm"
+          }`}
+      >
+        <div className="relative flex-shrink-0">
+          <div className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden relative">
+            {user?.image ? (
+              <Image
+                src={user.image}
+                alt={userDisplayName}
+                fill
+                sizes="48px"
+                className="object-contain"
+              />
+            ) : (
+              <span className="text-slate-600 text-xs font-black tracking-widest uppercase select-none">
+                {getInitials(userDisplayName)}
+              </span>
+            )}
+          </div>
+          {/* Profil tamamlama noktası */}
+          {dotColor && !open && (
+            <span className={`absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white ${dotColor} shadow-sm z-10`} />
+          )}
+        </div>
+
+        <div className="text-left hidden sm:flex flex-col justify-center">
+          <p className="font-bold text-slate-800 text-[13px] leading-none mb-1 tracking-tight truncate max-w-[110px]">
+            {userDisplayName}
+          </p>
+          <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+            {userRole === "ADMIN" ? "YÖNETİCİ" : "İŞLETME"}
+          </p>
+        </div>
+
+      </button>
+
+      {/* Dropdown panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -8 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="absolute right-0 top-[calc(100%+8px)] z-50 w-80 rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden"
+            style={{ boxShadow: "0 20px 60px rgba(15,23,42,0.16)" }}
+          >
+            {/* Profil başlığı */}
+            <div className="bg-gradient-to-r from-[#004aad] to-blue-600 px-4 py-3 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0 relative overflow-hidden shadow">
+                {user?.image ? (
+                  <Image src={user.image} alt={userDisplayName} fill className="object-cover" />
+                ) : (
+                  <span className="text-white text-sm font-bold">{getInitials(userDisplayName)}</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white truncate">{userDisplayName}</p>
+                <p className="text-[10px] text-white/70 font-semibold uppercase tracking-wide">
+                  {userRole === "ADMIN" ? "Yönetici" : "İşletme Hesabı"}
+                </p>
+              </div>
+            </div>
+
+            {/* ── Profilini Güçlendir ── */}
+            <div className="px-3 pt-3 pb-2 border-b border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                  Profilini Güçlendir
+                </p>
+                <span className={`text-xs font-black ${textColor}`}>{percent}%</span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percent}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className={`h-full rounded-full ${barColor}`}
+                />
+              </div>
+
+              {/* Eksik adımlar */}
+              {settings && missingSteps.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {missingSteps.slice(0, 3).map((step) => (
+                    <Link
+                      key={step.key}
+                      href={step.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors group"
+                    >
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 group-hover:border-[#004aad]/30 group-hover:text-[#004aad]">
+                        <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 10 10">
+                          <circle cx="5" cy="5" r="4" strokeWidth="1.5" stroke="currentColor" />
+                        </svg>
+                      </span>
+                      <span className="font-medium">{step.label}</span>
+                      <svg className="ml-auto h-3 w-3 text-slate-300 group-hover:text-[#004aad] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </Link>
+                  ))}
+                  {missingSteps.length > 3 && (
+                    <Link
+                      href="/business/settings"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-center gap-1 py-1 text-[10px] font-bold text-slate-400 hover:text-[#004aad] transition-colors"
+                    >
+                      +{missingSteps.length - 3} daha fazla adım
+                    </Link>
+                  )}
+                </div>
+              )}
+              {settings && missingSteps.length === 0 && (
+                <p className="mt-2 text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  Profiliniz tam dolu — harikasın!
+                </p>
+              )}
+              {!settings && (
+                <div className="mt-2 space-y-1">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-6 rounded-lg bg-slate-100 animate-pulse" />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Panel aboneliği */}
+            {panelSubscription && (
+              <div className="px-3 pt-2.5 pb-1">
+                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1.5 px-1">
+                  Panel Aboneliği
+                </p>
+                <DashboardSubscriptionWidget subscription={panelSubscription} variant="compact" />
+              </div>
+            )}
+
+            {/* Menü öğeleri */}
+            <div className="p-2 mt-0.5">
+              <Link
+                href="/business/settings"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <PencilSquareIcon className="h-4 w-4" />
+                </span>
+                Ayarlar
+              </Link>
+              <Link
+                href="/business/billing"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                  </svg>
+                </span>
+                Faturalandırma
+              </Link>
+            </div>
+
+            {/* Çıkış */}
+            <div className="border-t border-slate-100 px-2 pb-2">
+              <button
+                type="button"
+                onClick={() => { setOpen(false); onLogout(); }}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+                  <ArrowRightOnRectangleIcon className="h-4 w-4" />
+                </span>
+                Çıkış Yap
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 function LeadNotificationListener() {
@@ -421,11 +668,10 @@ export default function BusinessLayout({ children }) {
                         toast.error("Bir hata oluştu.");
                       }
                     }}
-                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[8px] font-bold uppercase ${
-                      isBusinessOpen
-                        ? "bg-red-500/15 text-red-300 hover:bg-red-500/25"
-                        : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                    }`}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[8px] font-bold uppercase ${isBusinessOpen
+                      ? "bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                      : "bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                      }`}
                   >
                     <PowerIcon className="w-3.5 h-3.5" />
                     {isBusinessOpen ? "Kapat" : "Aç"}
@@ -473,11 +719,10 @@ export default function BusinessLayout({ children }) {
                     ) : (
                       <Link
                         href={item.href || "#"}
-                        className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${
-                          isNavHrefActive(pathname, item.href, item.activePathMatch)
-                            ? "bg-white text-[#004aad] shadow-lg"
-                            : "text-blue-100 hover:bg-white hover:text-[#004aad]"
-                        }`}
+                        className={`flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 ${isNavHrefActive(pathname, item.href, item.activePathMatch)
+                          ? "bg-white text-[#004aad] shadow-lg"
+                          : "text-blue-100 hover:bg-white hover:text-[#004aad]"
+                          }`}
                         title={item.name}
                       >
                         <item.icon className="h-5 w-5" />
@@ -538,11 +783,10 @@ export default function BusinessLayout({ children }) {
                     <button
                       type="button"
                       onClick={() => setExpandedItem(item)}
-                      className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-                        isNavHrefActive(pathname, item.href, item.activePathMatch)
-                          ? "bg-white text-[#004aad] shadow-lg"
-                          : "bg-white/10 text-blue-100 hover:bg-white/20"
-                      }`}
+                      className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${isNavHrefActive(pathname, item.href, item.activePathMatch)
+                        ? "bg-white text-[#004aad] shadow-lg"
+                        : "bg-white/10 text-blue-100 hover:bg-white/20"
+                        }`}
                     >
                       <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
                       <span className="text-xs sm:text-sm md:text-base font-medium text-center leading-tight">
@@ -562,11 +806,10 @@ export default function BusinessLayout({ children }) {
                     <Link
                       href={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${
-                        isNavHrefActive(pathname, item.href, item.activePathMatch)
-                          ? "bg-white text-[#004aad] shadow-lg"
-                          : "bg-white/10 text-blue-100 hover:bg-white/20"
-                      }`}
+                      className={`relative w-full flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 ${isNavHrefActive(pathname, item.href, item.activePathMatch)
+                        ? "bg-white text-[#004aad] shadow-lg"
+                        : "bg-white/10 text-blue-100 hover:bg-white/20"
+                        }`}
                     >
                       <item.icon className="h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-1.5 sm:mb-2" />
                       <span className="text-xs sm:text-sm md:text-base font-medium text-center leading-tight">
@@ -634,11 +877,10 @@ export default function BusinessLayout({ children }) {
                             setSidebarOpen(false);
                             setExpandedItem(null);
                           }}
-                          className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
-                            isChildActive
-                              ? "bg-[#004aad] text-white shadow-lg"
-                              : "bg-gray-50 text-gray-900 hover:bg-gray-100"
-                          }`}
+                          className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${isChildActive
+                            ? "bg-[#004aad] text-white shadow-lg"
+                            : "bg-gray-50 text-gray-900 hover:bg-gray-100"
+                            }`}
                         >
                           <span className="font-medium">{child.name}</span>
                           {child.badge && (
@@ -662,13 +904,11 @@ export default function BusinessLayout({ children }) {
             <Link
               href="/"
               onClick={() => setSidebarOpen(false)}
-              className={`mb-2 w-full flex items-center ${
-                collapsed ? "justify-center" : "justify-start gap-3"
-              } p-3 rounded-xl transition-all duration-200 group ${
-                collapsed
+              className={`mb-2 w-full flex items-center ${collapsed ? "justify-center" : "justify-start gap-3"
+                } p-3 rounded-xl transition-all duration-200 group ${collapsed
                   ? "bg-white/10 text-white hover:bg-white/20"
                   : "bg-white/10 text-white hover:bg-white hover:text-[#004aad]"
-              }`}
+                }`}
               title="Civardaki Anasayfa"
             >
               <HomeIcon className="h-5 w-5" />
@@ -680,13 +920,11 @@ export default function BusinessLayout({ children }) {
             </Link>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center ${
-                collapsed ? "justify-center" : "justify-start gap-3"
-              } p-3 rounded-xl transition-all duration-200 group ${
-                collapsed
+              className={`w-full flex items-center ${collapsed ? "justify-center" : "justify-start gap-3"
+                } p-3 rounded-xl transition-all duration-200 group ${collapsed
                   ? "bg-white/10 text-white hover:bg-white/20"
                   : "bg-white/10 text-white hover:bg-white hover:text-[#004aad]"
-              }`}
+                }`}
               title="Çıkış Yap"
             >
               <ArrowRightOnRectangleIcon className="h-5 w-5" />
@@ -792,48 +1030,31 @@ export default function BusinessLayout({ children }) {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
-                  <DashboardSubscriptionWidget subscription={panelSubscription} variant="compact" />
                   <NotificationDropdown />
 
                   <Link
                     href="/business/calendar"
-                    className={`flex items-center justify-center h-10 w-10 rounded-xl border border-gray-100 bg-gray-50/80 text-slate-600 hover:bg-[#004aad]/10 hover:text-[#004aad] hover:border-[#004aad]/20 transition-colors ${
-                      pathname.startsWith("/business/calendar")
-                        ? "ring-2 ring-[#004aad]/30 text-[#004aad] bg-blue-50/80"
-                        : ""
-                    }`}
+                    className={`flex items-center gap-1.5 h-[48px] rounded-2xl border border-gray-100 bg-gray-50/80 text-slate-600 hover:bg-[#004aad]/10 hover:text-[#004aad] hover:border-[#004aad]/20 transition-colors px-3 sm:px-4 ${pathname.startsWith("/business/calendar")
+                      ? "ring-2 ring-[#004aad]/30 text-[#004aad] bg-blue-50/80"
+                      : ""
+                      }`}
                     aria-label="Takvim"
                     title="Takvim"
                   >
                     <Calendar className="h-5 w-5 shrink-0" aria-hidden />
-                    <span className="sr-only">Takvim</span>
+                    <span className="hidden md:inline text-xs font-bold">Takvim</span>
                   </Link>
 
-                  <div className="flex items-center space-x-2 bg-gray-50/50 border border-gray-100 rounded-xl px-2 py-1.5 sm:px-3 hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="text-right hidden md:block">
-                      <p className="font-bold text-gray-900 text-[11px] leading-none mb-1">
-                        {userDisplayName}
-                      </p>
-                      <p className="text-[9px] text-[#004aad] font-black uppercase tracking-tighter">
-                        {userRole === "ADMIN" ? "Yönetici" : "İşletme Hesabı"}
-                      </p>
-                    </div>
+                  <AgendaNotesPanel label="Notlar" />
 
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#004aad] to-blue-600 flex items-center justify-center shadow-md flex-shrink-0 relative overflow-hidden">
-                      {user?.image ? (
-                        <Image
-                          src={user.image}
-                          alt={userDisplayName}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <span className="text-white text-xs font-bold">
-                          {getInitials(userDisplayName)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  {/* ── Kullanıcı dropdown ── */}
+                  <UserDropdown
+                    user={user}
+                    userDisplayName={userDisplayName}
+                    userRole={userRole}
+                    panelSubscription={panelSubscription}
+                    onLogout={handleLogout}
+                  />
                 </div>
               </div>
             </div>

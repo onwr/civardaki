@@ -530,6 +530,9 @@ export default function SatislarPage() {
                 <th className="px-4 py-3 text-right font-semibold md:px-5">
                   Tahsilat
                 </th>
+                <th className="px-5 py-3 text-right font-semibold">
+                  İşlem
+                </th>
               </tr>
             </thead>
 
@@ -538,7 +541,7 @@ export default function SatislarPage() {
                 <TableSkeleton />
               ) : sales.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-14 text-center md:px-5">
+                  <td colSpan={6} className="px-4 py-14 text-center md:px-5">
                     <div className="mx-auto max-w-md">
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
                         <DocumentTextIcon className="h-6 w-6" />
@@ -574,6 +577,16 @@ export default function SatislarPage() {
                     </td>
                     <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-slate-800 md:px-5">
                       {fmtTry(row.collectionAmount)}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/business/satislar/${row.id}`}
+                          className="inline-flex items-center rounded-lg px-2.5 py-1.5 text-xs font-bold text-sky-600 hover:bg-sky-50 hover:text-sky-700 border border-transparent hover:border-sky-200 transition-colors"
+                        >
+                          Düzenle
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))

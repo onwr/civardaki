@@ -469,9 +469,8 @@ export default function ListingDetailPage() {
             >
               <div className="relative">
                 <ShoppingBasket
-                  className={`w-6 h-6 ${
-                    cart.length > 0 ? "text-slate-900" : "text-slate-400"
-                  }`}
+                  className={`w-6 h-6 ${cart.length > 0 ? "text-slate-900" : "text-slate-400"
+                    }`}
                 />
                 {cart.length > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-slate-900 text-white text-xs min-w-[20px] h-5 flex items-center justify-center rounded-full">

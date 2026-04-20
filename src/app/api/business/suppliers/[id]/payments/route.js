@@ -82,6 +82,14 @@ export async function POST(req, { params }) {
           balance: txType === "EXPENSE" ? { decrement: amount } : { increment: amount },
         },
       });
+
+      await db.business_supplier.update({
+        where: { id: ctx.supplierId },
+        data: {
+          openBalance: txType === "EXPENSE" ? { decrement: amount } : { increment: amount },
+        },
+      });
+
       return created;
     });
 

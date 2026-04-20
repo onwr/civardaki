@@ -94,30 +94,77 @@ export async function POST(request) {
     const supplierName = body.supplierName || null;
     const items = Array.isArray(body.items) ? body.items : [];
 
-    const created = await prisma.business_purchase.create({
-      data: {
-        businessId,
-        documentType,
-        supplierId,
-        supplierName,
-        purchaseDate,
-        totalAmount,
-        paymentAmount,
-        cashAccountId,
-        description,
-        items: {
-          create: items.map((it) => ({
-            productId: it.productId || null,
-            name: (it.name || "").slice(0, 500),
-            quantity: toNum(it.quantity) || 1,
-            unitPrice: toNum(it.unitPrice),
-            total: toNum(it.total),
-          })),
+    const linesTotal = items.reduce((sum, it) => sum + toNum(it.total), 0);
+    const purchaseTotal = items.length > 0 ? linesTotal : totalAmount;
+    const remaining = Math.max(0, purchaseTotal - paymentAmount);
+
+    if (paymentAmount > purchaseTotal + 0.051) {
+      return NextResponse.json(
+        { error: "Ödeme tutarı alış toplamını aşamaz." },
+        { status: 400 }
+      );
+    }
+    if (paymentAmount > 0 && !cashAccountId) {
+      return NextResponse.json(
+        { error: "Ödeme yapıldıysa kasa hesabı seçilmelidir." },
+        { status: 400 }
+      );
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const purchase = await tx.business_purchase.create({
+        data: {
+          businessId,
+          documentType,
+          supplierId,
+          supplierName,
+          purchaseDate,
+          totalAmount: purchaseTotal,
+          paymentAmount: paymentAmount,
+          cashAccountId: paymentAmount > 0 ? cashAccountId : null,
+          description,
+          items: {
+            create: items.map((it) => ({
+              productId: it.productId || null,
+              name: (it.name || "").slice(0, 500),
+              quantity: toNum(it.quantity) || 1,
+              unitPrice: toNum(it.unitPrice),
+              total: toNum(it.total),
+            })),
+          },
         },
-      },
-      include: {
-        items: true,
-      },
+        include: {
+          items: true,
+        },
+      });
+
+      if (paymentAmount > 0) {
+        await tx.cash_transaction.create({
+          data: {
+            id: crypto.randomUUID(),
+            businessId,
+            accountId: cashAccountId,
+            type: "EXPENSE",
+            amount: paymentAmount,
+            category: "Alışlar",
+            description: `Alış belgesi · ${purchase.id}`,
+            date: purchaseDate,
+          },
+        });
+        await tx.cash_account.update({
+          where: { id: cashAccountId },
+          data: { balance: { decrement: paymentAmount } },
+        });
+      }
+
+      if (supplierId && remaining > 0.051) {
+        await tx.business_supplier.updateMany({
+          where: { id: supplierId, businessId },
+          data: { openBalance: { increment: remaining } },
+        });
+      }
+
+      return purchase;
     });
 
     return NextResponse.json({ purchase: created });

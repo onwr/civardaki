@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -88,6 +88,7 @@ export default function PerakendeSatisPage() {
   const router = useRouter();
 
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false); // çift-kayıt guard (sync)
   const [pageLoading, setPageLoading] = useState(true);
 
   const [accounts, setAccounts] = useState([]);
@@ -95,7 +96,8 @@ export default function PerakendeSatisPage() {
 
   const [saleDate, setSaleDate] = useState(() => {
     const d = new Date();
-    return d.toISOString().slice(0, 16);
+    const tzOff = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOff).toISOString().slice(0, 16);
   });
 
   const [cashAccountId, setCashAccountId] = useState("");
@@ -104,6 +106,7 @@ export default function PerakendeSatisPage() {
 
   const [items, setItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
   const [selectedUnitPrice, setSelectedUnitPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
@@ -146,12 +149,19 @@ export default function PerakendeSatisPage() {
   useEffect(() => {
     if (!selectedProduct) {
       setSelectedUnitPrice("");
+      setSelectedVariant("");
       return;
     }
     const product = products.find((p) => p.id === selectedProduct);
-    const price = Number(product?.discountPrice ?? product?.price ?? 0);
+    let price;
+    if (selectedVariant) {
+       const variant = product?.variants?.find((v) => v.id === selectedVariant);
+       price = Number(variant?.discountPrice ?? variant?.price ?? product?.discountPrice ?? product?.price ?? 0);
+    } else {
+       price = Number(product?.discountPrice ?? product?.price ?? 0);
+    }
     setSelectedUnitPrice(String(price));
-  }, [selectedProduct, products]);
+  }, [selectedProduct, selectedVariant, products]);
 
   const totalAmount = useMemo(() => sumLineTotals(items), [items]);
 
@@ -171,6 +181,12 @@ export default function PerakendeSatisPage() {
     }
 
     const product = products.find((p) => p.id === selectedProduct);
+    
+    if (product?.variants && product.variants.length > 0 && !selectedVariant) {
+      alert("Lütfen bir varyant seçin.");
+      return;
+    }
+
     const qty = parseMoneyInput(selectedQty);
     const price = parseMoneyInput(selectedUnitPrice);
 
@@ -179,7 +195,14 @@ export default function PerakendeSatisPage() {
       return;
     }
 
-    const name = product?.name || "Ürün / Hizmet";
+    let name = product?.name || "Ürün / Hizmet";
+    if (selectedVariant) {
+      const variant = product?.variants?.find((v) => v.id === selectedVariant);
+      if (variant && variant.name) {
+        name += ` - ${variant.name}`;
+      }
+    }
+
     const total = qty * price;
 
     setItems((prev) => {
@@ -201,6 +224,7 @@ export default function PerakendeSatisPage() {
     });
 
     setSelectedProduct("");
+    setSelectedVariant("");
     setSelectedQty(1);
     setSelectedUnitPrice("");
   };
@@ -260,6 +284,7 @@ export default function PerakendeSatisPage() {
   };
 
   const handleSave = async () => {
+    if (submittingRef.current) return; // çift tıklama koruması
     const linesForSave = stripDiscountLines(items);
     if (linesForSave.length === 0) {
       alert("En az bir ürün/hizmet ekleyin.");
@@ -270,6 +295,7 @@ export default function PerakendeSatisPage() {
       return;
     }
 
+    submittingRef.current = true;
     setSaving(true);
 
     try {
@@ -300,6 +326,7 @@ export default function PerakendeSatisPage() {
       router.push("/business/satislar");
     } catch (e) {
       alert(e.message || "Kaydedilemedi");
+      submittingRef.current = false; // hata durumunda tekrar deneye izin ver
     } finally {
       setSaving(false);
     }
@@ -488,20 +515,43 @@ export default function PerakendeSatisPage() {
 
           <div className="space-y-5 p-5">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,120px)_100px_110px]">
-              <div>
-                <label className={label}>Ürün seçin</label>
-                <select
-                  className={inp}
-                  value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                >
-                  <option value="">Seçin...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — {fmtTry(p.discountPrice ?? p.price ?? 0)}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <div>
+                  <label className={label}>Ürün seçin</label>
+                  <select
+                    className={inp}
+                    value={selectedProduct}
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                  >
+                    <option value="">Seçin...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {fmtTry(p.discountPrice ?? p.price ?? 0)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedProduct && products.find(p => p.id === selectedProduct)?.variants?.length > 0 && (
+                  <div>
+                    <label className={label}>Varyant seçin</label>
+                    <select
+                      className={`${inp} border-blue-300 ring-blue-100`}
+                      value={selectedVariant}
+                      onChange={(e) => setSelectedVariant(e.target.value)}
+                    >
+                      <option value="">Varyant seçin...</option>
+                      {products.find(p => p.id === selectedProduct).variants.map((v) => {
+                        const productPrice = products.find(p => p.id === selectedProduct)?.discountPrice ?? products.find(p => p.id === selectedProduct)?.price ?? 0;
+                        const varPrice = v.discountPrice ?? v.price ?? productPrice;
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {v.name} — {fmtTry(varPrice)}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

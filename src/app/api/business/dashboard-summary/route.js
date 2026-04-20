@@ -33,38 +33,42 @@ async function buildTopSummarySeries(prisma, businessId, dayWindows) {
         dayWindows.map(({ start, end }) =>
             Promise.all([
                 prisma.order.aggregate({
-                    where: { businessId, createdAt: { gte: start, lt: end } },
+                    where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: start, lt: end } },
                     _sum: { total: true },
                 }),
-                prisma.financial_transaction.aggregate({
-                    where: {
-                        businessId,
-                        type: "EXPENSE",
-                        date: { gte: start, lt: end },
-                    },
-                    _sum: { amount: true },
+                prisma.business_sale.aggregate({
+                    where: { businessId, saleDate: { gte: start, lt: end } },
+                    _sum: { totalAmount: true },
                 }),
                 prisma.financial_transaction.aggregate({
-                    where: {
-                        businessId,
-                        type: "INCOME",
-                        date: { gte: start, lt: end },
-                    },
-                    _sum: { amount: true },
+                     where: { businessId, type: "EXPENSE", date: { gte: start, lt: end } },
+                     _sum: { amount: true },
                 }),
-            ]),
-        ),
+                prisma.cash_transaction.aggregate({
+                     where: { businessId, type: "EXPENSE", date: { gte: start, lt: end } },
+                     _sum: { amount: true },
+                }),
+                prisma.financial_transaction.aggregate({
+                     where: { businessId, type: "INCOME", date: { gte: start, lt: end } },
+                     _sum: { amount: true },
+                }),
+                prisma.cash_transaction.aggregate({
+                     where: { businessId, type: "INCOME", date: { gte: start, lt: end } },
+                     _sum: { amount: true },
+                }),
+            ])
+        )
     );
 
     return dayWindows.map((w, idx) => {
-        const [ord, exp, inc] = rows[idx];
-        return {
-            label: w.label,
-            date: w.dateKey,
-            revenue: Number(ord._sum.total) || 0,
-            expense: Number(exp._sum.amount) || 0,
-            collection: Number(inc._sum.amount) || 0,
-        };
+         const [ord, sale, fExp, cExp, fInc, cInc] = rows[idx];
+         return {
+             label: w.label,
+             date: w.dateKey,
+             revenue: (Number(ord._sum.total) || 0) + (Number(sale._sum.totalAmount) || 0),
+             expense: (Number(fExp._sum.amount) || 0) + (Number(cExp._sum.amount) || 0),
+             collection: (Number(fInc._sum.amount) || 0) + (Number(cInc._sum.amount) || 0),
+         };
     });
 }
 
@@ -156,11 +160,22 @@ export async function GET() {
         orderCalendarMonthAgg,
         expenseCalendarMonthAgg,
         incomeTodayAgg,
+        deliveredTodayAgg,
         productsForStock,
         cashBalanceAgg,
         upcomingExpenseDue,
         upcomingLoanDue,
         debtTotalAgg,
+        saleTodayAgg,
+        saleWeekAgg,
+        saleMonthAgg,
+        saleCalendarMonthAgg,
+        cExpenseTodayAgg,
+        cExpenseMonthAgg,
+        cExpenseCalendarMonthAgg,
+        cIncomeTodayAgg,
+        saleCountToday,
+        saleCountMonth,
     ] = await Promise.all([
         prisma.businessevent.groupBy({
             by: ['type'],
@@ -201,17 +216,17 @@ export async function GET() {
         }),
         prisma.employee.count({ where: { businessId, status: "ACTIVE" } }),
         prisma.order.aggregate({
-            where: { businessId, createdAt: { gte: startOfToday } },
+            where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: startOfToday } },
             _sum: { total: true },
             _count: { id: true }
         }),
         prisma.order.aggregate({
-            where: { businessId, createdAt: { gte: sevenDaysAgo } },
+            where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: sevenDaysAgo } },
             _sum: { total: true },
             _count: { id: true }
         }),
         prisma.order.aggregate({
-            where: { businessId, createdAt: { gte: thirtyDaysAgo } },
+            where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: thirtyDaysAgo } },
             _sum: { total: true },
             _count: { id: true }
         }),
@@ -246,7 +261,7 @@ export async function GET() {
             },
         }),
         prisma.order.aggregate({
-            where: { businessId, createdAt: { gte: startOfMonth } },
+            where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: startOfMonth } },
             _sum: { total: true },
         }),
         prisma.financial_transaction.aggregate({
@@ -257,6 +272,7 @@ export async function GET() {
             },
             _sum: { amount: true },
         }),
+        // collectionToday = manual INCOME girişleri + bugün DELIVERED siparişler
         prisma.financial_transaction.aggregate({
             where: {
                 businessId,
@@ -264,6 +280,10 @@ export async function GET() {
                 date: { gte: startOfToday },
             },
             _sum: { amount: true },
+        }),
+        prisma.order.aggregate({
+            where: { businessId, status: "DELIVERED", createdAt: { gte: startOfToday } },
+            _sum: { total: true },
         }),
         prisma.product.findMany({
             where: { businessId, isActive: true },
@@ -301,6 +321,17 @@ export async function GET() {
             where: { businessId, type: "DEBT" },
             _sum: { amount: true },
         }),
+        // YENİ EKLENEN business_sale METRİKLERİ
+        prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: startOfToday } }, _sum: { totalAmount: true } }),
+        prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: sevenDaysAgo } }, _sum: { totalAmount: true } }),
+        prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: thirtyDaysAgo } }, _sum: { totalAmount: true } }),
+        prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: startOfMonth } }, _sum: { totalAmount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: startOfToday } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: thirtyDaysAgo } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: startOfMonth } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "INCOME", date: { gte: startOfToday } }, _sum: { amount: true } }),
+        prisma.business_sale.count({ where: { businessId, saleDate: { gte: startOfToday } } }),
+        prisma.business_sale.count({ where: { businessId, saleDate: { gte: thirtyDaysAgo } } })
     ]);
 
     let views30Days = 0;
@@ -417,6 +448,7 @@ export async function GET() {
         calendarEventsWeekCount,
         fihristEntryCount,
         pendingLeaveRequestCount,
+        saleYearAgg,
     ] = await Promise.all([
         prisma.order.aggregate({
             where: { businessId, createdAt: { gte: startOfYear } },
@@ -510,6 +542,10 @@ export async function GET() {
                 startAt: { gte: startOfToday },
             },
         }),
+        prisma.business_sale.aggregate({
+            where: { businessId, saleDate: { gte: startOfYear } },
+            _sum: { totalAmount: true },
+        }),
     ]);
 
     const dayWindows = getLast7LocalDayWindows();
@@ -532,10 +568,10 @@ export async function GET() {
         productCount,
         categoryCount,
         stockValue,
-        revenueToday: orderTodayAgg?._sum?.total ?? 0,
-        revenueWeek: orderWeekAgg?._sum?.total ?? 0,
-        revenueCalendarMonth: orderCalendarMonthAgg?._sum?.total ?? 0,
-        revenueYear: orderYearAgg?._sum?.total ?? 0,
+        revenueToday: (orderTodayAgg?._sum?.total ?? 0) + (saleTodayAgg?._sum?.totalAmount ?? 0),
+        revenueWeek: (orderWeekAgg?._sum?.total ?? 0) + (saleWeekAgg?._sum?.totalAmount ?? 0),
+        revenueCalendarMonth: (orderCalendarMonthAgg?._sum?.total ?? 0) + (saleCalendarMonthAgg?._sum?.totalAmount ?? 0),
+        revenueYear: (orderYearAgg?._sum?.total ?? 0) + (saleYearAgg?._sum?.totalAmount ?? 0),
         purchaseTotalToday: purchaseTodayAgg?._sum?.totalAmount ?? 0,
         purchaseTotalWeek: purchaseWeekAgg?._sum?.totalAmount ?? 0,
         purchaseTotalCalendarMonth: purchaseMonthAgg?._sum?.totalAmount ?? 0,
@@ -543,7 +579,7 @@ export async function GET() {
         quoteOpenCount,
         quoteOpenSum: quoteOpenSumAgg?._sum?.total ?? 0,
         assetsTotal: cashBalanceAgg?._sum?.balance ?? 0,
-        expenseCalendarMonth: expenseCalendarMonthAgg?._sum?.amount ?? 0,
+        expenseCalendarMonth: (expenseCalendarMonthAgg?._sum?.amount ?? 0) + (cExpenseCalendarMonthAgg?._sum?.amount ?? 0),
         upcomingExpenseCount: (upcomingExpenseDue || []).length,
         upcomingLoanCount: (upcomingLoanDue || []).length,
         completionPercent,
@@ -602,22 +638,22 @@ export async function GET() {
             referralStats,
             referralHistory,
             employeeCount: employeeCount ?? 0,
-            revenueToday: orderTodayAgg?._sum?.total ?? 0,
-            revenueWeek: orderWeekAgg?._sum?.total ?? 0,
-            revenueMonth: orderMonthAgg?._sum?.total ?? 0,
-            orderCountToday: orderCountToday ?? 0,
-            orderCountMonth: orderCountMonth ?? 0,
+            revenueToday: (orderTodayAgg?._sum?.total ?? 0) + (saleTodayAgg?._sum?.totalAmount ?? 0),
+            revenueWeek: (orderWeekAgg?._sum?.total ?? 0) + (saleWeekAgg?._sum?.totalAmount ?? 0),
+            revenueMonth: (orderMonthAgg?._sum?.total ?? 0) + (saleMonthAgg?._sum?.totalAmount ?? 0),
+            orderCountToday: (orderCountToday ?? 0) + (saleCountToday ?? 0),
+            orderCountMonth: (orderCountMonth ?? 0) + (saleCountMonth ?? 0),
             pendingReservationCount: pendingReservationCount ?? 0,
             newReservationCountToday: newReservationCountToday ?? 0,
-            expenseToday: expenseTodayAgg?._sum?.amount ?? 0,
-            expenseMonth: expenseMonthAgg?._sum?.amount ?? 0,
+            expenseToday: (expenseTodayAgg?._sum?.amount ?? 0) + (cExpenseTodayAgg?._sum?.amount ?? 0),
+            expenseMonth: (expenseMonthAgg?._sum?.amount ?? 0) + (cExpenseMonthAgg?._sum?.amount ?? 0),
             leadCountToday,
             leadCountNew,
             leadCountNewToday,
             reviewCount: business.reviewCount ?? 0,
-            revenueCalendarMonth: orderCalendarMonthAgg?._sum?.total ?? 0,
-            expenseCalendarMonth: expenseCalendarMonthAgg?._sum?.amount ?? 0,
-            collectionToday: incomeTodayAgg?._sum?.amount ?? 0,
+            revenueCalendarMonth: (orderCalendarMonthAgg?._sum?.total ?? 0) + (saleCalendarMonthAgg?._sum?.totalAmount ?? 0),
+            expenseCalendarMonth: (expenseCalendarMonthAgg?._sum?.amount ?? 0) + (cExpenseCalendarMonthAgg?._sum?.amount ?? 0),
+            collectionToday: (incomeTodayAgg?._sum?.amount ?? 0) + (deliveredTodayAgg?._sum?.total ?? 0) + (cIncomeTodayAgg?._sum?.amount ?? 0),
             stockValue,
             assetsTotal: cashBalanceAgg?._sum?.balance ?? 0,
             debtsTotal: debtTotalAgg?._sum?.amount ?? 0,

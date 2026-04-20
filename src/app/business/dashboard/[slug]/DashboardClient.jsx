@@ -325,7 +325,7 @@ function DashboardOverview({ business, m, isConnected }) {
   );
 }
 
-export default function DashboardClient() {
+export default function DashboardClient({ slug }) {
   const { status } = useSession();
   const { socket, isConnected } = useSocket();
 

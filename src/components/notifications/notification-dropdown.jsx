@@ -66,12 +66,12 @@ export default function NotificationDropdown() {
       {/* Bell Button */}
       <button
         onClick={handleOpen}
-        className="relative p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all"
+        className="relative flex items-center justify-center h-[48px] w-[48px] rounded-2xl border border-gray-100 bg-gray-50/80 text-slate-500 hover:text-[#004aad] hover:bg-[#004aad]/10 hover:border-[#004aad]/20 transition-all"
         aria-label="Bildirimler"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#004aad] text-[8px] font-black text-white ring-2 ring-white">
+          <span className="absolute top-1 right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white shadow ring-2 ring-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

@@ -68,7 +68,8 @@ function YeniContent() {
 
   const [purchaseDate, setPurchaseDate] = useState(() => {
     const d = new Date();
-    return d.toISOString().slice(0, 16);
+    const tzOff = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOff).toISOString().slice(0, 16);
   });
   const [cashAccountId, setCashAccountId] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");

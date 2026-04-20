@@ -33,6 +33,11 @@ export async function GET() {
                     cargoSettings: true,
                     securitySettings: true,
                     notificationSettings: true,
+                    services: true,
+                    workingHours: true,
+                    isOpen: true,
+                    isActive: true,
+                    reservationEnabled: true,
                     businesssubscription: {
                         select: { status: true, plan: true, expiresAt: true },
                     },
@@ -56,6 +61,8 @@ export async function GET() {
             cargoSettings: biz.cargoSettings ? JSON.parse(biz.cargoSettings) : null,
             securitySettings: biz.securitySettings ? JSON.parse(biz.securitySettings) : null,
             notificationSettings: biz.notificationSettings ? JSON.parse(biz.notificationSettings) : null,
+            services: biz.services ? JSON.parse(biz.services) : null,
+            workingHours: biz.workingHours ? JSON.parse(biz.workingHours) : null,
             subscription: sub
                 ? {
                       status: sub.status,
@@ -126,6 +133,17 @@ export async function PATCH(request) {
         if (data.notificationSettings !== undefined) {
             updateData.notificationSettings = JSON.stringify(data.notificationSettings);
         }
+        if (data.workingHours !== undefined) {
+            updateData.workingHours = JSON.stringify(data.workingHours);
+        }
+        if (data.services !== undefined) {
+            updateData.services = JSON.stringify(data.services);
+        }
+
+        // Booleans
+        if (data.isOpen !== undefined) updateData.isOpen = !!data.isOpen;
+        if (data.isActive !== undefined) updateData.isActive = !!data.isActive;
+        if (data.reservationEnabled !== undefined) updateData.reservationEnabled = !!data.reservationEnabled;
 
         const updatedBiz = await prisma.business.update({
             where: { id: businessId },

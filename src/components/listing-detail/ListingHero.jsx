@@ -49,11 +49,10 @@ export default function ListingHero({
                   </span>
                 )}
                 <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                    listing.isOpen
+                  className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${listing.isOpen
                       ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-100"
                       : "bg-red-500/20 border-red-400/30 text-red-100"
-                  }`}
+                    }`}
                 >
                   {listing.isOpen ? "Şu an açık" : "Kapalı"}
                 </span>
@@ -90,11 +89,10 @@ export default function ListingHero({
                     {[1, 2, 3, 4, 5].map((i) => (
                       <Star
                         key={i}
-                        className={`w-4 h-4 ${
-                          i <= Math.round(listing.rating)
+                        className={`w-4 h-4 ${i <= Math.round(listing.rating)
                             ? "fill-current"
                             : "text-slate-500"
-                        }`}
+                          }`}
                       />
                     ))}
                   </div>

@@ -11,5 +11,7 @@ export default async function DashboardPage({ params }) {
   // Re-routes to /business/billing if expired or missing
   await requireValidSubscription();
 
-  return <DashboardClient slug={params.slug} />;
+  const { slug } = await params;
+
+  return <DashboardClient slug={slug} />;
 }

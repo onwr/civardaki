@@ -64,6 +64,7 @@ const ecommerceChildren = [
 ];
 
 const settingsChildren = [
+  { name: "Vitrin / İşletme Profili", href: "/business/settings/profile", badge: { text: "yeni", variant: "new" } },
   { name: "Tanımlar", href: "/business/settings/masterdata" },
   { name: "e-Fatura POS Ayarları", href: "/business/settings/pos-settings", badge: { text: "yeni", variant: "new" } },
   { name: "Teklif ve Özel Şablonlar", href: "/business/settings/proposal-templates" },

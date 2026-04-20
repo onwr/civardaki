@@ -64,15 +64,17 @@ export default function NewExpensePage() {
   const [apiError, setApiError] = useState(null);
 
   const [expenseItemId, setExpenseItemId] = useState("");
-  const [transactionDate, setTransactionDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [transactionDate, setTransactionDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  });
   const [receiptNo, setReceiptNo] = useState("");
   const [description, setDescription] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("PENDING");
-  const [paymentDate, setPaymentDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [paymentDate, setPaymentDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  });
   const [dueDate, setDueDate] = useState("");
   const [amount, setAmount] = useState("");
   const [vatRate, setVatRate] = useState("0");

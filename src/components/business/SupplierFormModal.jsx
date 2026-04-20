@@ -25,6 +25,7 @@ const emptyForm = () => ({
   name: "",
   imageUrl: "",
   isActive: true,
+  categoryId: "",
   taxOffice: "",
   taxId: "",
   taxExempt: false,
@@ -40,7 +41,7 @@ const emptyForm = () => ({
   otherNotes: "",
 });
 
-export default function SupplierFormModal({ open, supplierId, onClose, onSaved }) {
+export default function SupplierFormModal({ open, supplierId, categories = [], onClose, onSaved }) {
   const [tab, setTab] = useState("identity");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,6 +63,7 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
         name: s.name || "",
         imageUrl: s.imageUrl || "",
         isActive: s.isActive !== false,
+        categoryId: s.categoryId || "",
         taxOffice: s.taxOffice || "",
         taxId: s.taxId || "",
         taxExempt: !!s.taxExempt,
@@ -193,6 +195,21 @@ export default function SupplierFormModal({ open, supplierId, onClose, onSaved }
                           placeholder=""
                         />
                       </div>
+                    </div>
+                    <div>
+                      <label className={label}>Kategori</label>
+                      <select
+                        className={inp}
+                        value={form.categoryId}
+                        onChange={(e) => set("categoryId", e.target.value)}
+                      >
+                        <option value="">Kategorisiz</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">

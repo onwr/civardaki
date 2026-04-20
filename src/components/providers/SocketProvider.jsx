@@ -4,6 +4,53 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { io as ClientIO } from "socket.io-client";
 import { useSession } from "next-auth/react";
 
+/** Web Audio API ile bip sesi üretir. Ekstra dosya gerektirmez. */
+function playBeep({ frequency = 880, duration = 120, volume = 0.6, type = "sine", delay = 0 } = {}) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + delay + 0.01);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay + duration / 1000);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration / 1000 + 0.05);
+        osc.onended = () => ctx.close();
+    } catch (_) { /* Ses desteklenmiyorsa sessizce geç */ }
+}
+
+function playOrderSound() {
+    // Sipariş: iki yükselen bip
+    playBeep({ frequency: 660, duration: 130, delay: 0 });
+    playBeep({ frequency: 880, duration: 180, delay: 0.18 });
+}
+
+function playLeadSound() {
+    // Talep: üç çıkıcı bip (farklı ton)
+    playBeep({ frequency: 520, duration: 100, delay: 0 });
+    playBeep({ frequency: 660, duration: 100, delay: 0.14 });
+    playBeep({ frequency: 780, duration: 160, delay: 0.28 });
+}
+
+function showDesktopNotif(title, body, icon = "/favicon.ico") {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+        try {
+            new Notification(title, { body, icon });
+        } catch (_) { }
+    } else if (Notification.permission === "default") {
+        Notification.requestPermission().then((perm) => {
+            if (perm === "granted") {
+                try { new Notification(title, { body, icon }); } catch (_) { }
+            }
+        });
+    }
+}
+
 const SocketContext = createContext({
     socket: null,
     isConnected: false,
@@ -65,6 +112,30 @@ export const SocketProvider = ({ children }) => {
             console.log("Socket disconnected");
             setIsConnected(false);
         });
+
+        // ── Sesli & masaüstü bildirimler ──────────────────────────────
+        socketInstance.on("new_order", (data) => {
+            playOrderSound();
+            const name = data?.customerName || "Müşteri";
+            const total = data?.total != null
+                ? new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(data.total)
+                : "";
+            showDesktopNotif(
+                "🛒 Yeni Sipariş!",
+                `${name}${total ? " · " + total : ""}`,
+            );
+        });
+
+        socketInstance.on("new_lead", (data) => {
+            playLeadSound();
+            const name = data?.name || "Müşteri";
+            const title = data?.title || "Hizmet talebi";
+            showDesktopNotif(
+                "📩 Yeni Talep!",
+                `${name} · ${title}`,
+            );
+        });
+        // ─────────────────────────────────────────────────────────────
 
         setSocket(socketInstance);
 

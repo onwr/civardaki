@@ -601,6 +601,7 @@ export default function SuppliersPage() {
       <SupplierFormModal
         open={modalOpen}
         supplierId={editId}
+        categories={categories}
         onClose={() => {
           setModalOpen(false);
           setEditId(null);

@@ -8,6 +8,7 @@ import {
   DocumentArrowUpIcon,
   TrashIcon,
   UserCircleIcon,
+  PhotoIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
 
@@ -423,24 +424,42 @@ export default function EmployeeDetailPage() {
             İletişim, departman, performans ve notlar. Profil fotoğrafı için resim yükleyin (jpeg, png, webp).
           </p>
 
-          <div className="mt-6 flex flex-wrap items-end gap-4">
-            <label className="text-sm font-semibold text-slate-700">
-              Profil fotoğrafı
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                disabled={uploadingAvatar}
-                className="mt-2 block w-full max-w-xs text-sm"
-                onChange={(ev) => {
-                  const f = ev.target.files?.[0];
-                  ev.target.value = "";
-                  if (f) uploadAvatar(f);
-                }}
-              />
-            </label>
-            {uploadingAvatar ? (
-              <span className="text-xs text-slate-500">Yükleniyor…</span>
-            ) : null}
+          <div className="mt-8 flex flex-col md:flex-row items-start md:items-center gap-6 border border-slate-100 bg-slate-50 p-5 rounded-2xl">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+              {employee.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={employee.avatar} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <UserCircleIcon className="h-14 w-14 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-slate-800">Profil Fotoğrafı</h3>
+              <p className="mt-1 text-xs text-slate-500 max-w-sm leading-relaxed">
+                JPEG, PNG veya WebP formatında fotoğraf yükleyebilirsiniz. İdeal boyut 400x400 pikseldir (Maks 5 MB).
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <label
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 hover:border-sky-300 ${
+                    uploadingAvatar ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <PhotoIcon className="h-4 w-4" />
+                  {uploadingAvatar ? "Yükleniyor..." : "Yeni Fotoğraf Seç"}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploadingAvatar}
+                    className="hidden"
+                    onChange={(ev) => {
+                      const f = ev.target.files?.[0];
+                      ev.target.value = "";
+                      if (f) uploadAvatar(f);
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
 
           <form className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={saveGeneral}>

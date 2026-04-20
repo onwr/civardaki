@@ -74,6 +74,11 @@ export async function POST(req, { params }) {
         data: { balance: { increment: amount } },
       });
 
+      await db.business_customer.update({
+        where: { id: ctx.customerId },
+        data: { openBalance: { decrement: amount } },
+      });
+
       return created;
     });
 

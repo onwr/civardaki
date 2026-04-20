@@ -835,8 +835,8 @@ export default function EmployeesPage() {
             }
           >
             <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleAddEmployee}>
-              <div className="md:col-span-2 flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-200/90 text-slate-500">
+              <div className="md:col-span-2 flex flex-col items-center gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-6 sm:flex-row sm:items-start text-center sm:text-left">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                   {newEmployeeAvatarPreview ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -845,26 +845,29 @@ export default function EmployeesPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserCircleIcon className="h-12 w-12" aria-hidden />
+                    <UserCircleIcon className="h-12 w-12 text-slate-400" aria-hidden />
                   )}
                 </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <span className="block text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Profil fotoğrafı (isteğe bağlı)
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] || null;
-                      setNewEmployeeAvatarFile(f);
-                    }}
-                    className="w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-200 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-800"
-                  />
-                  <p className="text-xs text-slate-500">
-                    JPEG, PNG veya WebP; en fazla 5 MB. Boş bırakırsanız kartta varsayılan simge kullanılır; sonra detay
-                    sayfasından da ekleyebilirsiniz.
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-slate-800">Profil Fotoğrafı</h3>
+                  <p className="mt-1 text-xs text-slate-500 max-w-sm leading-relaxed mx-auto sm:mx-0">
+                    JPEG, PNG veya WebP formatında fotoğraf yükleyebilirsiniz (Maks 5 MB).
                   </p>
+                  <label className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 hover:border-sky-300">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {newEmployeeAvatarFile ? "Değiştir" : "Fotoğraf Seç"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        setNewEmployeeAvatarFile(f);
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
               <label className="space-y-2">

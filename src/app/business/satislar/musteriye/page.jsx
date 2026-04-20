@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -102,6 +102,7 @@ function MusteriyeContent() {
     searchParams.get("saleKind") || "TO_REGISTERED_CUSTOMER";
 
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false); // çift-kayıt guard (sync)
   const [pageLoading, setPageLoading] = useState(true);
   /** Tam müşteri ünvanı (API veya URL); tek alan `name` (ad soyad birlikte) */
   const [resolvedCustomerName, setResolvedCustomerName] = useState(customerNameFromUrl);
@@ -111,7 +112,8 @@ function MusteriyeContent() {
 
   const [saleDate, setSaleDate] = useState(() => {
     const d = new Date();
-    return d.toISOString().slice(0, 16);
+    const tzOff = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOff).toISOString().slice(0, 16);
   });
 
   const [cashAccountId, setCashAccountId] = useState("");
@@ -120,6 +122,7 @@ function MusteriyeContent() {
 
   const [items, setItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
   const [selectedUnitPrice, setSelectedUnitPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
@@ -182,12 +185,19 @@ function MusteriyeContent() {
   useEffect(() => {
     if (!selectedProduct) {
       setSelectedUnitPrice("");
+      setSelectedVariant("");
       return;
     }
     const product = products.find((p) => p.id === selectedProduct);
-    const price = Number(product?.discountPrice ?? product?.price ?? 0);
+    let price;
+    if (selectedVariant) {
+       const variant = product?.variants?.find((v) => v.id === selectedVariant);
+       price = Number(variant?.discountPrice ?? variant?.price ?? product?.discountPrice ?? product?.price ?? 0);
+    } else {
+       price = Number(product?.discountPrice ?? product?.price ?? 0);
+    }
     setSelectedUnitPrice(String(price));
-  }, [selectedProduct, products]);
+  }, [selectedProduct, selectedVariant, products]);
 
   const totalAmount = useMemo(() => sumLineTotals(items), [items]);
 
@@ -207,6 +217,12 @@ function MusteriyeContent() {
     }
 
     const product = products.find((p) => p.id === selectedProduct);
+    
+    if (product?.variants && product.variants.length > 0 && !selectedVariant) {
+      alert("Lütfen bir varyant seçin.");
+      return;
+    }
+
     const qty = parseMoneyInput(selectedQty);
     const price = parseMoneyInput(selectedUnitPrice);
 
@@ -215,7 +231,14 @@ function MusteriyeContent() {
       return;
     }
 
-    const name = product?.name || "Ürün / Hizmet";
+    let name = product?.name || "Ürün / Hizmet";
+    if (selectedVariant) {
+      const variant = product?.variants?.find((v) => v.id === selectedVariant);
+      if (variant && variant.name) {
+        name += ` - ${variant.name}`;
+      }
+    }
+
     const total = qty * price;
 
     setItems((prev) => {
@@ -237,6 +260,7 @@ function MusteriyeContent() {
     });
 
     setSelectedProduct("");
+    setSelectedVariant("");
     setSelectedQty(1);
     setSelectedUnitPrice("");
   };
@@ -296,6 +320,7 @@ function MusteriyeContent() {
   };
 
   const handleSave = async () => {
+    if (submittingRef.current) return; // çift tıklama koruması
     const linesForSave = stripDiscountLines(items);
     if (linesForSave.length === 0) {
       alert("En az bir ürün/hizmet ekleyin.");
@@ -306,6 +331,7 @@ function MusteriyeContent() {
       return;
     }
 
+    submittingRef.current = true;
     setSaving(true);
 
     try {
@@ -338,6 +364,7 @@ function MusteriyeContent() {
       router.push("/business/satislar");
     } catch (e) {
       alert(e.message || "Kaydedilemedi");
+      submittingRef.current = false; // hata durumunda tekrar deneye izin ver
     } finally {
       setSaving(false);
     }
@@ -535,20 +562,43 @@ function MusteriyeContent() {
 
           <div className="space-y-5 p-5">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,120px)_100px_110px]">
-              <div>
-                <label className={label}>Ürün seçin</label>
-                <select
-                  className={inp}
-                  value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                >
-                  <option value="">Seçin...</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} — {fmtTry(p.discountPrice ?? p.price ?? 0)}
-                    </option>
-                  ))}
-                </select>
+              <div className="space-y-2">
+                <div>
+                  <label className={label}>Ürün seçin</label>
+                  <select
+                    className={inp}
+                    value={selectedProduct}
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                  >
+                    <option value="">Seçin...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {fmtTry(p.discountPrice ?? p.price ?? 0)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedProduct && products.find(p => p.id === selectedProduct)?.variants?.length > 0 && (
+                  <div>
+                    <label className={label}>Varyant seçin</label>
+                    <select
+                      className={`${inp} border-blue-300 ring-blue-100`}
+                      value={selectedVariant}
+                      onChange={(e) => setSelectedVariant(e.target.value)}
+                    >
+                      <option value="">Varyant seçin...</option>
+                      {products.find(p => p.id === selectedProduct).variants.map((v) => {
+                        const productPrice = products.find(p => p.id === selectedProduct)?.discountPrice ?? products.find(p => p.id === selectedProduct)?.price ?? 0;
+                        const varPrice = v.discountPrice ?? v.price ?? productPrice;
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {v.name} — {fmtTry(varPrice)}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

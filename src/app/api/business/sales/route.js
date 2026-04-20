@@ -126,6 +126,25 @@ export async function POST(request) {
 
     const remaining = Math.max(0, saleTotal - collectionAmount);
 
+    // ── İdempotency: 5 saniye içinde aynı tutar + aynı açıklama = çift kayıt engelle ──
+    const fiveSecsAgo = new Date(Date.now() - 5_000);
+    const recentDuplicate = await prisma.business_sale.findFirst({
+      where: {
+        businessId,
+        totalAmount: saleTotal,
+        description: description || null,
+        createdAt: { gte: fiveSecsAgo },
+      },
+      select: { id: true },
+    });
+    if (recentDuplicate) {
+      return NextResponse.json(
+        { error: "Bu satış zaten kaydedildi. Lütfen sayfayı yenileyin." },
+        { status: 409 }
+      );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (collectionAmount > 0) {
       const acc = await prisma.cash_account.findFirst({
         where: { id: cashAccountId, businessId },
