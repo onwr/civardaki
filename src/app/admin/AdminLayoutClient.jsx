@@ -247,6 +247,141 @@ function UserMenu({ session, onLogout }) {
   );
 }
 
+
+
+
+function SidebarContent({
+  collapsed,
+  setCollapsed,
+  mobileOpen,
+  setMobileOpen,
+  logoError,
+  setLogoError,
+  pathname,
+  handleLogout,
+  isMobileView = false
+}) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div
+        className={`flex items-center border-b border-white/10 flex-shrink-0 h-[65px] ${collapsed && !isMobileView ? "justify-center px-3" : "justify-between px-4"
+          }`}
+      >
+        <AnimatePresence initial={false}>
+          {(!collapsed || isMobileView) && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center gap-2.5 min-w-0"
+            >
+              {!logoError ? (
+                <Image
+                  src="/logo.png"
+                  alt="Civardaki"
+                  width={120}
+                  height={32}
+                  priority
+                  className="h-7 w-auto object-contain brightness-0 invert"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <div>
+                  <span className="text-white font-black text-sm uppercase tracking-tight">Civardaki</span>
+                  <span className="block text-[9px] text-white/40 font-bold uppercase tracking-widest mt-0.5">Admin</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {collapsed && !isMobileView ? (
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden">
+            {!logoError ? (
+              <Image src="/logo.png" alt="C" width={28} height={28} className="object-contain brightness-0 invert" onError={() => setLogoError(true)} />
+            ) : (
+              <ShieldCheck className="w-5 h-5 text-white" />
+            )}
+          </div>
+        ) : null}
+
+        {(!collapsed || isMobileView) && (
+          <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+            {isMobileView ? (
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setCollapsed(true)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                title="Daralt"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className={`flex-1 overflow-y-auto no-scrollbar py-4 space-y-5 ${collapsed && !isMobileView ? "px-2" : "px-3"}`}>
+        {ADMIN_NAVIGASYON.map((group, gi) => (
+          <div key={gi}>
+            <AnimatePresence initial={false}>
+              {(!collapsed || isMobileView) && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] px-3 mb-1.5"
+                >
+                  {group.grup}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <NavItem
+                  key={item.path}
+                  item={item}
+                  collapsed={collapsed && !isMobileView}
+                  pathname={pathname}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Bottom */}
+      <div className={`flex-shrink-0 border-t border-white/10 p-3 space-y-1 ${collapsed && !isMobileView ? "px-2" : ""}`}>
+        <Link
+          href="/"
+          title={collapsed && !isMobileView ? "Siteye Git" : undefined}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100/70 hover:text-white hover:bg-white/10 transition-all group"
+        >
+          <Home className="w-[18px] h-[18px] flex-shrink-0 group-hover:scale-110 transition-transform" />
+          {(!collapsed || isMobileView) && <span className="text-[13px] font-semibold">Siteye Git</span>}
+        </Link>
+        <button
+          onClick={handleLogout}
+          title={collapsed && !isMobileView ? "Çıkış Yap" : undefined}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100/70 hover:text-white hover:bg-rose-500/30 transition-all group"
+        >
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0 group-hover:scale-110 transition-transform" />
+          {(!collapsed || isMobileView) && <span className="text-[13px] font-semibold">Çıkış Yap</span>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminLayoutClient({ children, session }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -274,128 +409,16 @@ export default function AdminLayoutClient({ children, session }) {
     return "Admin Panel";
   }, [pathname]);
 
-  function SidebarContent({ isMobileView = false }) {
-    return (
-      <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div
-          className={`flex items-center border-b border-white/10 flex-shrink-0 h-[65px] ${
-            collapsed && !isMobileView ? "justify-center px-3" : "justify-between px-4"
-          }`}
-        >
-          <AnimatePresence initial={false}>
-            {(!collapsed || isMobileView) && (
-              <motion.div
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-2.5 min-w-0"
-              >
-                {!logoError ? (
-                  <Image
-                    src="/logo.png"
-                    alt="Civardaki"
-                    width={120}
-                    height={32}
-                    priority
-                    className="h-7 w-auto object-contain brightness-0 invert"
-                    onError={() => setLogoError(true)}
-                  />
-                ) : (
-                  <div>
-                    <span className="text-white font-black text-sm uppercase tracking-tight">Civardaki</span>
-                    <span className="block text-[9px] text-white/40 font-bold uppercase tracking-widest mt-0.5">Admin</span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {collapsed && !isMobileView ? (
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center overflow-hidden">
-              {!logoError ? (
-                <Image src="/logo.png" alt="C" width={28} height={28} className="object-contain brightness-0 invert" onError={() => setLogoError(true)} />
-              ) : (
-                <ShieldCheck className="w-5 h-5 text-white" />
-              )}
-            </div>
-          ) : null}
-
-          {(!collapsed || isMobileView) && (
-            <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-              {isMobileView ? (
-                <button
-                  onClick={() => setMobileOpen(false)}
-                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setCollapsed(true)}
-                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-                  title="Daralt"
-                >
-                  <PanelLeftClose className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto no-scrollbar py-4 space-y-5 ${collapsed && !isMobileView ? "px-2" : "px-3"}`}>
-          {ADMIN_NAVIGASYON.map((group, gi) => (
-            <div key={gi}>
-              <AnimatePresence initial={false}>
-                {(!collapsed || isMobileView) && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] px-3 mb-1.5"
-                  >
-                    {group.grup}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavItem
-                    key={item.path}
-                    item={item}
-                    collapsed={collapsed && !isMobileView}
-                    pathname={pathname}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Bottom */}
-        <div className={`flex-shrink-0 border-t border-white/10 p-3 space-y-1 ${collapsed && !isMobileView ? "px-2" : ""}`}>
-          <Link
-            href="/"
-            title={collapsed && !isMobileView ? "Siteye Git" : undefined}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100/70 hover:text-white hover:bg-white/10 transition-all group"
-          >
-            <Home className="w-[18px] h-[18px] flex-shrink-0 group-hover:scale-110 transition-transform" />
-            {(!collapsed || isMobileView) && <span className="text-[13px] font-semibold">Siteye Git</span>}
-          </Link>
-          <button
-            onClick={handleLogout}
-            title={collapsed && !isMobileView ? "Çıkış Yap" : undefined}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-100/70 hover:text-white hover:bg-rose-500/30 transition-all group"
-          >
-            <LogOut className="w-[18px] h-[18px] flex-shrink-0 group-hover:scale-110 transition-transform" />
-            {(!collapsed || isMobileView) && <span className="text-[13px] font-semibold">Çıkış Yap</span>}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const sidebarProps = {
+    collapsed,
+    setCollapsed,
+    mobileOpen,
+    setMobileOpen,
+    logoError,
+    setLogoError,
+    pathname,
+    handleLogout
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -418,7 +441,7 @@ export default function AdminLayoutClient({ children, session }) {
               transition={{ type: "spring", damping: 25, stiffness: 280 }}
               className="fixed inset-y-0 left-0 w-72 z-50 md:hidden flex flex-col bg-[#004aad]"
             >
-              <SidebarContent isMobileView />
+              <SidebarContent {...sidebarProps} isMobileView />
             </motion.div>
           </>
         )}
@@ -431,7 +454,7 @@ export default function AdminLayoutClient({ children, session }) {
         transition={{ duration: 0.25, ease: "easeInOut" }}
         className="hidden md:flex flex-col fixed inset-y-0 left-0 z-30 bg-[#004aad] overflow-hidden"
       >
-        <SidebarContent />
+        <SidebarContent {...sidebarProps} />
       </motion.aside>
 
       {/* Expand Button when collapsed */}
