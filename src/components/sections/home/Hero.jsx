@@ -1,618 +1,252 @@
 "use client";
 
-import {
-  Search,
-  MapPin,
-  Navigation,
-  Map,
-  X,
-  ArrowRight,
-  ChevronDown,
-} from "lucide-react";
-import HeroDropdown from "@/components/ui/HeroDropdown";
-import { useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { turkeyLocations, getDistricts } from "@/constants/locations";
-
-const categories = [
-  {
-    name: "Yemek İçecek",
-    bgImage:
-      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&q=80",
-  },
-  {
-    name: "Alışveriş",
-    bgImage:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400&q=80",
-  },
-  {
-    name: "Hizmet",
-    bgImage:
-      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&q=80",
-  },
-  {
-    name: "Ulaşım",
-    bgImage:
-      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=400&q=80",
-  },
-  {
-    name: "Danışmanlık",
-    bgImage:
-      "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=400&q=80",
-  },
-  {
-    name: "Güzellik Sağlık",
-    bgImage:
-      "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?w=400&q=80",
-  },
-  {
-    name: "Eğitim",
-    bgImage:
-      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&q=80",
-  },
-  {
-    name: "İlan",
-    bgImage:
-      "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80",
-  },
-  {
-    name: "Diğer",
-    bgImage:
-      "https://images.unsplash.com/photo-1511649475669-e288648b2339?w=400&q=80",
-  },
-];
-
-function toQS(obj) {
-  const sp = new URLSearchParams();
-  Object.entries(obj).forEach(([k, v]) => {
-    if (v !== null && v !== undefined && String(v).trim() !== "")
-      sp.set(k, String(v).trim());
-  });
-  return sp.toString();
-}
+import { Loader2, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 export default function HeroSection() {
   const router = useRouter();
+  const wrapperRef = useRef(null);
+  const timerRef = useRef(null);
+
   const [q, setQ] = useState("");
-  const [city, setCity] = useState("");
-  const [district, setDistrict] = useState("");
-  const [category, setCategory] = useState("");
-  const [sort, setSort] = useState("newest");
-
-  const [showMapSelector, setShowMapSelector] = useState(false);
-  const [showCityModal, setShowCityModal] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [citySearch, setCitySearch] = useState("");
-  const [categorySearch, setCategorySearch] = useState("");
-  const [isLocationDetecting, setIsLocationDetecting] = useState(false);
-
-  const [filtersMeta, setFiltersMeta] = useState({
-    cityCounts: [],
-    categoryCounts: [],
-    districtCounts: [],
-  });
+  const [showDropdown, setShowDropdown] = useState(false);
   const [categoriesDict, setCategoriesDict] = useState([]);
-
-  const districts = useMemo(() => (city ? getDistricts(city) : []), [city]);
+  const [loading, setLoading] = useState(true);
+  const [slides, setSlides] = useState([]);
+  const [config, setConfig] = useState({ autoplay: true, interval: 5000, transition: "fade" });
+  const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    async function loadData() {
       try {
-        const res = await fetch("/api/public/categories", {
-          cache: "no-store",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setCategoriesDict(data.categories || []);
+        const [heroRes, catsRes] = await Promise.all([
+          fetch("/api/public/hero").catch(() => null),
+          fetch("/api/public/categories").catch(() => null),
+        ]);
+        if (heroRes?.ok) {
+          const json = await heroRes.json();
+          setSlides(json.slides || []);
+          setConfig(json.config || { autoplay: true, interval: 5000, transition: "fade" });
         }
-      } catch (err) {}
-    };
-    fetchCategories();
+        if (catsRes?.ok) {
+          const d = await catsRes.json();
+          setCategoriesDict(d.categories || []);
+        }
+      } catch {}
+      setLoading(false);
+    }
+    loadData();
   }, []);
 
+  // Autoplay
   useEffect(() => {
-    const run = async () => {
-      try {
-        const qs = toQS({ city });
-        const res = await fetch(`/api/public/businesses/filters?${qs}`, {
-          cache: "no-store",
-        });
-        if (res.ok) setFiltersMeta(await res.json());
-      } catch {}
-    };
-    run();
-  }, [city]);
+    if (!config.autoplay || slides.length <= 1) return;
+    timerRef.current = setInterval(() => {
+      setCurrent(p => (p + 1) % slides.length);
+    }, config.interval || 5000);
+    return () => clearInterval(timerRef.current);
+  }, [config, slides.length, current]);
 
   useEffect(() => {
-    setDistrict("");
-    setCategory("");
-  }, [city]);
-
-  const handleSearch = () => {
-    const params = toQS({ q, city, district, category, sort });
-    router.push(params ? `/search?${params}` : "/search");
-  };
-
-  const handleTagClick = (tag) => {
-    const match = categoriesDict.find(
-      (c) => c.name?.toLowerCase() === tag.toLowerCase(),
-    );
-    const params = toQS({
-      q: tag,
-      city,
-      district,
-      category: match ? match.slug : "",
-      sort,
-    });
-    router.push(`/search?${params}`);
-  };
-
-  const clearFilters = () => {
-    setQ("");
-    setCity("");
-    setDistrict("");
-    setCategory("");
-    setSort("newest");
-  };
-
-  // Konum tespiti logic
-  const detectLocation = async () => {
-    if (!navigator.geolocation) {
-      alert("Tarayıcınız konum tespiti desteklemiyor");
-      return;
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setShowDropdown(false);
     }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    setIsLocationDetecting(true);
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+    router.push(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : "/search");
+    setShowDropdown(false);
+  };
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
+  const handleSuggestionClick = (slug) => {
+    setQ("");
+    setShowDropdown(false);
+    router.push(`/search?category=${slug}`);
+  };
 
-          const response = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=tr&key=AIzaSyBvOkBw8tF5QmS7dGjF9JpQ4rV8nL2hE6w`,
-          );
+  const filteredSuggestions = categoriesDict
+    .filter(c => q.trim() && (c.name || "").toLowerCase().includes(q.toLowerCase().trim()))
+    .slice(0, 5);
 
-          if (!response.ok) {
-            const fallbackResponse = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=tr`,
-            );
-            const fallbackData = await fallbackResponse.json();
+  const goTo = useCallback((dir) => {
+    clearInterval(timerRef.current);
+    setCurrent(p => (p + dir + slides.length) % slides.length);
+  }, [slides.length]);
 
-            const address = fallbackData.display_name.split(",");
-            const detectedCity =
-              address[address.length - 3]?.trim() || "Bilinmeyen";
-            const country = address[address.length - 1]?.trim() || "Türkiye";
+  const slide = slides[current] || null;
 
-            setCity(detectedCity);
-          } else {
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              const result = data.results[0];
-              const addressComponents = result.address_components;
+  const variants = {
+    fade: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } },
+    slide: { initial: { x: 80, opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: -80, opacity: 0 } },
+    zoom: { initial: { scale: 1.1, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.95, opacity: 0 } },
+  };
+  const anim = variants[config.transition] || variants.fade;
 
-              let detectedCity = "";
-
-              addressComponents.forEach((component) => {
-                if (
-                  component.types.includes("locality") ||
-                  component.types.includes("administrative_area_level_1")
-                ) {
-                  detectedCity = component.long_name;
-                }
-              });
-
-              if (detectedCity) {
-                setCity(detectedCity);
-              }
-            }
-          }
-        } catch (error) {
-          console.error("Konum tespiti hatası:", error);
-        }
-        setIsLocationDetecting(false);
-      },
-      (error) => {
-        console.error("Konum izni hatası:", error);
-        setIsLocationDetecting(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000,
-      },
+  if (loading) {
+    return (
+      <section className="relative h-[85vh] min-h-[550px] w-full flex items-center justify-center bg-slate-900">
+        <Loader2 className="h-10 w-10 text-white animate-spin opacity-50" />
+      </section>
     );
-  };
+  }
 
-  const toggleMapSelector = () => setShowMapSelector(!showMapSelector);
-
-  const handleMapCitySelect = (cityName) => {
-    setCity(cityName);
-    setShowMapSelector(false);
-  };
+  if (!slide) {
+    return (
+      <section className="relative h-[85vh] min-h-[550px] w-full overflow-hidden flex flex-col items-center justify-center">
+        <div className="absolute inset-0 z-0">
+          <img src="/images/hero-back.png" alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/95 via-slate-900/70 to-slate-900/50" />
+        </div>
+        <div className="relative z-10 text-center px-4">
+          <h1 className="text-4xl md:text-6xl font-black text-white mb-6">Civardaki</h1>
+          <p className="text-xl text-slate-200 mb-10">Yakınındaki hizmetleri keşfet</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <>
-      <section className="relative pt-20 md:pt-0 h-[85vh] min-h-[500px] md:min-h-[700px] w-full overflow-hidden flex flex-col items-center justify-center">
-        {/* Background with Ken Burns Effect and Overlay */}
-        <div className="absolute inset-0 z-0">
-          <motion.div
-            initial={{ scale: 1.1 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 10, ease: "easeOut" }}
-            className="relative w-full h-full"
-          >
-            <img
-              src="/images/hero-back.png"
-              alt="City Background"
-              className="w-full h-full object-cover"
+    <section className="relative h-[85vh] min-h-[550px] md:min-h-[650px] w-full overflow-hidden">
+      {/* Background */}
+      <AnimatePresence mode="wait">
+        <motion.div key={slide.id} {...anim} transition={{ duration: 0.6 }} className="absolute inset-0 z-0">
+          {slide.bgImage ? (
+            <img 
+              src={slide.bgImage} 
+              alt="" 
+              className="w-full h-full object-cover" 
+              style={{ opacity: (slide.imageOpacity ?? 100) / 100 }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/80 to-slate-900/60" />
-            <div
-              className="absolute inset-0 opacity-[0.12] mix-blend-overlay bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.14)_1px,transparent_0)] bg-[length:22px_22px]"
-              aria-hidden
-            />
-          </motion.div>
-        </div>
-
-        {/* Main Content */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center">
-          {/* Hero Heading */}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight tracking-tight"
-          >
-            Şehrin{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-              Ritmini
-            </span>{" "}
-            Yakala
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto"
-          >
-            Restoranlardan kuryelere, tamircilerden danışmanlara kadar
-            ihtiyacınız olan her şey bir tık uzağınızda.
-          </motion.p>
-
-          {/* Search & Filter Component - Glassmorphism */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            className="w-full max-w-5xl bg-white/10 backdrop-blur-xl border border-white/20 p-3 rounded-[2rem] shadow-2xl overflow-visible"
-          >
-            {/* Grid: aynı sütun hizası için iki satır da aynı yapıda */}
-            <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-3 md:gap-3 overflow-visible">
-              {/* Satır 1: Arama + Şehir + Ara butonu */}
-              <div className="relative group min-w-0">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/70 group-focus-within:bg-[#004aad] group-focus-within:text-white transition-all duration-300">
-                  <Search className="w-5 h-5" />
-                </div>
-                <input
-                  type="text"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  placeholder="Ne arıyorsunuz? (Örn: Kebap, Çilingir...)"
-                  className="w-full h-14 pl-16 pr-4 bg-white/5 border border-white/10 rounded-3xl text-white placeholder-white/50 focus:outline-none focus:bg-white/10 focus:border-white/30 transition-all font-medium"
-                />
-              </div>
-              <div className="relative group min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCityModal(true)}
-                  className="w-full h-14 pl-2 pr-2 rounded-3xl bg-white/5 border border-white/10 text-left font-medium text-white hover:bg-white/10 focus:outline-none focus:border-white/30 transition-all flex items-center gap-3"
-                >
-                  <span className="flex-shrink-0 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/70">
-                    <MapPin className="w-5 h-5" />
-                  </span>
-                  <span
-                    className={
-                      city ? "text-white truncate" : "text-white/50 truncate"
-                    }
-                  >
-                    {city || "Şehir Seçin"}
-                  </span>
-                </button>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 z-10">
-                  <button
-                    onClick={detectLocation}
-                    disabled={isLocationDetecting}
-                    className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all disabled:opacity-50"
-                    title="Konumu Bul"
-                  >
-                    <Navigation
-                      className={`w-5 h-5 ${isLocationDetecting ? "animate-spin" : ""}`}
-                    />
-                  </button>
-                  <button
-                    onClick={toggleMapSelector}
-                    className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
-                    title="Haritadan Seç"
-                  >
-                    <Map className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleSearch}
-                className="h-14 px-8 bg-[#004aad] hover:bg-[#003d8f] text-white rounded-3xl font-semibold text-lg shadow-lg hover:shadow-[#004aad]/30 transition-all duration-300 flex items-center justify-center gap-2 group"
-              >
-                <span>Ara</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-
-              {/* Satır 2: İlçe + Kategori + Sırala + Sıfırla (aynı sütun hizası) */}
-              <div className="min-w-0">
-                <HeroDropdown
-                  value={district}
-                  onChange={setDistrict}
-                  options={districts.map((d) => {
-                    const countObj = filtersMeta.districtCounts?.find(
-                      (x) => x.district === d,
-                    );
-                    const countLabel = countObj ? ` (${countObj.count})` : "";
-                    return { value: d, label: `${d}${countLabel}` };
-                  })}
-                  placeholder={city ? "İlçe Seçin" : "Önce şehir seç"}
-                  disabled={!city}
-                  className="h-14 rounded-3xl"
-                />
-              </div>
-              <div className="min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryModal(true)}
-                  className="w-full h-14 px-4 rounded-3xl bg-white/5 border border-white/10 text-left font-medium text-white hover:bg-white/10 focus:outline-none focus:border-white/30 transition-all flex items-center justify-between gap-2"
-                >
-                  <span
-                    className={
-                      category
-                        ? "text-white truncate"
-                        : "text-white/50 truncate"
-                    }
-                  >
-                    {category
-                      ? ((categoriesDict || []).find(
-                          (c) => (c.slug ?? c.raw) === category,
-                        )?.name ?? category)
-                      : "Kategori Seçin"}
-                  </span>
-                  <ChevronDown className="w-5 h-5 text-white/50 flex-shrink-0" />
-                </button>
-              </div>
-              <div className="flex items-stretch gap-2 min-w-0">
-                <HeroDropdown
-                  value={sort}
-                  onChange={setSort}
-                  options={[
-                    { value: "newest", label: "En Yeni" },
-                    { value: "popular", label: "Popüler" },
-                  ]}
-                  placeholder="Sırala"
-                  className="h-14 rounded-3xl flex-1"
-                />
-                <button
-                  onClick={clearFilters}
-                  className="h-14 px-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-3xl font-semibold text-sm transition-all whitespace-nowrap"
-                >
-                  Sıfırla
-                </button>
-              </div>
+          ) : (
+            <div className="w-full h-full" style={{ background: slide.bgColor || "#004aad" }}>
+              <img src="/images/hero-back.png" alt="" className="w-full h-full object-cover opacity-30" />
             </div>
-          </motion.div>
-        </div>
+          )}
+          {/* Dynamic Overlay */}
+          {slide.showOverlay !== false && (
+            <div 
+              className="absolute inset-0 bg-gradient-to-t" 
+              style={{ 
+                background: `linear-gradient(to top, ${slide.overlayColor || "#0f172a"} ${(slide.overlayOpacity ?? 60) + 20}%, transparent)` 
+              }} 
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
-        {/* Map Selector Modal */}
-        {/* Şehir Seçim Modal - Glassmorphism */}
-        <AnimatePresence>
-          {showCityModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-md z-[999] flex items-center justify-center p-4"
-              onClick={() => setShowCityModal(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-white/10 backdrop-blur-xl"
-              >
-                <div className="p-4 border-b border-white/20 flex items-center gap-3">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <input
-                      type="text"
-                      value={citySearch}
-                      onChange={(e) => setCitySearch(e.target.value)}
-                      placeholder="Şehir ara..."
-                      className="w-full h-12 pl-10 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-[#004aad] focus:bg-white/10"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setShowCityModal(false)}
-                    className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5" />
+      {/* Content */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 sm:px-6">
+        <AnimatePresence mode="wait">
+          <motion.div key={slide.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }} className="text-center w-full max-w-[900px]">
+
+            {slide.badge && (
+              <span className="inline-block px-4 py-1.5 bg-white/15 backdrop-blur-sm text-white text-sm font-semibold rounded-full mb-6 border border-white/20">
+                {slide.badge}
+              </span>
+            )}
+
+            <h1 className="text-4xl md:text-6xl lg:text-[5rem] font-black text-white mb-6 leading-tight tracking-tight drop-shadow-2xl">
+              {slide.title}
+            </h1>
+
+            {slide.subtitle && (
+              <p className="text-xl md:text-2xl text-slate-200 mb-10 max-w-2xl mx-auto font-medium drop-shadow-lg leading-relaxed">
+                {slide.subtitle}
+              </p>
+            )}
+
+            {/* Search Bar */}
+            {slide.showSearch && (
+              <div className="relative w-full max-w-[800px] mx-auto mb-8" ref={wrapperRef}>
+                <form onSubmit={handleSearch}
+                  className="w-full bg-white rounded-2xl shadow-2xl flex overflow-hidden focus-within:ring-4 focus-within:ring-[#004aad]/20 transition-all">
+                  <input type="text" value={q}
+                    onChange={e => { setQ(e.target.value); setShowDropdown(true); }}
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder={slide.searchPlaceholder || "Hangi hizmeti arıyorsun?"}
+                    className="flex-1 h-16 md:h-[72px] px-6 text-slate-800 text-lg placeholder-slate-400 outline-none font-semibold bg-white"
+                    autoComplete="off" />
+                  <button type="submit" className="h-16 md:h-[72px] bg-[#004aad] hover:bg-[#003d8f] text-white px-10 md:px-14 font-black text-xl transition-colors min-w-[140px]">
+                    Ara
                   </button>
-                </div>
-                <div className="max-h-[60vh] overflow-auto py-2">
-                  {Object.keys(turkeyLocations)
-                    .sort()
-                    .filter(
-                      (c) =>
-                        !citySearch.trim() ||
-                        c
-                          .toLowerCase()
-                          .includes(citySearch.trim().toLowerCase()),
-                    )
-                    .map((cityName) => (
-                      <button
-                        key={cityName}
-                        type="button"
-                        onClick={() => {
-                          setCity(cityName);
-                          setShowCityModal(false);
-                          setCitySearch("");
-                        }}
-                        className={`w-full px-4 py-3 text-left transition-colors ${city === cityName ? "bg-[#004aad]/50 text-white font-semibold" : "text-white/90 hover:bg-white/10"}`}
-                      >
-                        {cityName}
+                </form>
+
+                <AnimatePresence>
+                  {showDropdown && q.trim().length > 0 && filteredSuggestions.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                      className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 text-left">
+                      <div className="px-5 py-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                        <TrendingUp className="w-3.5 h-3.5 text-[#004aad]" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Öneriler</span>
+                      </div>
+                      <ul className="py-1">
+                        {filteredSuggestions.map(s => (
+                          <li key={s.slug || s.raw}>
+                            <button type="button" onClick={() => handleSuggestionClick(s.slug)}
+                              className="w-full text-left px-5 py-3 hover:bg-blue-50/70 text-slate-700 font-semibold text-base flex items-center justify-between group">
+                              <span>{s.name}</span>
+                              <span className="text-xs text-[#004aad] opacity-0 group-hover:opacity-100 transition-opacity">Git →</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button onClick={handleSearch}
+                        className="w-full text-center py-3 bg-slate-50 hover:bg-slate-100 text-[#004aad] font-bold text-sm border-t border-slate-100">
+                        &quot;{q}&quot; ile ara
                       </button>
-                    ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* CTA Buttons */}
+            {slide.buttons?.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {slide.buttons.map(btn => (
+                  <Link 
+                    key={btn.id} 
+                    href={btn.href || "/"}
+                    style={btn.variant === "custom" ? { backgroundColor: btn.color, color: btn.textColor } : {}}
+                    className={`px-7 py-3 rounded-xl font-bold text-base transition-all ${
+                      btn.variant === "primary" ? "bg-[#004aad] text-white hover:bg-blue-700 shadow-lg" :
+                      btn.variant === "secondary" ? "bg-white text-slate-800 hover:bg-slate-100 shadow-lg" :
+                      btn.variant === "outline" ? "border-2 border-white/50 text-white hover:bg-white/10" :
+                      "shadow-lg hover:brightness-110"
+                    }`}>
+                    {btn.text}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
 
-        {/* Kategori Seçim Modal - Glassmorphism */}
-        <AnimatePresence>
-          {showCategoryModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-md z-[999] flex items-center justify-center p-4"
-              onClick={() => setShowCategoryModal(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-white/20 bg-white/10 backdrop-blur-xl"
-              >
-                <div className="p-4 border-b border-white/20 flex items-center gap-3">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-                    <input
-                      type="text"
-                      value={categorySearch}
-                      onChange={(e) => setCategorySearch(e.target.value)}
-                      placeholder="Kategori ara..."
-                      className="w-full h-12 pl-10 pr-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-[#004aad] focus:bg-white/10"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setShowCategoryModal(false)}
-                    className="p-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="max-h-[60vh] overflow-auto py-2">
-                  {(categoriesDict || [])
-                    .filter((c) => (c.slug ?? c.raw ?? "").trim() !== "")
-                    .filter((c) => {
-                      const name = (
-                        c.name ??
-                        c.displayName ??
-                        ""
-                      ).toLowerCase();
-                      const q = categorySearch.trim().toLowerCase();
-                      return !q || name.includes(q);
-                    })
-                    .map((c) => {
-                      const val = c.slug ?? c.raw ?? "";
-                      const label = `${c.name ?? c.displayName ?? ""} (${c.count ?? 0})`;
-                      return (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => {
-                            setCategory(val);
-                            setShowCategoryModal(false);
-                            setCategorySearch("");
-                          }}
-                          className={`w-full px-4 py-3 text-left transition-colors ${category === val ? "bg-[#004aad]/50 text-white font-semibold" : "text-white/90 hover:bg-white/10"}`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Harita Modal */}
-        <AnimatePresence>
-          {showMapSelector && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4"
-              onClick={toggleMapSelector}
-            >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-3xl overflow-hidden w-full max-w-4xl shadow-2xl"
-              >
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                  <h3 className="font-bold text-gray-800">
-                    Haritadan Konum Seç
-                  </h3>
-                  <button
-                    onClick={toggleMapSelector}
-                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="h-[400px]">
-                  <iframe
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3010.27925!2d28.9784!3d41.0082!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDHCsDAwJzI5LjUiTiAyOMKwNTgnNDIuMiJF!5e0!3m2!1str!2str!4v1234567890"
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen=""
-                    loading="lazy"
-                    title="Map"
-                  />
-                </div>
-                <div className="p-4 grid grid-cols-4 gap-2 bg-gray-50">
-                  {[
-                    "İstanbul",
-                    "Ankara",
-                    "İzmir",
-                    "Bursa",
-                    "Antalya",
-                    "Adana",
-                    "Gaziantep",
-                    "Konya",
-                  ].map((cityName) => (
-                    <button
-                      key={cityName}
-                      onClick={() => handleMapCitySelect(cityName)}
-                      className="py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:text-[#004aad] hover:border-blue-200 transition-all"
-                    >
-                      {cityName}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </section>
-    </>
+        {/* Navigation Arrows & Dots */}
+        {slides.length > 1 && (
+          <>
+            <button onClick={() => goTo(-1)} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-colors">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={() => goTo(1)} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-black/30 hover:bg-black/50 text-white rounded-full backdrop-blur-sm transition-colors">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+              {slides.map((s, i) => (
+                <button key={s.id} onClick={() => { clearInterval(timerRef.current); setCurrent(i); }}
+                  className={`rounded-full transition-all ${i === current ? "w-8 h-2.5 bg-white" : "w-2.5 h-2.5 bg-white/40 hover:bg-white/60"}`} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

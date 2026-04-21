@@ -60,6 +60,10 @@ function buildDefaultSettings() {
       logoUrl: "",
       faviconUrl: "",
       maintenanceMode: false,
+      heroTitle: "Hizmet Piş, Ağzıma Düş",
+      heroSubtitle: "İhtiyacın olan hizmete kolayca ulaş, bekleyen işlerini hallet",
+      heroSearchPlaceholder: "Hangi hizmeti arıyorsun?",
+      heroButtonText: "Ara",
     },
   };
 }
@@ -217,6 +221,12 @@ export async function PATCH(request) {
     design.logoUrl = String(design.logoUrl || "").trim();
     design.faviconUrl = String(design.faviconUrl || "").trim();
     design.maintenanceMode = !!design.maintenanceMode;
+
+    // Hero Text Valdations
+    design.heroTitle = String(design.heroTitle || "Hizmet Piş, Ağzıma Düş").trim();
+    design.heroSubtitle = String(design.heroSubtitle || "İhtiyacın olan hizmete kolayca ulaş, bekleyen işlerini hallet").trim();
+    design.heroSearchPlaceholder = String(design.heroSearchPlaceholder || "Hangi hizmeti arıyorsun?").trim();
+    design.heroButtonText = String(design.heroButtonText || "Ara").trim();
 
     if (!isValidHexColor(design.primaryColor)) {
       errors.push("Ana renk kodu geçerli bir HEX renk olmalıdır.");
