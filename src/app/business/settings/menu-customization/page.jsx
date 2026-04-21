@@ -242,6 +242,52 @@ function SortableChildMenuItem({
   );
 }
 
+function SubMenuDndSection({
+  item,
+  parentId,
+  childPrefs,
+  onChildDragEnd,
+  toggleChildVisibility,
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onChildDragEnd}
+    >
+      <SortableContext
+        items={childPrefs.order.map((c) => c.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="space-y-3">
+          {childPrefs.order
+            .sort((a, b) => a.index - b.index)
+            .map((childPref) => {
+              const child = item.children.find((c) => c.href === childPref.id);
+              if (!child) return null;
+
+              return (
+                <SortableChildMenuItem
+                  key={childPref.id}
+                  child={child}
+                  childId={childPref.id}
+                  isVisible={!childPrefs.hidden.includes(childPref.id)}
+                  onToggleVisibility={toggleChildVisibility}
+                  parentId={parentId}
+                />
+              );
+            })}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 const MENU_PRESETS = [
   {
     id: "bireysel_hizli_baslangic",
@@ -906,40 +952,13 @@ export default function MenuCustomizationPage() {
                                   exit={{ opacity: 0, height: 0 }}
                                   className="mt-3 overflow-hidden"
                                 >
-                                  <DndContext
-                                    sensors={sensors}
-                                    collisionDetection={closestCenter}
-                                    onDragEnd={handleChildDragEnd(pref.id)}
-                                  >
-                                    <SortableContext
-                                      items={childPrefs.order.map((c) => c.id)}
-                                      strategy={verticalListSortingStrategy}
-                                    >
-                                      <div className="space-y-3">
-                                        {childPrefs.order
-                                          .sort((a, b) => a.index - b.index)
-                                          .map((childPref) => {
-                                            const child = item.children.find(
-                                              (c) => c.href === childPref.id
-                                            );
-                                            if (!child) return null;
-
-                                            return (
-                                              <SortableChildMenuItem
-                                                key={childPref.id}
-                                                child={child}
-                                                childId={childPref.id}
-                                                isVisible={
-                                                  !childPrefs.hidden.includes(childPref.id)
-                                                }
-                                                onToggleVisibility={toggleChildVisibility}
-                                                parentId={pref.id}
-                                              />
-                                            );
-                                          })}
-                                      </div>
-                                    </SortableContext>
-                                  </DndContext>
+                                  <SubMenuDndSection
+                                    item={item}
+                                    parentId={pref.id}
+                                    childPrefs={childPrefs}
+                                    onChildDragEnd={handleChildDragEnd(pref.id)}
+                                    toggleChildVisibility={toggleChildVisibility}
+                                  />
                                 </motion.div>
                               ) : null}
                             </AnimatePresence>

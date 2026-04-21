@@ -256,7 +256,7 @@ function UserDropdown({ user, userDisplayName, userRole, panelSubscription, onLo
             {/* Menü öğeleri */}
             <div className="p-2 mt-0.5">
               <Link
-                href="/business/settings"
+                href="/business/settings/menu-customization"
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >

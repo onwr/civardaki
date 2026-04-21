@@ -12,14 +12,33 @@ import {
 } from "@/lib/menu-preferences";
 
 export function useMenuPreferences(defaultNavigation) {
-  const [preferences, setPreferences] = useState(() =>
-    loadMenuPreferences(defaultNavigation)
-  );
+  const [preferences, setPreferences] = useState(() => {
+    // Server and first client render use a deterministic default
+    const defaultOrder = defaultNavigation.map((item, index) => ({
+      id: item.href || `menu-${index}`,
+      name: item.name,
+      index,
+    }));
+    const defaultChildren = {};
+    defaultNavigation.forEach((item, index) => {
+      if (item.children) {
+        const parentId = item.href || `menu-${index}`;
+        defaultChildren[parentId] = {
+          order: item.children.map((c, ci) => ({ id: c.href, name: c.name, index: ci })),
+          hidden: [],
+        };
+      }
+    });
+    return { order: defaultOrder, hidden: [], children: defaultChildren };
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Load from localStorage only after component mounts on client
+    const saved = loadMenuPreferences(defaultNavigation);
+    setPreferences(saved);
     setIsLoading(false);
-  }, []);
+  }, [defaultNavigation]);
 
   const savePreferences = useCallback((newPreferences) => {
     setPreferences(newPreferences);
