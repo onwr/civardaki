@@ -126,7 +126,8 @@ export default function ReferralPage() {
   const referralLink = useMemo(() => {
     const code = business?.referralCode;
     if (!code) return "";
-    return `https://civardaki.com/r/${code}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com");
+    return `${origin}/r/${code}`;
   }, [business?.referralCode]);
 
   const referralStats = metrics?.referralStats || {

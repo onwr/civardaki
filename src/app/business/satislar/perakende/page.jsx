@@ -215,6 +215,7 @@ export default function PerakendeSatisPage() {
               ? crypto.randomUUID()
               : `${Date.now()}-${Math.random()}`,
           productId: product?.id || null,
+          productVariantId: selectedVariant || null,
           name,
           quantity: qty,
           unitPrice: price,
@@ -312,6 +313,7 @@ export default function PerakendeSatisPage() {
           description: description || null,
           items: items.map((it) => ({
             productId: it.productId,
+            productVariantId: it.productVariantId,
             name: it.name,
             quantity: it.quantity,
             unitPrice: it.unitPrice,

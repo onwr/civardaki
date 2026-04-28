@@ -410,7 +410,7 @@ export default function AccountTransactionsPage() {
       name: account?.name || "",
       labelColor: account?.labelColor || "#f5f0e6",
       accountNo: account?.accountNo || "",
-      balance: String(Number(account?.balance || 0)),
+      balance: String(account?.balance || 0).replace(".", ","),
     });
     setModalType("EDIT");
   };
@@ -456,7 +456,7 @@ export default function AccountTransactionsPage() {
 
   const openEditTransaction = (tx) => {
     setTxForm({
-      amount: String(Number(tx.amount || 0)),
+      amount: String(tx.amount || 0).replace(".", ","),
       description: tx.description || "",
       date: tx.date ? new Date(tx.date).toISOString().slice(0, 10) : todayStr(),
       transferAccountId: tx.transferAccountId || "",
@@ -468,7 +468,7 @@ export default function AccountTransactionsPage() {
   const handleEditTransactionSubmit = async (e) => {
     e.preventDefault();
     if (!editingTx?.id) return;
-    const amount = Number(txForm.amount);
+    const amount = parseTrAmount(txForm.amount);
     if (!(amount > 0)) {
       toast.error("Tutar 0'dan büyük olmalı.");
       return;
@@ -594,7 +594,7 @@ export default function AccountTransactionsPage() {
           name: editForm.name.trim(),
           labelColor: editForm.labelColor || null,
           accountNo: editForm.accountNo?.trim() || null,
-          balance: Number(editForm.balance || 0),
+          balance: parseTrAmount(editForm.balance),
         }),
       });
 
@@ -614,7 +614,7 @@ export default function AccountTransactionsPage() {
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
 
-    const amount = Number(txForm.amount);
+    const amount = parseTrAmount(txForm.amount);
     if (!(amount > 0)) {
       toast.error("Tutar 0'dan büyük olmalı.");
       return;

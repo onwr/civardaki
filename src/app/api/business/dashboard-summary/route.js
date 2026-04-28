@@ -451,7 +451,7 @@ export async function GET() {
         saleYearAgg,
     ] = await Promise.all([
         prisma.order.aggregate({
-            where: { businessId, createdAt: { gte: startOfYear } },
+            where: { businessId, status: { not: "CANCELLED" }, createdAt: { gte: startOfYear } },
             _sum: { total: true },
         }),
         prisma.business_purchase.aggregate({
@@ -505,6 +505,10 @@ export async function GET() {
         prisma.employee_leave_request.count({
             where: { businessId, status: "PENDING" },
         }),
+        prisma.business_sale.aggregate({
+            where: { businessId, saleDate: { gte: startOfYear } },
+            _sum: { totalAmount: true },
+        }),
     ]);
 
     const [
@@ -541,10 +545,6 @@ export async function GET() {
                 status: "CONFIRMED",
                 startAt: { gte: startOfToday },
             },
-        }),
-        prisma.business_sale.aggregate({
-            where: { businessId, saleDate: { gte: startOfYear } },
-            _sum: { totalAmount: true },
         }),
     ]);
 

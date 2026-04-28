@@ -53,6 +53,7 @@ export default function SaleEditPage({ params }) {
 
   // Line Item Input State
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
   const [selectedUnitPrice, setSelectedUnitPrice] = useState("");
 
@@ -97,6 +98,7 @@ export default function SaleEditPage({ params }) {
         const initialItems = (s.items || []).map((it) => ({
           id: Math.random().toString(36).substring(2),
           productId: it.productId,
+          productVariantId: it.productVariantId,
           name: it.name,
           quantity: it.quantity,
           unitPrice: String(it.unitPrice).replace(".", ","),
@@ -119,11 +121,8 @@ export default function SaleEditPage({ params }) {
   const handleProductSelect = (e) => {
     const pId = e.target.value;
     setSelectedProduct(pId);
-    if (!pId) {
-      setSelectedUnitPrice("");
-      return;
-    }
-    if (pId === "MANUAL") {
+    setSelectedVariant("");
+    if (!pId || pId === "MANUAL") {
       setSelectedUnitPrice("");
       return;
     }
@@ -132,6 +131,20 @@ export default function SaleEditPage({ params }) {
       setSelectedUnitPrice(String(p.price || 0).replace(".", ","));
     }
   };
+
+  useEffect(() => {
+    if (!selectedProduct || selectedProduct === "MANUAL") return;
+    const p = products.find(x => x.id === selectedProduct);
+    if (!p) return;
+    if (selectedVariant) {
+      const v = p.variants?.find(x => x.id === selectedVariant);
+      const vp = v?.discountPrice ?? v?.price ?? p.discountPrice ?? p.price ?? 0;
+      setSelectedUnitPrice(String(vp).replace(".", ","));
+    } else {
+      const bp = p.discountPrice ?? p.price ?? 0;
+      setSelectedUnitPrice(String(bp).replace(".", ","));
+    }
+  }, [selectedVariant]);
 
   const addLine = () => {
     if (!selectedProduct) {
@@ -151,13 +164,20 @@ export default function SaleEditPage({ params }) {
     let name = "Manuel Ürün";
     if (selectedProduct !== "MANUAL") {
       const p = products.find((x) => x.id === selectedProduct);
-      if (p) name = p.name;
+      if (p) {
+        name = p.name;
+        if (selectedVariant) {
+          const v = p.variants?.find((x) => x.id === selectedVariant);
+          if (v && v.name) name += ` - ${v.name}`;
+        }
+      }
     }
 
     const newLineTotal = pu * selectedQty;
     const newItem = {
       id: Math.random().toString(36).substring(2),
       productId: selectedProduct === "MANUAL" ? null : selectedProduct,
+      productVariantId: selectedVariant || null,
       name,
       quantity: selectedQty,
       unitPrice: selectedUnitPrice,
@@ -166,6 +186,7 @@ export default function SaleEditPage({ params }) {
     setItems((prev) => [...prev, newItem]);
 
     setSelectedProduct("");
+    setSelectedVariant("");
     setSelectedQty(1);
     setSelectedUnitPrice("");
   };
@@ -206,6 +227,7 @@ export default function SaleEditPage({ params }) {
         description,
         items: items.map((it) => ({
           productId: it.productId,
+          productVariantId: it.productVariantId,
           name: it.name,
           quantity: it.quantity,
           unitPrice: parseMoneyInput(it.unitPrice),
@@ -295,6 +317,21 @@ export default function SaleEditPage({ params }) {
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
+                {selectedProduct && selectedProduct !== "MANUAL" && products.find(p => p.id === selectedProduct)?.variants?.length > 0 && (
+                  <div className="mt-2">
+                    <label className="mb-1 block text-xs font-semibold text-slate-500">Varyant Seç</label>
+                    <select
+                      value={selectedVariant}
+                      onChange={(e) => setSelectedVariant(e.target.value)}
+                      className="w-full rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm outline-none focus:border-sky-500"
+                    >
+                      <option value="">Varyant seçiniz...</option>
+                      {products.find(p => p.id === selectedProduct).variants.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="col-span-6 md:col-span-3">
                  <label className="mb-1 block text-xs font-semibold text-slate-500">Miktar</label>

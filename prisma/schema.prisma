@@ -725,14 +725,17 @@ model business_sale_item {
   id         String   @id @default(cuid())
   saleId     String
   productId  String?
+  productVariantId String?
   name       String
   quantity   Float    @default(1)
   unitPrice  Float    @default(0)
   total      Float    @default(0)
 
   sale business_sale @relation(fields: [saleId], references: [id], onDelete: Cascade, map: "BusinessSaleItem_saleId_fkey")
+  productVariant productvariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull, map: "BusinessSaleItem_productVariantId_fkey")
 
   @@index([saleId], map: "BusinessSaleItem_saleId_idx")
+  @@index([productVariantId], map: "BusinessSaleItem_productVariantId_idx")
   @@map("business_sale_item")
 }
 
@@ -1015,6 +1018,7 @@ model productvariant {
 
   product product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductVariant_productId_fkey")
   production_run_line production_run_line[]
+  business_sale_item business_sale_item[]
 
   @@index([productId], map: "ProductVariant_productId_idx")
   @@map("productvariant")

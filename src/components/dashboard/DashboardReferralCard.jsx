@@ -2,9 +2,17 @@
 
 import { Share2, Users, CheckCircle, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { useState, useEffect } from "react";
 
 export default function DashboardReferralCard({ businessInfo, referralStats }) {
-    const referralUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com"}/r/${businessInfo?.referralCode}`;
+    const [referralUrl, setReferralUrl] = useState("");
+
+    useEffect(() => {
+        const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com");
+        if (businessInfo?.referralCode) {
+            setReferralUrl(`${origin}/r/${businessInfo.referralCode}`);
+        }
+    }, [businessInfo?.referralCode]);
 
     const handleShare = () => {
         if (!businessInfo?.referralCode) {

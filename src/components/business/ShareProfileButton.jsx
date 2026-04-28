@@ -16,7 +16,8 @@ export default function ShareProfileButton({ business }) {
             })
         }).catch(() => { });
 
-        const profileUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com"}/business/${business.slug}`;
+        const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com");
+        const profileUrl = `${origin}/business/${business.slug}`;
         const ratingText = business.ratingSum > 0 && business.responseCount > 0
             ? `⭐ ${Number(business.ratingSum / business.responseCount).toFixed(1)} puana sahip `
             : "";

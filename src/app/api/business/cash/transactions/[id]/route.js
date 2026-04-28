@@ -41,6 +41,25 @@ async function applyBalanceDiff(tx, row, diff) {
   }
 }
 
+async function applyCustomerBalanceDiff(tx, row, diff, businessId) {
+  if (!diff || !row.category?.startsWith("CUSTOMER:")) return;
+  const parts = row.category.split(":");
+  const customerId = parts[1];
+  if (!customerId) return;
+  
+  if (row.type === "INCOME") {
+    await tx.business_customer.updateMany({
+      where: { id: customerId, businessId },
+      data: { openBalance: { decrement: diff } },
+    });
+  } else if (row.type === "EXPENSE") {
+    await tx.business_customer.updateMany({
+      where: { id: customerId, businessId },
+      data: { openBalance: { increment: diff } },
+    });
+  }
+}
+
 export async function PATCH(req, { params }) {
   try {
     const businessId = await getBusinessId();
@@ -77,6 +96,7 @@ export async function PATCH(req, { params }) {
 
     const updated = await prisma.$transaction(async (tx) => {
       await applyBalanceDiff(tx, row, diff);
+      await applyCustomerBalanceDiff(tx, row, diff, businessId);
       return tx.cash_transaction.update({
         where: { id },
         data: {
@@ -121,11 +141,29 @@ export async function DELETE(_req, { params }) {
           where: { id: row.accountId },
           data: { balance: { decrement: amount } },
         });
+        if (row.category?.startsWith("CUSTOMER:")) {
+          const customerId = row.category.split(":")[1];
+          if (customerId) {
+            await tx.business_customer.updateMany({
+              where: { id: customerId, businessId },
+              data: { openBalance: { increment: amount } },
+            });
+          }
+        }
       } else if (row.type === "EXPENSE") {
         await tx.cash_account.update({
           where: { id: row.accountId },
           data: { balance: { increment: amount } },
         });
+        if (row.category?.startsWith("CUSTOMER:")) {
+          const customerId = row.category.split(":")[1];
+          if (customerId) {
+            await tx.business_customer.updateMany({
+              where: { id: customerId, businessId },
+              data: { openBalance: { decrement: amount } },
+            });
+          }
+        }
       } else if (row.type === "TRANSFER" && row.toAccountId) {
         await tx.cash_account.update({
           where: { id: row.accountId },

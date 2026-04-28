@@ -187,6 +187,7 @@ export async function POST(request) {
           items: {
             create: items.map((it) => ({
               productId: it.productId || null,
+              productVariantId: it.productVariantId || null,
               name: (it.name || "").slice(0, 500),
               quantity: toNum(it.quantity) || 1,
               unitPrice: toNum(it.unitPrice),

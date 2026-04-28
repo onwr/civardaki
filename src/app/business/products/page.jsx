@@ -31,15 +31,9 @@ import ProductFormWizard, {
 } from "./_components/ProductFormWizard";
 
 function productDisplayCode(row) {
-  const digits = String(row?.slug || "").replace(/\D/g, "");
-  if (digits.length >= 4) return `DKV${digits.slice(-4)}`;
-
-  const alnum = String(row?.id || "")
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toUpperCase();
-
-  const tail = alnum.slice(-4).padStart(4, "0");
-  return `DKV${tail.slice(-4)}`;
+  if (row?.productCode) return row.productCode;
+  if (row?.barcode) return row.barcode;
+  return null;
 }
 
 function formatSalePrice(p) {
@@ -1182,9 +1176,11 @@ export default function ProductManager() {
                           <span className="min-w-0 flex-1 font-medium leading-snug">
                             {p.name}
                           </span>
-                          <span className="shrink-0 rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">
-                            {productDisplayCode(p)}
-                          </span>
+                          {productDisplayCode(p) && (
+                            <span className="shrink-0 rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                              {productDisplayCode(p)}
+                            </span>
+                          )}
                         </div>
                       </td>
 
