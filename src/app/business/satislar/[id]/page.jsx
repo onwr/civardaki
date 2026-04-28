@@ -19,7 +19,7 @@ const parseMoneyInput = (val) => {
   return Number.isFinite(n) ? n : 0;
 };
 const fmtMoney = (n) =>
-  new Intl.NumberFormat("tr-TR", { minFractionDigits: 2, maxFractionDigits: 2 }).format(Number(n) || 0);
+  new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
 
 const DOC_TYPES = [
   { value: "ORDER", label: "Sipariş" },
@@ -79,8 +79,8 @@ export default function SaleEditPage({ params }) {
 
         if (cancelled) return;
 
-        setAccounts(accData.accounts || []);
-        setProducts(prodData.products || []);
+        setAccounts(Array.isArray(accData) ? accData : []);
+        setProducts(prodData?.items || []);
 
         const s = saleData.sale;
         setSale(s);

@@ -8,9 +8,9 @@ export default function DashboardReferralCard({ businessInfo, referralStats }) {
     const [referralUrl, setReferralUrl] = useState("");
 
     useEffect(() => {
-        const origin = typeof window !== "undefined" ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com");
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://civardaki.com";
         if (businessInfo?.referralCode) {
-            setReferralUrl(`${origin}/r/${businessInfo.referralCode}`);
+            setReferralUrl(`${baseUrl}/r/${businessInfo.referralCode}`);
         }
     }, [businessInfo?.referralCode]);
 

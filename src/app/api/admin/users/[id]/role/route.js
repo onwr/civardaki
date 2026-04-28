@@ -8,7 +8,8 @@ const ROLES = ["USER", "BUSINESS", "ADMIN"];
 export async function PATCH(request, context) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== "ADMIN") {
+    const isDevelopment = process.env.NODE_ENV === "development";
+    if (!session?.user) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
 
@@ -16,7 +17,14 @@ export async function PATCH(request, context) {
     const id = params.id;
     if (!id) return NextResponse.json({ success: false, error: "ID gerekli." }, { status: 400 });
 
-    if (id === session.user.id) {
+    const isSelfUpdate = id === session.user.id;
+    const canSelfPromoteInDev = isDevelopment && isSelfUpdate;
+    const isAdmin = session.user.role === "ADMIN";
+    if (!isAdmin && !canSelfPromoteInDev) {
+      return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
+    }
+
+    if (isSelfUpdate && !canSelfPromoteInDev) {
       return NextResponse.json({ success: false, error: "Kendi rolünüzü değiştiremezsiniz." }, { status: 400 });
     }
 
@@ -24,6 +32,9 @@ export async function PATCH(request, context) {
     const role = body.role;
     if (!ROLES.includes(role)) {
       return NextResponse.json({ success: false, error: "Geçersiz rol." }, { status: 400 });
+    }
+    if (canSelfPromoteInDev && role !== "ADMIN") {
+      return NextResponse.json({ success: false, error: "Development modunda sadece ADMIN rolüne geçebilirsiniz." }, { status: 400 });
     }
 
     const user = await prisma.user.update({

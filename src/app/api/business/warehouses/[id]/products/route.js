@@ -9,11 +9,11 @@ function toStr(v) {
 
 function productCode(row) {
   const digits = String(row?.slug || "").replace(/\D/g, "");
-  if (digits.length >= 4) return `DKV${digits.slice(-4)}`;
+  if (digits.length >= 4) return `PRD${digits.slice(-4)}`;
   const alnum = String(row?.id || "")
     .replace(/[^a-zA-Z0-9]/g, "")
     .toUpperCase();
-  return `DKV${alnum.slice(-4).padStart(4, "0")}`;
+  return `PRD${alnum.slice(-4).padStart(4, "0")}`;
 }
 
 async function requireBusiness() {
@@ -21,7 +21,7 @@ async function requireBusiness() {
   if (!session?.user) {
     return { err: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
   }
-  if (session.user.role !== "BUSINESS") {
+  if (!["BUSINESS", "ADMIN"].includes(session.user.role)) {
     return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
   }
   const businessId = session.user.businessId;

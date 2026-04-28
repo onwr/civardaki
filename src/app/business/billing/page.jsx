@@ -12,7 +12,7 @@ export const metadata = {
 export default async function BillingPage({ searchParams }) {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || session.user.role !== "BUSINESS") {
+    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
         redirect("/user/login");
     }
 

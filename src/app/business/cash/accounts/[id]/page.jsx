@@ -58,6 +58,34 @@ function todayStr() {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Türkçe ondalık (virgüllü) rakam girdisini temizler.
+ * Kullanıcı yazarken "1.234,56" veya "1234,56" girebilir.
+ * Yalnızca rakam, nokta ve virgüle izin verir; birden fazla
+ * ayraç karakterini kaldırır.
+ */
+function formatTrAmountInput(raw) {
+  // Sadece rakam, virgül ve noktaya izin ver
+  let v = String(raw).replace(/[^0-9.,]/g, "");
+  // Birden fazla virgül varsa sonuncusunu tut
+  const parts = v.split(",");
+  if (parts.length > 2) v = parts.slice(0, -1).join("") + "," + parts[parts.length - 1];
+  return v;
+}
+
+/**
+ * "1.234,56" veya "1234,56" veya "1234.56" biçimindeki string'i
+ * JS float'a çevirir.
+ */
+function parseTrAmount(raw) {
+  if (!raw) return 0;
+  const s = String(raw)
+    .replace(/\./g, "")   // binlik ayraçları (nokta) kaldır
+    .replace(",", ".");   // ondalık virgülü noktaya çevir
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function typeLabel(type) {
   if (type === "INCOME") return "Para Girişi";
   if (type === "EXPENSE") return "Para Çıkışı";

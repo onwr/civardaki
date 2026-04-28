@@ -17,7 +17,7 @@ import {
   Building2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import PreRegistrationModal from "@/components/modals/PreRegistrationModal";
 
@@ -34,6 +34,7 @@ function getInitials(name, email) {
 
 export default function Header() {
   const { data: session, status } = useSession();
+  const router = useRouter();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -54,6 +55,8 @@ export default function Header() {
   const businessSlug = user?.businessSlug || null;
 
   const isBusinessUser = userRole === "BUSINESS" || hasBusiness;
+  const showBusinessLinks = hasBusiness || userRole === "BUSINESS";
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const isHome = pathname === "/";
   const isListingPage = pathname.startsWith("/isletme/");
@@ -69,6 +72,7 @@ export default function Header() {
     if (businessSlug) return `/isletme/${businessSlug}`;
     return "/business/dashboard";
   }, [businessSlug]);
+  const businessDashboardHref = "/business/dashboard";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -95,18 +99,41 @@ export default function Header() {
     setIsUserMenuOpen(false);
   }, [pathname]);
 
-  const headerClass = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-    !shouldUseTransparentHeader
+  const headerClass = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${!shouldUseTransparentHeader
       ? "bg-[#004aad] border-[#003d8f] py-3 shadow-md"
       : isScrolled
         ? "bg-gray-900/90 backdrop-blur-xl border-gray-800 py-3 shadow-lg"
         : "bg-transparent border-transparent py-5"
-  }`;
+    }`;
 
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
     setIsMenuOpen(false);
     await signOut({ callbackUrl: "/" });
+  };
+
+  const handleBecomeAdmin = async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "ADMIN" }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Rol güncellenemedi.");
+      }
+
+      setIsUserMenuOpen(false);
+      setIsMenuOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error("Admin rolüne geçiş hatası:", error);
+      window.alert("Admin rolüne geçiş sırasında bir hata oluştu.");
+    }
   };
 
   return (
@@ -240,19 +267,31 @@ export default function Header() {
                                 className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-50 text-slate-700 transition-colors"
                               >
                                 <LayoutDashboard className="w-5 h-5 text-slate-400" />
-                                <span className="font-medium">Panele Git</span>
+                                <span className="font-medium">
+                                  {userRole === "ADMIN" ? "Admin Paneline Git" : "Panele Git"}
+                                </span>
                               </Link>
 
-                              {isBusinessUser && (
+                              {showBusinessLinks && (
                                 <Link
-                                  href={businessProfileHref}
+                                  href={userRole === "ADMIN" ? businessDashboardHref : businessProfileHref}
                                   className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-50 text-slate-700 transition-colors"
                                 >
                                   <Building2 className="w-5 h-5 text-slate-400" />
                                   <span className="font-medium">
-                                    İşletme Profili
+                                    {userRole === "ADMIN" ? "İşletme Paneline Git" : "İşletme Profili"}
                                   </span>
                                 </Link>
+                              )}
+
+                              {isDevelopment && showBusinessLinks && userRole !== "ADMIN" && (
+                                <button
+                                  onClick={handleBecomeAdmin}
+                                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-amber-50 text-amber-700 transition-colors"
+                                >
+                                  <Sparkles className="w-5 h-5" />
+                                  <span className="font-medium">Admin Ol (Dev)</span>
+                                </button>
                               )}
 
                               <Link
@@ -411,17 +450,27 @@ export default function Header() {
                       </button>
                     </div>
 
-                    {isBusinessUser && (
+                    {showBusinessLinks && (
                       <Link
-                        href={businessProfileHref}
+                        href={userRole === "ADMIN" ? businessDashboardHref : businessProfileHref}
                         onClick={() => setIsMenuOpen(false)}
                         className="mt-3 flex items-center justify-center p-4 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors gap-2"
                       >
                         <Building2 className="w-5 h-5" />
                         <span className="font-semibold text-sm">
-                          İşletme Profili
+                          {userRole === "ADMIN" ? "İşletme Paneline Git" : "İşletme Profili"}
                         </span>
                       </Link>
+                    )}
+
+                    {isDevelopment && showBusinessLinks && userRole !== "ADMIN" && (
+                      <button
+                        onClick={handleBecomeAdmin}
+                        className="mt-3 w-full flex items-center justify-center p-4 rounded-2xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors gap-2"
+                      >
+                        <Sparkles className="w-5 h-5" />
+                        <span className="font-semibold text-sm">Admin Ol (Dev)</span>
+                      </button>
                     )}
                   </div>
                 ) : (

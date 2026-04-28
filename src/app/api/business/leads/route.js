@@ -15,7 +15,7 @@ import {
 export async function GET(req) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user || session.user.role !== "BUSINESS") {
+        if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -100,7 +100,7 @@ export async function GET(req) {
 export async function PATCH(req) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user || session.user.role !== "BUSINESS") {
+        if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 

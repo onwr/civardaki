@@ -35,7 +35,7 @@ export default function HeroSection() {
           const d = await catsRes.json();
           setCategoriesDict(d.categories || []);
         }
-      } catch {}
+      } catch { }
       setLoading(false);
     }
     loadData();
@@ -117,10 +117,10 @@ export default function HeroSection() {
       <AnimatePresence mode="wait">
         <motion.div key={slide.id} {...anim} transition={{ duration: 0.6 }} className="absolute inset-0 z-0">
           {slide.bgImage ? (
-            <img 
-              src={slide.bgImage} 
-              alt="" 
-              className="w-full h-full object-cover" 
+            <img
+              src={slide.bgImage}
+              alt=""
+              className="w-full h-full object-cover"
               style={{ opacity: (slide.imageOpacity ?? 100) / 100 }}
             />
           ) : (
@@ -130,11 +130,11 @@ export default function HeroSection() {
           )}
           {/* Dynamic Overlay */}
           {slide.showOverlay !== false && (
-            <div 
-              className="absolute inset-0 bg-gradient-to-t" 
-              style={{ 
-                background: `linear-gradient(to top, ${slide.overlayColor || "#0f172a"} ${(slide.overlayOpacity ?? 60) + 20}%, transparent)` 
-              }} 
+            <div
+              className="absolute inset-0 bg-gradient-to-t"
+              style={{
+                background: `linear-gradient(to top, ${slide.overlayColor || "#0f172a"} ${(slide.overlayOpacity ?? 60) + 20}%, transparent)`
+              }}
             />
           )}
         </motion.div>
@@ -211,16 +211,15 @@ export default function HeroSection() {
             {slide.buttons?.length > 0 && (
               <div className="flex flex-wrap items-center justify-center gap-3">
                 {slide.buttons.map(btn => (
-                  <Link 
-                    key={btn.id} 
+                  <Link
+                    key={btn.id}
                     href={btn.href || "/"}
                     style={btn.variant === "custom" ? { backgroundColor: btn.color, color: btn.textColor } : {}}
-                    className={`px-7 py-3 rounded-xl font-bold text-base transition-all ${
-                      btn.variant === "primary" ? "bg-[#004aad] text-white hover:bg-blue-700 shadow-lg" :
-                      btn.variant === "secondary" ? "bg-white text-slate-800 hover:bg-slate-100 shadow-lg" :
-                      btn.variant === "outline" ? "border-2 border-white/50 text-white hover:bg-white/10" :
-                      "shadow-lg hover:brightness-110"
-                    }`}>
+                    className={`px-7 py-3 rounded-xl font-bold text-base transition-all ${btn.variant === "primary" ? "bg-[#004aad] text-white hover:bg-blue-700 shadow-lg" :
+                        btn.variant === "secondary" ? "bg-white text-slate-800 hover:bg-slate-100 shadow-lg" :
+                          btn.variant === "outline" ? "border-2 border-white/50 text-white hover:bg-white/10" :
+                            "shadow-lg hover:brightness-110"
+                      }`}>
                     {btn.text}
                   </Link>
                 ))}

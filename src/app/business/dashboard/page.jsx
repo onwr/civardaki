@@ -17,7 +17,7 @@ export default function BusinessDashboardEntry() {
       return;
     }
 
-    if (session.user.role !== "BUSINESS") {
+    if (!["BUSINESS", "ADMIN"].includes(session.user.role)) {
       router.replace("/user/dashboard");
       return;
     }

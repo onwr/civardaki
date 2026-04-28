@@ -1,9 +1,8 @@
-import { mkdir, unlink } from "fs/promises";
-import { join } from "path";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { uploadToCDN } from "@/lib/cdnUpload";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -36,31 +35,19 @@ export async function POST(request) {
       );
     }
 
-    const userId = session.user.id;
-    const userDir = join(process.cwd(), "public", "uploads", "users", userId);
-    await mkdir(userDir, { recursive: true });
-
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const fileName = `avatar_${Date.now()}.webp`;
-    const filePath = join(userDir, fileName);
+    const userId = session.user.id;
 
     const sharp = (await import("sharp")).default;
-    await sharp(buffer, { limitInputPixels: 268402689 })
+    const processedBuffer = await sharp(buffer, { limitInputPixels: 268402689 })
       .resize(600, 600, { fit: "cover" })
       .webp({ quality: 82 })
-      .toFile(filePath);
+      .toBuffer();
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { image: true },
-    });
-    if (dbUser?.image?.startsWith("/uploads/users/")) {
-      const oldPath = join(process.cwd(), "public", dbUser.image.replace(/^\/+/, ""));
-      await unlink(oldPath).catch(() => {});
-    }
-
-    const url = `/uploads/users/${userId}/${fileName}`;
+    const processedFile = new File([processedBuffer], fileName, { type: "image/webp" });
+    const url = await uploadToCDN(processedFile);
     await prisma.user.update({
       where: { id: userId },
       data: { image: url },

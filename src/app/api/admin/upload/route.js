@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { mkdir } from "fs/promises";
-import { join } from "path";
+import { uploadToCDN } from "@/lib/cdnUpload";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB
@@ -29,19 +28,16 @@ export async function POST(request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const uploadDir = join(process.cwd(), "public", "uploads", "categories");
-    await mkdir(uploadDir, { recursive: true });
-
     const fileName = `cat_${Date.now()}.webp`;
-    const filePath = join(uploadDir, fileName);
 
     const sharp = (await import("sharp")).default;
-    await sharp(buffer, { limitInputPixels: 268402689 })
+    const processedBuffer = await sharp(buffer, { limitInputPixels: 268402689 })
       .resize(800, 800, { fit: "inside", withoutEnlargement: true })
       .webp({ quality: 80 })
-      .toFile(filePath);
+      .toBuffer();
 
-    const url = `/uploads/categories/${fileName}`;
+    const processedFile = new File([processedBuffer], fileName, { type: "image/webp" });
+    const url = await uploadToCDN(processedFile);
     return NextResponse.json({ success: true, url });
   } catch (e) {
     console.error("Admin upload error:", e);

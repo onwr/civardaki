@@ -2,14 +2,17 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import Image from "next/image";
 
-export default async function PopularBusinesses({ categoryRaw, categoryDisplayName }) {
-    if (!categoryRaw) return null;
+export default async function PopularBusinesses({ categoryId, categoryDisplayName }) {
+    if (!categoryId) return null;
 
     try {
         const popular = await prisma.business.findMany({
             where: {
                 isActive: true,
-                category: categoryRaw
+                OR: [
+                    { primaryCategoryId: categoryId },
+                    { businesscategory: { some: { categoryId } } },
+                ],
             },
             select: {
                 name: true,

@@ -1,7 +1,12 @@
 import Header from "@/components/layout/Header";
 import HeroSection from "@/components/sections/home/Hero";
+import CategorySlider from "@/components/sections/home/CategorySlider";
+import FeaturesSection from "@/components/sections/home/FeaturesSection";
+import HowItWorksSection from "@/components/sections/home/HowItWorksSection";
 import FeaturedListings from "@/components/sections/home/FeaturedListings";
 import BusinessCTA from "@/components/sections/home/BusinessCTA";
+import UserCTA from "@/components/sections/home/UserCTA";
+import AppCTA from "@/components/sections/home/AppCTA";
 import AdSlot from "@/components/ads/AdSlot";
 import { buildWebSite } from "@/lib/jsonld";
 import Footer from "@/components/layout/Footer";
@@ -36,12 +41,18 @@ export default function HomePage() {
         <HeroSection />
       </div>
 
+      <CategorySlider />
+      <FeaturesSection />
+      <HowItWorksSection />
+
       <div className="container mx-auto px-4 py-4">
         <AdSlot placement="BANNER" />
       </div>
 
       <FeaturedListings />
       <BusinessCTA />
+      <UserCTA />
+      <AppCTA />
       <Footer />
     </>
   );

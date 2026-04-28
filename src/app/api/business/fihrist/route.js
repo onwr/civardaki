@@ -8,7 +8,7 @@ async function requireBusiness() {
   const session = await getServerSession(authOptions);
   if (!session?.user)
     return { err: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
-  if (session.user.role !== "BUSINESS")
+  if (!["BUSINESS", "ADMIN"].includes(session.user.role))
     return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
   const businessId = session.user.businessId;
   if (!businessId)

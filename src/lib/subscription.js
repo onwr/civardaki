@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 export async function requireValidSubscription() {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || session.user.role !== "BUSINESS") {
+    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
         redirect("/user/login");
     }
 

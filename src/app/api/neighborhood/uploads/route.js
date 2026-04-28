@@ -1,8 +1,7 @@
-import { mkdir } from "fs/promises";
-import { join } from "path";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { uploadToCDN } from "@/lib/cdnUpload";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -21,8 +20,6 @@ export async function POST(request) {
     }
 
     const userId = session.user.id;
-    const uploadDir = join(process.cwd(), "public", "uploads", "neighborhood", userId);
-    await mkdir(uploadDir, { recursive: true });
 
     const sharp = (await import("sharp")).default;
     const uploadedUrls = [];
@@ -41,15 +38,16 @@ export async function POST(request) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
       const fileName = `post_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.webp`;
-      const filePath = join(uploadDir, fileName);
 
-      await sharp(buffer, { limitInputPixels: 268402689 })
+      const processedBuffer = await sharp(buffer, { limitInputPixels: 268402689 })
         .rotate()
         .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
         .webp({ quality: 84 })
-        .toFile(filePath);
+        .toBuffer();
 
-      uploadedUrls.push(`/uploads/neighborhood/${userId}/${fileName}`);
+      const processedFile = new File([processedBuffer], fileName, { type: "image/webp" });
+      const url = await uploadToCDN(processedFile);
+      uploadedUrls.push(url);
     }
 
     return NextResponse.json({ success: true, urls: uploadedUrls });

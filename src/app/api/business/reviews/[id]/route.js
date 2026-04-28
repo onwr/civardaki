@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function PATCH(req, { params }) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user || session.user.role !== "BUSINESS") {
+        if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 

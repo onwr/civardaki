@@ -74,7 +74,7 @@ export default function FeaturedListings() {
   }, []);
 
   return (
-    <section className="py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+    <section className="py-12 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
       <style jsx global>{`
         .swiper-wrapper {
           transition-timing-function: linear;
@@ -162,10 +162,10 @@ export default function FeaturedListings() {
             autoplay={
               listings.length > 1
                 ? {
-                    delay: 0,
-                    disableOnInteraction: false,
-                    pauseOnMouseEnter: true,
-                  }
+                  delay: 0,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }
                 : false
             }
             breakpoints={{

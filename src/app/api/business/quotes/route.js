@@ -71,7 +71,7 @@ function calculateTotals(items, taxRateRaw, taxRaw) {
 
 async function getBusinessSession() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || session.user.role !== "BUSINESS" || !session.user.businessId) {
+  if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role) || !session.user.businessId) {
     return null;
   }
   return session;

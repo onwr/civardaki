@@ -16,7 +16,7 @@ export async function GET() {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-        if (session.user.role !== "BUSINESS") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
 
         const businessId = session.user.businessId;
         if (!businessId) return NextResponse.json({ message: "Business not found" }, { status: 404 });
@@ -66,7 +66,7 @@ export async function PATCH(req) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-        if (session.user.role !== "BUSINESS") return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
 
         const businessId = session.user.businessId;
         if (!businessId) return NextResponse.json({ message: "Business not found" }, { status: 404 });

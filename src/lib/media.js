@@ -1,6 +1,5 @@
-import { mkdir, unlink, writeFile } from "fs/promises";
-import { join } from "path";
 import { prisma } from "@/lib/prisma";
+import { uploadToCDN } from "@/lib/cdnUpload";
 
 export async function processAndSaveMedia(file, type, businessId, businessSlug) {
     if (!file || typeof file !== "object" || typeof file.arrayBuffer !== "function") {
@@ -41,9 +40,6 @@ export async function processAndSaveMedia(file, type, businessId, businessSlug) 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadDir = join(process.cwd(), "public", "uploads", "businesses", businessSlug);
-    await mkdir(uploadDir, { recursive: true });
-
     const originalExt = (() => {
         const rawName = typeof file.name === "string" ? file.name : "";
         const idx = rawName.lastIndexOf(".");
@@ -61,9 +57,13 @@ export async function processAndSaveMedia(file, type, businessId, businessSlug) 
         "application/vnd.ms-excel": "xls",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     };
-    const finalExt = extByMime[file.type] || originalExt || "bin";
+    
+    // For images compressed to webp we force the extension later
+    let finalExt = extByMime[file.type] || originalExt || "bin";
+    if (isImageUpload) finalExt = "webp";
+    
     const fileName = `${type.toLowerCase()}_${Date.now()}.${finalExt}`;
-    const filePath = join(uploadDir, fileName);
+    let fileUrl = "";
 
     if (isImageUpload) {
         const sharp = (await import("sharp")).default;
@@ -79,12 +79,13 @@ export async function processAndSaveMedia(file, type, businessId, businessSlug) 
             sharpInstance = sharpInstance.resize(1280, 1280, { fit: "inside", withoutEnlargement: true });
         }
 
-        await sharpInstance.webp({ quality: 80 }).toFile(filePath);
+        const processedBuffer = await sharpInstance.webp({ quality: 80 }).toBuffer();
+        const processedFile = new File([processedBuffer], fileName, { type: "image/webp" });
+        fileUrl = await uploadToCDN(processedFile);
     } else {
-        await writeFile(filePath, buffer);
+        const processedFile = new File([buffer], fileName, { type: file.type });
+        fileUrl = await uploadToCDN(processedFile);
     }
-
-    const fileUrl = `/uploads/businesses/${businessSlug}/${fileName}`;
 
     if (type === "LOGO" || type === "COVER") {
         const oldMediaList = await prisma.media.findMany({
@@ -92,12 +93,6 @@ export async function processAndSaveMedia(file, type, businessId, businessSlug) 
         });
 
         for (const oldMedia of oldMediaList) {
-            try {
-                const oldPath = join(uploadDir, oldMedia.fileId);
-                await unlink(oldPath);
-            } catch (e) {
-                // Ignore missing file errors
-            }
             await prisma.media.delete({ where: { id: oldMedia.id } });
         }
     }

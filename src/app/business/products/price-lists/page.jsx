@@ -23,11 +23,11 @@ import { toast } from "sonner";
 
 function productCode(slug, id) {
   const digits = String(slug || "").replace(/\D/g, "");
-  if (digits.length >= 4) return `DKV${digits.slice(-4)}`;
+  if (digits.length >= 4) return `PRD${digits.slice(-4)}`;
   const alnum = String(id || "")
     .replace(/[^a-zA-Z0-9]/g, "")
     .toUpperCase();
-  return `DKV${alnum.slice(-4).padStart(4, "0")}`;
+  return `PRD${alnum.slice(-4).padStart(4, "0")}`;
 }
 
 function baseUnitPrice(price, discountPrice) {

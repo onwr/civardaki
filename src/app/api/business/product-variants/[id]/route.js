@@ -12,7 +12,7 @@ function toNum(v) {
 async function requireBusiness() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { err: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
-    if (session.user.role !== "BUSINESS") return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
+    if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
     const businessId = session.user.businessId;
     if (!businessId) return { err: NextResponse.json({ message: "Business not found" }, { status: 404 }) };
     return { businessId };

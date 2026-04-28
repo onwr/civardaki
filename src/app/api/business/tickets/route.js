@@ -19,7 +19,7 @@ function safeStr(val) {
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== "BUSINESS") {
+    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
     const businessId = session.user.businessId;
@@ -56,7 +56,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== "BUSINESS") {
+    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
     const businessId = session.user.businessId;
