@@ -157,24 +157,6 @@ const POS_BLOCKAGE_COST_GROUPS = [
   },
 ];
 
-function parseTrAmount(input) {
-  if (input == null) return 0;
-  const raw = String(input).trim();
-  if (!raw) return 0;
-  const normalized = raw.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatTrAmountInput(value) {
-  const n = parseTrAmount(value);
-  if (!n && n !== 0) return "";
-  return n.toLocaleString("tr-TR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
-
 function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
   const tones = {
     blue: "from-blue-600 to-indigo-700 text-white",
