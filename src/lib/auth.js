@@ -35,8 +35,8 @@ export const authOptions = {
           where: { email },
           include: {
             ownedbusiness: {
-              where: { isPrimary: true },
               select: {
+                isPrimary: true,
                 businessId: true,
                 business: {
                   select: {
@@ -46,7 +46,8 @@ export const authOptions = {
                   },
                 },
               },
-              take: 1,
+              orderBy: [{ isPrimary: "desc" }],
+              take: 10,
             },
           },
         });
@@ -61,7 +62,10 @@ export const authOptions = {
           throw new Error("Hatalı şifre girdiniz.");
         }
 
-        const primaryBusiness = user.ownedbusiness?.[0] || null;
+        const primaryBusiness =
+          user.ownedbusiness?.find((item) => item.isPrimary) ||
+          user.ownedbusiness?.[0] ||
+          null;
         const hasBusiness = user.ownedbusiness?.length > 0;
 
         return {
@@ -104,8 +108,8 @@ export const authOptions = {
             phone: true,
             role: true,
             ownedbusiness: {
-              where: { isPrimary: true },
               select: {
+                isPrimary: true,
                 businessId: true,
                 business: {
                   select: {
@@ -115,13 +119,17 @@ export const authOptions = {
                   },
                 },
               },
-              take: 1,
+              orderBy: [{ isPrimary: "desc" }],
+              take: 10,
             },
           },
         });
 
         if (dbUser) {
-          const primaryBusiness = dbUser.ownedbusiness?.[0] || null;
+          const primaryBusiness =
+            dbUser.ownedbusiness?.find((item) => item.isPrimary) ||
+            dbUser.ownedbusiness?.[0] ||
+            null;
 
           token.id = dbUser.id;
           token.name = dbUser.name || token.name;

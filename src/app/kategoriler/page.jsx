@@ -42,7 +42,9 @@ async function getCategories() {
 }
 
 export async function generateMetadata({ searchParams }) {
-  const hasSearchParams = searchParams && Object.keys(searchParams).length > 0;
+  const resolvedSearchParams = await searchParams;
+  const hasSearchParams =
+    resolvedSearchParams && Object.keys(resolvedSearchParams).length > 0;
   const canonicalUrl = `${APP_URL}/kategoriler`;
 
   return {
@@ -122,7 +124,7 @@ export default async function CategoriesPage() {
       <section className="bg-slate-950 text-white pt-24 pb-16">
         <div className="mx-auto max-w-6xl px-6 text-center">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-extrabold tracking-widest uppercase mb-6">
-            Tüm Kategoriler (BU SAYFA ELDEN GEÇECEK BOŞ KALMASIN DİYE BÖYLE EKLEDİM ABİM)
+            Tüm Kategoriler
           </p>
           <h1 className="text-4xl md:text-6xl font-black tracking-tight">
             Hizmet Kategorileri

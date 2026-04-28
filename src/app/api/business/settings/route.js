@@ -3,14 +3,29 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
+async function resolveBusinessId(session) {
+    if (!session?.user) return null;
+    if (session.user.businessId) return session.user.businessId;
+
+    const fallback = await prisma.ownedbusiness.findFirst({
+        where: { userId: session.user.id },
+        select: { businessId: true },
+        orderBy: [{ isPrimary: "desc" }],
+    });
+    return fallback?.businessId || null;
+}
+
 export async function GET() {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.businessId) {
+        if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const businessId = session.user.businessId;
+        const businessId = await resolveBusinessId(session);
+        if (!businessId) {
+            return NextResponse.json({ error: "Business not found" }, { status: 404 });
+        }
 
         const [biz, mediaLogo, mediaCover] = await Promise.all([
             prisma.business.findUnique({
@@ -84,11 +99,14 @@ export async function GET() {
 export async function PATCH(request) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session || !session.user || !session.user.businessId) {
+        if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const businessId = session.user.businessId;
+        const businessId = await resolveBusinessId(session);
+        if (!businessId) {
+            return NextResponse.json({ error: "Business not found" }, { status: 404 });
+        }
         const data = await request.json();
 
         const existing = await prisma.business.findUnique({

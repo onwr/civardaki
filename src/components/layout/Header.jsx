@@ -56,7 +56,7 @@ export default function Header() {
 
   const isBusinessUser = userRole === "BUSINESS" || hasBusiness;
   const showBusinessLinks = hasBusiness || userRole === "BUSINESS";
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const isDevelopment = true;
 
   const isHome = pathname === "/";
   const isListingPage = pathname.startsWith("/isletme/");
