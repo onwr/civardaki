@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeftIcon,
@@ -65,12 +65,18 @@ function todayStr() {
  * ayraç karakterini kaldırır.
  */
 function formatTrAmountInput(raw) {
-  // Sadece rakam, virgül ve noktaya izin ver
-  let v = String(raw).replace(/[^0-9.,]/g, "");
-  // Birden fazla virgül varsa sonuncusunu tut
+  if (!raw) return "";
+  let v = String(raw).replace(/[^0-9,]/g, "");
   const parts = v.split(",");
-  if (parts.length > 2) v = parts.slice(0, -1).join("") + "," + parts[parts.length - 1];
-  return v;
+  if (parts.length > 2) {
+    v = parts[0] + "," + parts.slice(1).join("");
+  }
+  const [integerPart, decimalPart] = v.split(",");
+  let formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (decimalPart !== undefined) {
+    return formattedInteger + "," + decimalPart;
+  }
+  return formattedInteger;
 }
 
 /**
@@ -322,6 +328,7 @@ function Select({ label, children, ...props }) {
 
 export default function AccountTransactionsPage() {
   const params = useParams();
+  const router = useRouter();
   const accountId = params?.id?.toString() || "";
 
   const [account, setAccount] = useState(null);
@@ -621,6 +628,28 @@ export default function AccountTransactionsPage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Bu hesabı kalıcı olarak silmek istediğinize emin misiniz? Hesaba bağlı kayıtlar varsa silme işlemi başarısız olabilir.")) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/business/cash/accounts/${accountId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Hesap silinemedi.");
+
+      toast.success("Hesap başarıyla silindi.");
+      router.push("/business/cash/accounts");
+    } catch (err) {
+      toast.error(err.message || "Hesap silinirken bir hata oluştu.");
+      setSaving(false);
+    }
+  };
+
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
 
@@ -793,6 +822,15 @@ export default function AccountTransactionsPage() {
                   disabled={!account}
                 >
                   Hesabı Güncelle
+                </ActionButton>
+
+                <ActionButton
+                  onClick={handleDeleteAccount}
+                  icon={TrashIcon}
+                  tone="rose"
+                  disabled={!account || saving}
+                >
+                  Hesabı Sil
                 </ActionButton>
 
                 <ActionButton

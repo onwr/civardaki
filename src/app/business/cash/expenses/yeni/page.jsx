@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -19,7 +19,7 @@ import { toast } from "sonner";
 const VAT_OPTIONS = [0, 1, 8, 10, 18, 20];
 
 function formatTry(n) {
-  return `â‚º${Number(n || 0).toLocaleString("tr-TR", {
+  return `₺${Number(n || 0).toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -32,6 +32,21 @@ function parseTrAmount(input) {
   const normalized = raw.replace(/\./g, "").replace(",", ".");
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
+}
+
+function formatTrAmountInput(raw) {
+  if (!raw) return "";
+  let v = String(raw).replace(/[^0-9,]/g, "");
+  const parts = v.split(",");
+  if (parts.length > 2) {
+    v = parts[0] + "," + parts.slice(1).join("");
+  }
+  const [integerPart, decimalPart] = v.split(",");
+  let formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (decimalPart !== undefined) {
+    return formattedInteger + "," + decimalPart;
+  }
+  return formattedInteger;
 }
 
 function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
@@ -130,8 +145,8 @@ export default function NewExpensePage() {
         }
       } catch (e) {
         console.error(e);
-        setApiError("Veriler yÃ¼klenemedi.");
-        toast.error("Veriler yÃ¼klenemedi.");
+        setApiError("Veriler yüklenemedi.");
+        toast.error("Veriler yüklenemedi.");
       } finally {
         setLoading(false);
       }
@@ -145,25 +160,25 @@ export default function NewExpensePage() {
 
   const selectedExpenseLabel = useMemo(() => {
     if (manualMode) {
-      if (manualCategory && manualItemName) return `${manualCategory} â€º ${manualItemName}`;
+      if (manualCategory && manualItemName) return `${manualCategory} ⬺ ${manualItemName}`;
       if (manualItemName) return manualItemName;
-      return "Liste dÄ±ÅŸÄ± giriÅŸ";
+      return "Liste dışı giriş";
     }
 
     const selected = flatItems.find((x) => x.id === expenseItemId);
-    return selected?.label || "Masraf kalemi seÃ§in";
+    return selected?.label || "Masraf kalemi seçin";
   }, [manualMode, manualCategory, manualItemName, expenseItemId, flatItems]);
 
   const submit = async (e) => {
     e.preventDefault();
 
     if (!accountId) {
-      toast.error("Ã–deme hesabÄ± seÃ§in.");
+      toast.error("Ödeme hesabı seçin.");
       return;
     }
 
     if (!amount || parseTrAmount(amount) <= 0) {
-      toast.error("GeÃ§erli tutar girin.");
+      toast.error("Geçerli tutar girin.");
       return;
     }
 
@@ -175,20 +190,20 @@ export default function NewExpensePage() {
       const m2 = manualItemName.trim();
 
       if (!m2) {
-        toast.error("Liste dÄ±ÅŸÄ± masraf adÄ± girin.");
+        toast.error("Liste dışı masraf adı girin.");
         return;
       }
 
-      categoryPayload = m1 ? `${m1} â€º ${m2}` : m2;
+      categoryPayload = m1 ? `${m1} ⬺ ${m2}` : m2;
     } else {
       const selected = flatItems.find((x) => x.id === expenseItemId);
 
       if (!selected) {
-        toast.error("Masraf kalemi seÃ§in veya liste dÄ±ÅŸÄ± giriÅŸi aÃ§Ä±n.");
+        toast.error("Masraf kalemi seçin veya liste dışı girişi açın.");
         return;
       }
 
-      categoryPayload = `${selected.categoryName} â€º ${selected.itemName}`;
+      categoryPayload = `${selected.categoryName} ⬺ ${selected.itemName}`;
       itemIdPayload = selected.id;
     }
 
@@ -218,7 +233,7 @@ export default function NewExpensePage() {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data?.error || "KayÄ±t baÅŸarÄ±sÄ±z.");
+      if (!res.ok) throw new Error(data?.error || "Kayıt başarısız.");
 
       toast.success("Masraf kaydedildi.");
       router.push("/business/cash/expenses");
@@ -236,7 +251,7 @@ export default function NewExpensePage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-24 text-slate-500">YÃ¼kleniyorâ€¦</div>
+      <div className="flex justify-center py-24 text-slate-500">Yükleniyor⬦</div>
     );
   }
 
@@ -253,11 +268,11 @@ export default function NewExpensePage() {
               </div>
 
               <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
-                Yeni Masraf KaydÄ±
+                Yeni Masraf Kaydı
               </h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
-                Masraf kalemi, Ã¶deme hesabÄ±, tutar ve tarih bilgilerini girerek
-                yeni masraf kaydÄ± oluÅŸturun.
+                Masraf kalemi, ödeme hesabı, tutar ve tarih bilgilerini girerek
+                yeni masraf kaydı oluşturun.
               </p>
             </div>
 
@@ -276,7 +291,7 @@ export default function NewExpensePage() {
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15"
               >
                 <ArrowLeftIcon className="h-5 w-5" />
-                Geri DÃ¶n
+                Geri Dön
               </Link>
             </div>
           </div>
@@ -286,7 +301,7 @@ export default function NewExpensePage() {
           <StatCard
             title="Masraf Kalemi"
             value={selectedExpenseLabel}
-            sub="SeÃ§ili veya manuel kalem"
+            sub="Seçili veya manuel kalem"
             icon={ClipboardDocumentListIcon}
             tone="blue"
           />
@@ -305,9 +320,9 @@ export default function NewExpensePage() {
             tone="amber"
           />
           <StatCard
-            title="Ä°ÅŸlem Tarihi"
+            title="İşlem Tarihi"
             value={transactionDate || "-"}
-            sub="MasrafÄ±n iÅŸleneceÄŸi tarih"
+            sub="Masrafın işleneceği tarih"
             icon={CalendarDaysIcon}
             tone="slate"
           />
@@ -320,7 +335,7 @@ export default function NewExpensePage() {
                 <ExclamationTriangleIcon className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold">Veri alÄ±nÄ±rken bir hata oluÅŸtu</p>
+                <p className="font-semibold">Veri alınırken bir hata oluştu</p>
                 <p className="mt-1 text-sm leading-6">{apiError}</p>
               </div>
             </div>
@@ -347,7 +362,7 @@ export default function NewExpensePage() {
                       onChange={(e) => setExpenseItemId(e.target.value)}
                       className={inp}
                     >
-                      <option value="">Masraf kalemi seÃ§in</option>
+                      <option value="">Masraf kalemi seçin</option>
                       {flatItems.map((it) => (
                         <option key={it.id} value={it.id}>
                           {it.label}
@@ -360,14 +375,14 @@ export default function NewExpensePage() {
                         href="/business/cash/expenses/kalemler"
                         className="font-medium text-emerald-600 hover:underline"
                       >
-                        listeyi dÃ¼zenlemek iÃ§in tÄ±klayÄ±n
+                        listeyi düzenlemek için tıklayın
                       </Link>
                       <button
                         type="button"
                         onClick={() => setManualMode(true)}
                         className="font-medium text-emerald-600 hover:underline"
                       >
-                        listede olmayan masraf eklemek iÃ§in tÄ±klayÄ±n
+                        listede olmayan masraf eklemek için tıklayın
                       </button>
                     </div>
                   </>
@@ -376,13 +391,13 @@ export default function NewExpensePage() {
                     <input
                       value={manualCategory}
                       onChange={(e) => setManualCategory(e.target.value)}
-                      placeholder="Ana grup (isteÄŸe baÄŸlÄ±)"
+                      placeholder="Ana grup (isteğe bağlı)"
                       className={inp}
                     />
                     <input
                       value={manualItemName}
                       onChange={(e) => setManualItemName(e.target.value)}
-                      placeholder="Masraf adÄ±"
+                      placeholder="Masraf adı"
                       className={inp}
                     />
                     <button
@@ -394,14 +409,14 @@ export default function NewExpensePage() {
                       }}
                       className="text-xs font-medium text-slate-600 hover:underline"
                     >
-                      Listeden seÃ§
+                      Listeden seç
                     </button>
                   </div>
                 )}
               </div>
 
               <div>
-                <label className={label}>Ä°ÅŸlem Tarihi</label>
+                <label className={label}>İşlem Tarihi</label>
                 <input
                   type="date"
                   value={transactionDate}
@@ -411,11 +426,11 @@ export default function NewExpensePage() {
               </div>
 
               <div>
-                <label className={label}>FiÅŸ / Belge No</label>
+                <label className={label}>Fiş / Belge No</label>
                 <input
                   value={receiptNo}
                   onChange={(e) => setReceiptNo(e.target.value)}
-                  placeholder="Ä°steÄŸe baÄŸlÄ±"
+                  placeholder="İsteğe bağlı"
                   className={inp}
                 />
               </div>
@@ -425,13 +440,13 @@ export default function NewExpensePage() {
                 <input
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Ä°steÄŸe baÄŸlÄ±"
+                  placeholder="İsteğe bağlı"
                   className={inp}
                 />
               </div>
 
               <div>
-                <label className={label}>AÃ§Ä±klama</label>
+                <label className={label}>Açıklama</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -441,14 +456,14 @@ export default function NewExpensePage() {
               </div>
 
               <div>
-                <label className={label}>ArÅŸiv</label>
+                <label className={label}>Arşiv</label>
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl border border-emerald-600 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800"
-                  onClick={() => toast.message("Belge yÃ¼kleme yakÄ±nda eklenecek.")}
+                  onClick={() => toast.message("Belge yükleme yakında eklenecek.")}
                 >
                   <PaperClipIcon className="h-4 w-4" />
-                  ArÅŸiv Belgesi YÃ¼kle
+                  Arşiv Belgesi Yükle
                 </button>
                 <p className="mt-2 text-xs text-slate-500">
                   Masraf ile ilgili belge varsa buraya ekleyebilirsiniz.
@@ -462,12 +477,12 @@ export default function NewExpensePage() {
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">
                 Tutar
               </p>
-              <h2 className="mt-1 text-lg font-bold">Ã–deme bilgileri</h2>
+              <h2 className="mt-1 text-lg font-bold">Ödeme bilgileri</h2>
             </div>
 
             <div className="space-y-4 p-5">
               <div>
-                <label className={label}>Ã–deme HesabÄ±</label>
+                <label className={label}>Ödeme Hesabı</label>
                 <select
                   value={accountId}
                   onChange={(e) => setAccountId(e.target.value)}
@@ -483,14 +498,14 @@ export default function NewExpensePage() {
               </div>
 
               <div>
-                <label className={label}>Ã–deme Durumu</label>
+                <label className={label}>Ödeme Durumu</label>
                 <select
                   value={paymentStatus}
                   onChange={(e) => setPaymentStatus(e.target.value)}
                   className={inp}
                 >
-                  <option value="PENDING">Daha sonra Ã¶denecek</option>
-                  <option value="PAID">Ã–dendi</option>
+                  <option value="PENDING">Daha sonra ödenecek</option>
+                  <option value="PAID">Ödendi</option>
                 </select>
               </div>
 
@@ -505,7 +520,7 @@ export default function NewExpensePage() {
               </div>
 
               <div>
-                <label className={label}>Ã–deme Tarihi</label>
+                <label className={label}>Ödeme Tarihi</label>
                 <input
                   type="date"
                   value={paymentDate}
@@ -521,7 +536,7 @@ export default function NewExpensePage() {
                   step="0.01"
                   min="0"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => setAmount(formatTrAmountInput(e.target.value))}
                   className={inp}
                   placeholder="0,00"
                 />
@@ -529,7 +544,7 @@ export default function NewExpensePage() {
 
               <div>
                 <label className={label}>
-                  KDV OranÄ± (%) <span className="font-normal text-slate-400">isteÄŸe baÄŸlÄ±</span>
+                  KDV Oranı (%) <span className="font-normal text-slate-400">isteğe bağlı</span>
                 </label>
                 <select
                   value={vatRate}
@@ -551,7 +566,7 @@ export default function NewExpensePage() {
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
                   className={inp}
-                  placeholder='Tablo "Not" sÃ¼tununda gÃ¶rÃ¼nÃ¼r'
+                  placeholder='Tablo "Not" sütununda görünür'
                 />
               </div>
             </div>
@@ -567,7 +582,7 @@ export default function NewExpensePage() {
                 onChange={(e) => setRecurring(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-emerald-600"
               />
-              Tekrarlayan masraf kaydÄ± oluÅŸtur
+              Tekrarlayan masraf kaydı oluştur
             </label>
 
             <div className="flex items-center gap-2 text-slate-400">
@@ -587,7 +602,7 @@ export default function NewExpensePage() {
 
             <div className="rounded-2xl bg-slate-50 px-4 py-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
-                KDV TutarÄ±
+                KDV Tutarı
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
                 {formatTry(vatIncluded)}
@@ -596,7 +611,7 @@ export default function NewExpensePage() {
 
             <div className="rounded-2xl bg-slate-50 px-4 py-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
-                KDV HariÃ§
+                KDV Hariç
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
                 {formatTry(baseAmount)}

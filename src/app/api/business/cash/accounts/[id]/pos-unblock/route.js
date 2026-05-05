@@ -52,8 +52,9 @@ export async function POST(req, { params }) {
       return NextResponse.json({ error: "Geçerli bir banka hesabı seçin." }, { status: 404 });
     }
 
-    const commissionAmount = (blockedAmount * commissionRate) / 100;
-    const netAmount = Math.max(0, blockedAmount - commissionAmount);
+    const commissionAmountRaw = (blockedAmount * commissionRate) / 100;
+    const commissionAmount = Math.round(commissionAmountRaw * 100) / 100;
+    const netAmount = Math.round(Math.max(0, blockedAmount - commissionAmount) * 100) / 100;
 
     await prisma.$transaction(async (tx) => {
       if (netAmount > 0) {

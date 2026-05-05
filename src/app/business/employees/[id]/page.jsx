@@ -64,6 +64,8 @@ export default function EmployeeDetailPage() {
   const [departments, setDepartments] = useState([]);
   const [docs, setDocs] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [employeeBalance, setEmployeeBalance] = useState(0);
 
   const [form, setForm] = useState({
     name: "",
@@ -97,15 +99,24 @@ export default function EmployeeDetailPage() {
   const [savingEval, setSavingEval] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  const [txForm, setTxForm] = useState({
+    type: "SALARY_ACCRUAL",
+    amount: "",
+    date: "",
+    description: "",
+  });
+  const [savingTx, setSavingTx] = useState(false);
+
   const loadAll = useCallback(async () => {
     if (!employeeId) return;
     setLoading(true);
     try {
-      const [empRes, deptRes, docsRes, evalRes] = await Promise.all([
+      const [empRes, deptRes, docsRes, evalRes, txRes] = await Promise.all([
         fetch(`/api/business/employees/${employeeId}`, { cache: "no-store" }),
         fetch("/api/business/departments", { cache: "no-store" }),
         fetch(`/api/business/employees/${employeeId}/documents`, { cache: "no-store" }),
         fetch(`/api/business/employees/${employeeId}/evaluations`, { cache: "no-store" }),
+        fetch(`/api/business/employees/${employeeId}/transactions`, { cache: "no-store" }),
       ]);
 
       const empData = await empRes.json().catch(() => ({}));
@@ -119,6 +130,11 @@ export default function EmployeeDetailPage() {
 
       const evalData = await evalRes.json().catch(() => ({}));
       const evalItems = evalRes.ok && Array.isArray(evalData.items) ? evalData.items : [];
+
+      const txData = await txRes.json().catch(() => ({}));
+      const txItems = txRes.ok && Array.isArray(txData.items) ? txData.items : [];
+      setTransactions(txItems);
+      setEmployeeBalance(txData.balance || 0);
 
       setEmployee(empData);
       setDepartments(deptList);
@@ -142,6 +158,7 @@ export default function EmployeeDetailPage() {
 
       const today = toDateInputValue(new Date().toISOString());
       setEvalForm((prev) => ({ ...prev, reviewDate: today }));
+      setTxForm((prev) => ({ ...prev, date: today }));
     } catch (e) {
       toast.error(e.message || "Veri yüklenemedi.");
       setEmployee(null);
@@ -316,11 +333,44 @@ export default function EmployeeDetailPage() {
     }
   };
 
+  const submitTransaction = async (e) => {
+    e.preventDefault();
+    if (!employeeId) return;
+    setSavingTx(true);
+    try {
+      const res = await fetch(`/api/business/employees/${employeeId}/transactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: txForm.type,
+          amount: Number(txForm.amount) || 0,
+          date: txForm.date ? new Date(txForm.date).toISOString() : undefined,
+          description: txForm.description.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "İşlem kaydedilemedi.");
+
+      setTxForm((prev) => ({
+        ...prev,
+        amount: "",
+        description: "",
+      }));
+      await loadAll();
+      toast.success("Cari işlem eklendi.");
+    } catch (err) {
+      toast.error(err.message || "Kayıt başarısız.");
+    } finally {
+      setSavingTx(false);
+    }
+  };
+
   const tabs = useMemo(
     () => [
       { id: "general", label: "Genel bilgiler" },
       { id: "docs", label: "Evraklar" },
       { id: "eval", label: "Değerlendirme" },
+      { id: "cari", label: "Cari İşlemler" },
     ],
     [],
   );
@@ -390,7 +440,7 @@ export default function EmployeeDetailPage() {
             </span>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:w-72">
+        <div className="grid grid-cols-3 gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:w-[420px]">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Maaş</p>
             <p className="mt-1 text-lg font-bold text-slate-900">₺{formatMoney(employee.salary)}</p>
@@ -398,6 +448,12 @@ export default function EmployeeDetailPage() {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Performans</p>
             <p className="mt-1 text-lg font-bold text-slate-900">%{employee.performance ?? 0}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Cari Bakiye</p>
+            <p className={`mt-1 text-lg font-bold ${employeeBalance > 0 ? "text-emerald-600" : employeeBalance < 0 ? "text-rose-600" : "text-slate-900"}`}>
+              {employeeBalance > 0 ? "+" : ""}{formatMoney(employeeBalance)} ₺
+            </p>
           </div>
         </div>
       </div>
@@ -838,6 +894,118 @@ export default function EmployeeDetailPage() {
                       </td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      {tab === "cari" ? (
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-8">
+          <h2 className="text-lg font-bold text-slate-900">Cari İşlemler (Maaş, Avans vb.)</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Çalışanın maaş tahakkuklarını (alacak), ödenen avansları ve maaş ödemelerini buradan yönetin.
+            Pozitif bakiye çalışana olan borcunuzu gösterir.
+          </p>
+
+          <form className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5 items-end" onSubmit={submitTransaction}>
+            <label className="space-y-2 lg:col-span-1">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Tarih</span>
+              <input
+                type="date"
+                required
+                value={txForm.date}
+                onChange={(e) => setTxForm((p) => ({ ...p, date: e.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-400"
+              />
+            </label>
+            <label className="space-y-2 lg:col-span-1">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">İşlem Tipi</span>
+              <select
+                value={txForm.type}
+                onChange={(e) => setTxForm((p) => ({ ...p, type: e.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-400"
+              >
+                <option value="SALARY_ACCRUAL">Maaş Tahakkuku (+)</option>
+                <option value="OTHER_ACCRUAL">Diğer Alacak (+)</option>
+                <option value="ADVANCE_PAYMENT">Avans Ödemesi (-)</option>
+                <option value="SALARY_PAYMENT">Maaş Ödemesi (-)</option>
+                <option value="OTHER_DEDUCTION">Kesinti (-)</option>
+              </select>
+            </label>
+            <label className="space-y-2 lg:col-span-1">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Tutar (₺)</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={txForm.amount}
+                onChange={(e) => setTxForm((p) => ({ ...p, amount: e.target.value }))}
+                placeholder="Örn. 5000"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-400"
+              />
+            </label>
+            <label className="space-y-2 lg:col-span-1">
+              <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Açıklama</span>
+              <input
+                value={txForm.description}
+                onChange={(e) => setTxForm((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Örn. Nisan Maaşı"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-400"
+              />
+            </label>
+            <div className="lg:col-span-1 pb-1">
+              <button
+                type="submit"
+                disabled={savingTx}
+                className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 h-[46px]"
+              >
+                {savingTx ? "..." : "Ekle"}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-10 overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <th className="py-3 pr-4">Tarih</th>
+                  <th className="py-3 pr-4">İşlem Tipi</th>
+                  <th className="py-3 pr-4">Açıklama</th>
+                  <th className="py-3 text-right">Tutar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-500">
+                      Henüz işlem bulunmuyor.
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.map((tx) => {
+                    const isPositive = tx.type === "SALARY_ACCRUAL" || tx.type === "OTHER_ACCRUAL";
+                    return (
+                      <tr key={tx.id} className="border-b border-slate-100">
+                        <td className="py-3 pr-4 text-slate-800">{formatDateTime(tx.date).split(" ")[0]}</td>
+                        <td className="py-3 pr-4">
+                          <span className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${isPositive ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20" : "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/20"}`}>
+                            {tx.type === "SALARY_ACCRUAL" && "Maaş Tahakkuku"}
+                            {tx.type === "OTHER_ACCRUAL" && "Diğer Alacak"}
+                            {tx.type === "ADVANCE_PAYMENT" && "Avans Ödemesi"}
+                            {tx.type === "SALARY_PAYMENT" && "Maaş Ödemesi"}
+                            {tx.type === "OTHER_DEDUCTION" && "Kesinti"}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">{tx.description || "—"}</td>
+                        <td className={`py-3 text-right font-semibold ${isPositive ? "text-emerald-600" : "text-rose-600"}`}>
+                          {isPositive ? "+" : "-"}{formatMoney(tx.amount)} ₺
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

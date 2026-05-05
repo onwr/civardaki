@@ -78,6 +78,7 @@ function YeniContent() {
   const [items, setItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedQty, setSelectedQty] = useState(1);
+  const [selectedPrice, setSelectedPrice] = useState("");
 
   useEffect(() => {
     if (!supplierId) {
@@ -116,6 +117,18 @@ function YeniContent() {
   );
   const totalPaid = Number(String(paymentAmount || "0").replace(",", ".")) || 0;
 
+  const handleProductChange = (e) => {
+    const pid = e.target.value;
+    setSelectedProduct(pid);
+    if (pid) {
+      const product = products.find((p) => p.id === pid);
+      const price = Number(product?.buyPrice ?? 0);
+      setSelectedPrice(price > 0 ? String(price) : "");
+    } else {
+      setSelectedPrice("");
+    }
+  };
+
   const addLine = () => {
     if (!selectedProduct) {
       alert("Lütfen bir ürün / hizmet seçin.");
@@ -127,8 +140,9 @@ function YeniContent() {
       alert("Miktar 0'dan büyük olmalıdır.");
       return;
     }
+    const priceStr = String(selectedPrice).replace(",", ".");
+    const price = Number(priceStr) || 0;
     const name = product?.name || "Ürün / Hizmet";
-    const price = Number(product?.discountPrice ?? product?.price ?? 0);
     const total = price * qty;
     setItems((prev) => [
       ...prev,
@@ -143,6 +157,7 @@ function YeniContent() {
     ]);
     setSelectedProduct("");
     setSelectedQty(1);
+    setSelectedPrice("");
   };
 
   const removeLine = (id) => setItems((prev) => prev.filter((it) => it.id !== id));
@@ -315,18 +330,18 @@ function YeniContent() {
             <h2 className="mt-1 text-lg font-bold">Alış kalemleri</h2>
           </div>
           <div className="space-y-5 p-5">
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_90px_110px]">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_100px_120px_110px]">
               <div>
                 <label className={label}>Ürün seçin</label>
                 <select
                   className={inp}
                   value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
+                  onChange={handleProductChange}
                 >
                   <option value="">Seçin...</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} — {fmtTry(p.discountPrice ?? p.price ?? 0)}
+                      {p.name} — Alış: {fmtTry(p.buyPrice ?? 0)}
                     </option>
                   ))}
                 </select>
@@ -340,6 +355,16 @@ function YeniContent() {
                   className={inp}
                   value={selectedQty}
                   onChange={(e) => setSelectedQty(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={label}>B. Fiyat (₺)</label>
+                <input
+                  type="text"
+                  className={inp}
+                  value={selectedPrice}
+                  onChange={(e) => setSelectedPrice(e.target.value)}
+                  placeholder="0,00"
                 />
               </div>
               <div>

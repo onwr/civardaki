@@ -100,10 +100,10 @@ export default function Header() {
   }, [pathname]);
 
   const headerClass = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${!shouldUseTransparentHeader
-      ? "bg-[#004aad] border-[#003d8f] py-3 shadow-md"
-      : isScrolled
-        ? "bg-gray-900/90 backdrop-blur-xl border-gray-800 py-3 shadow-lg"
-        : "bg-transparent border-transparent py-5"
+    ? "bg-[#004aad] border-[#003d8f] py-3 shadow-md"
+    : isScrolled
+      ? "bg-gray-900/90 backdrop-blur-xl border-gray-800 py-3 shadow-lg"
+      : "bg-gray-900 border-transparent py-2"
     }`;
 
   const handleLogout = async () => {

@@ -234,6 +234,7 @@ model business {
   cash_account_document cash_account_document[]
   cash_transaction      cash_transaction[]
   financial_transaction financial_transaction[]
+  employee_transactions employee_transaction[]
   neighborhoodPosts     neighborhood_post[]
   neighborhoodComments  neighborhood_post_comment[]
   neighborhoodLikes     neighborhood_post_like[]
@@ -1743,6 +1744,7 @@ model employee {
   leaveRequests employee_leave_request[]
   documents     employee_document[]
   evaluations   employee_evaluation[]
+  transactions  employee_transaction[]
 
   @@index([businessId], map: "Employee_businessId_idx")
   @@index([departmentId], map: "Employee_departmentId_idx")
@@ -2794,4 +2796,31 @@ enum planning_task_type {
   TASK
   PROJECT
   SHIFT
+}
+
+enum employee_transaction_type {
+  SALARY_ACCRUAL
+  ADVANCE_PAYMENT
+  SALARY_PAYMENT
+  OTHER_ACCRUAL
+  OTHER_DEDUCTION
+}
+
+model employee_transaction {
+  id          String   @id @default(cuid())
+  businessId  String
+  employeeId  String
+  type        employee_transaction_type
+  amount      Float    @default(0)
+  date        DateTime @default(now())
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  employee employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([employeeId])
+  @@map("employee_transaction")
 }

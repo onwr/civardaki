@@ -67,8 +67,8 @@ export async function GET(req) {
             }
         });
 
-        const income = monthlyTransactions.filter(t => t.type === "INCOME").reduce((acc, t) => acc + t.amount, 0);
-        const expense = monthlyTransactions.filter(t => t.type === "EXPENSE").reduce((acc, t) => acc + t.amount, 0);
+        const income = monthlyTransactions.filter(t => t.type === "INCOME" && t.category !== "ACCOUNT_MOVEMENT").reduce((acc, t) => acc + t.amount, 0);
+        const expense = monthlyTransactions.filter(t => t.type === "EXPENSE" && t.category !== "ACCOUNT_MOVEMENT").reduce((acc, t) => acc + t.amount, 0);
 
         const stats = {
             netLiquidity: accounts.reduce((acc, a) => acc + a.balance, 0),
@@ -82,7 +82,11 @@ export async function GET(req) {
         // Chart: last 7 days daily income/expense
         const sevenDaysAgo = startOfDay(subDays(now, 6));
         const last7Transactions = await prisma.cash_transaction.findMany({
-            where: { businessId, date: { gte: sevenDaysAgo } },
+            where: { 
+                businessId, 
+                date: { gte: sevenDaysAgo },
+                category: { not: "ACCOUNT_MOVEMENT" }
+            },
             select: { type: true, amount: true, date: true }
         });
         const chartData = [];

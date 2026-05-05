@@ -45,7 +45,7 @@ async function buildTopSummarySeries(prisma, businessId, dayWindows) {
                      _sum: { amount: true },
                 }),
                 prisma.cash_transaction.aggregate({
-                     where: { businessId, type: "EXPENSE", date: { gte: start, lt: end } },
+                     where: { businessId, type: "EXPENSE", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: start, lt: end } },
                      _sum: { amount: true },
                 }),
                 prisma.financial_transaction.aggregate({
@@ -53,7 +53,7 @@ async function buildTopSummarySeries(prisma, businessId, dayWindows) {
                      _sum: { amount: true },
                 }),
                 prisma.cash_transaction.aggregate({
-                     where: { businessId, type: "INCOME", date: { gte: start, lt: end } },
+                     where: { businessId, type: "INCOME", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: start, lt: end } },
                      _sum: { amount: true },
                 }),
             ])
@@ -326,10 +326,10 @@ export async function GET() {
         prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: sevenDaysAgo } }, _sum: { totalAmount: true } }),
         prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: thirtyDaysAgo } }, _sum: { totalAmount: true } }),
         prisma.business_sale.aggregate({ where: { businessId, saleDate: { gte: startOfMonth } }, _sum: { totalAmount: true } }),
-        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: startOfToday } }, _sum: { amount: true } }),
-        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: thirtyDaysAgo } }, _sum: { amount: true } }),
-        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", date: { gte: startOfMonth } }, _sum: { amount: true } }),
-        prisma.cash_transaction.aggregate({ where: { businessId, type: "INCOME", date: { gte: startOfToday } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: startOfToday } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: thirtyDaysAgo } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "EXPENSE", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: startOfMonth } }, _sum: { amount: true } }),
+        prisma.cash_transaction.aggregate({ where: { businessId, type: "INCOME", category: { not: "ACCOUNT_MOVEMENT" }, date: { gte: startOfToday } }, _sum: { amount: true } }),
         prisma.business_sale.count({ where: { businessId, saleDate: { gte: startOfToday } } }),
         prisma.business_sale.count({ where: { businessId, saleDate: { gte: thirtyDaysAgo } } })
     ]);
