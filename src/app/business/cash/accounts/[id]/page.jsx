@@ -66,7 +66,13 @@ function todayStr() {
  */
 function formatTrAmountInput(raw) {
   if (!raw) return "";
-  let v = String(raw).replace(/[^0-9,]/g, "");
+  let v = String(raw);
+  if (v.includes(",")) {
+    v = v.replace(/\./g, "");
+  } else if (v.includes(".")) {
+    v = v.replace(/\./g, ",");
+  }
+  v = v.replace(/[^0-9,]/g, "");
   const parts = v.split(",");
   if (parts.length > 2) {
     v = parts[0] + "," + parts.slice(1).join("");
