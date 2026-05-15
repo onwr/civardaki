@@ -256,9 +256,12 @@ export default function ListingDetailPage() {
       return;
     }
     track("START_RESERVATION");
-    setIsReservationOpen(true);
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setCurrentMonth(new Date());
     setReservationStep(1);
     setReservationReferenceCode("");
+    setIsReservationOpen(true);
   };
 
   const handleReservationSubmit = async (payload) => {
@@ -413,12 +416,11 @@ export default function ListingDetailPage() {
           onTrack={track}
         />
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
-          <ListingStickyNav
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            listing={listing}
-          />
+        <div className="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 -mt-9 relative z-10">          <ListingStickyNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          listing={listing}
+        />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6">
             <div className="lg:col-span-2 space-y-8">

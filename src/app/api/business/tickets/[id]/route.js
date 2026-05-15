@@ -1,3 +1,4 @@
+import { canCallBusinessApi } from "@/lib/session-business-access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -11,7 +12,7 @@ async function resolveParams(context) {
 export async function GET(request, context) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!session?.user || !canCallBusinessApi(session.user)) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
     const businessId = session.user.businessId;

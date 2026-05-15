@@ -2,6 +2,10 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  applyOwnedBusinessToToken,
+  loadUserBusinessContext,
+} from "@/lib/refresh-user-business-token";
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
@@ -87,8 +91,14 @@ export const authOptions = {
 
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      if (!token.id && token.sub) {
+        token.id = token.sub;
+      }
+
       if (user) {
         token.id = user.id;
+        token.sub = user.id;
+        token.email = user.email ?? token.email;
         token.role = user.role || "USER";
         token.image = user.image || null;
         token.hasBusiness = !!user.hasBusiness;
@@ -98,49 +108,26 @@ export const authOptions = {
         token.businessIsOpen = user.businessIsOpen ?? true;
       }
 
-      if (token.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email },
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            phone: true,
-            role: true,
-            ownedbusiness: {
-              select: {
-                isPrimary: true,
-                businessId: true,
-                business: {
-                  select: {
-                    slug: true,
-                    name: true,
-                    isOpen: true,
-                  },
-                },
-              },
-              orderBy: [{ isPrimary: "desc" }],
-              take: 10,
-            },
-          },
-        });
+      const shouldRefreshBusiness =
+        trigger === "update" && session?.refreshBusiness === true;
 
+      const userId = token.id || token.sub;
+      if (userId || token.email || shouldRefreshBusiness) {
+        const dbUser = await loadUserBusinessContext(userId, token.email);
         if (dbUser) {
-          const primaryBusiness =
-            dbUser.ownedbusiness?.find((item) => item.isPrimary) ||
-            dbUser.ownedbusiness?.[0] ||
-            null;
-
-          token.id = dbUser.id;
-          token.name = dbUser.name || token.name;
-          token.image = dbUser.image || null;
-          token.phone = dbUser.phone || null;
-          token.role = dbUser.role || "USER";
-          token.hasBusiness = dbUser.ownedbusiness.length > 0;
-          token.businessId = primaryBusiness?.businessId || null;
-          token.businessSlug = primaryBusiness?.business?.slug || null;
-          token.businessName = primaryBusiness?.business?.name || null;
-          token.businessIsOpen = primaryBusiness?.business?.isOpen ?? true;
+          applyOwnedBusinessToToken(token, dbUser);
+        }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Civardaki Panel Debug] JWT callback", {
+            trigger: trigger ?? "default",
+            userId: userId ? String(userId) : null,
+            email: token.email ?? null,
+            dbUserFound: !!dbUser,
+            ownedCount: dbUser?.ownedbusiness?.length ?? 0,
+            hasBusiness: token.hasBusiness,
+            businessId: token.businessId,
+            role: token.role,
+          });
         }
       }
 
@@ -155,7 +142,7 @@ export const authOptions = {
 
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id;
+        session.user.id = token.id || token.sub || null;
         session.user.name = token.name || session.user.name;
         session.user.email = token.email || session.user.email;
         session.user.image = token.image || null;

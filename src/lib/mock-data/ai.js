@@ -320,11 +320,10 @@ export const aiQuickReplies = {
 // AI Context Detection için sayfa eşleştirmeleri
 export const aiContextMap = {
   "/business/dashboard": "dashboard",
-  "/business/customers": "customers",
   "/business/products": "products",
-  "/business/cash/accounts": "cash",
-  "/business/reports": "reports",
   "/business/orders": "orders",
-  "/business/hr": "hr",
+  "/business/leads": "leads",
+  "/business/analytics": "analytics",
+  "/business/civardaki-magaza": "storefront",
 };
 

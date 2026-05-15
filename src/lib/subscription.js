@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { canCallBusinessApi } from "@/lib/session-business-access";
 
 /**
  * Ensures the business has an ACTIVE or valid TRIAL subscription.
@@ -11,7 +12,7 @@ import { redirect } from "next/navigation";
 export async function requireValidSubscription() {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!session?.user || !canCallBusinessApi(session.user)) {
         redirect("/user/login");
     }
 

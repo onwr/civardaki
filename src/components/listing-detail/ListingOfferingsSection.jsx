@@ -1,6 +1,12 @@
 "use client";
 
-import { ChevronRight, Utensils, Briefcase } from "lucide-react";
+import {
+  ChevronRight,
+  Utensils,
+  Briefcase,
+  Sparkles,
+  ShoppingBag,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { getSectorConfig } from "@/lib/listing/sector-config";
 
@@ -10,24 +16,32 @@ export default function ListingOfferingsSection({
   onSelectProduct,
 }) {
   if (!listing) return null;
-  const config = sectorConfig || getSectorConfig(listing.categorySlug || listing.sector);
+
+  const config =
+    sectorConfig || getSectorConfig(listing.categorySlug || listing.sector);
+
   const products = listing.products || [];
   const iconKey = config.offeringsTabIconKey || "utensils";
-  const EmptyIcon = iconKey === "shopping" ? Briefcase : Utensils;
+  const EmptyIcon = iconKey === "shopping" ? ShoppingBag : Utensils;
 
   if (products.length === 0) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-12 rounded-2xl border border-slate-200 shadow-sm text-center"
+        className="rounded-[28px] border border-slate-100 bg-white p-12 text-center shadow-[0_18px_55px_rgba(15,23,42,0.06)]"
       >
-        <EmptyIcon className="w-14 h-14 text-slate-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          {config.emptyOfferingsTitle}
+        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50">
+          <EmptyIcon className="h-10 w-10 text-[#0057d9]" />
+        </div>
+
+        <h3 className="text-2xl font-black text-slate-950">
+          {config.emptyOfferingsTitle || "Henüz hizmet eklenmedi"}
         </h3>
-        <p className="text-slate-500 text-sm max-w-sm mx-auto">
-          {config.emptyOfferingsSubtitle}
+
+        <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-slate-500">
+          {config.emptyOfferingsSubtitle ||
+            "Bu işletme henüz hizmet veya ürün listesi eklemedi."}
         </p>
       </motion.div>
     );
@@ -35,56 +49,73 @@ export default function ListingOfferingsSection({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
+      className="space-y-7"
     >
       {products.map((category, idx) => (
         <section
           key={idx}
-          className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"
+          className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_18px_55px_rgba(15,23,42,0.06)] sm:p-8"
         >
-          <h3 className="text-lg font-semibold text-slate-900 mb-5 flex items-center gap-2">
-            <span className="w-1 h-5 bg-slate-400 rounded-full" />
-            {category.category}
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {category.items.map((item, i) => (
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50">
+                <Sparkles className="h-6 w-6 text-[#0057d9]" />
+              </div>
+
+              <div>
+                <h3 className="text-2xl font-black tracking-[-0.02em] text-slate-950">
+                  {category.category}
+                </h3>
+                <p className="mt-1 text-sm font-medium text-slate-500">
+                  {category.items?.length || 0} seçenek
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {(category.items || []).map((item, i) => (
               <motion.button
                 key={item.id ?? i}
                 type="button"
-                whileHover={{ y: -1 }}
+                whileHover={{ y: -2 }}
                 onClick={() => onSelectProduct(item)}
-                className="flex gap-4 p-4 rounded-xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-sm transition-all text-left group"
+                className="group flex gap-4 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:border-blue-100 hover:shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
               >
-                <div className="w-24 h-24 rounded-lg overflow-hidden shrink-0 bg-slate-100">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
                   <img
-                    src={item.image}
+                    src={item.image || "/images/product-placeholder.jpg"}
                     alt={item.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-2 mb-1">
-                    <h4 className="font-semibold text-slate-900 leading-tight line-clamp-2">
+
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="line-clamp-2 font-black leading-snug text-slate-950 transition group-hover:text-[#0057d9]">
                       {item.name}
                     </h4>
-                    <span className="font-semibold text-slate-700 shrink-0">
+
+                    <span className="shrink-0 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-black text-[#0057d9]">
                       {typeof item.price === "number"
                         ? item.hasVariants
-                          ? `${item.price}₺'den başlayan`
+                          ? `${item.price}₺+`
                           : `${item.price}₺`
-                        : item.price}
+                        : item.price || "Fiyat sor"}
                     </span>
                   </div>
+
                   {item.description && (
-                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-2">
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
                       {item.description}
                     </p>
                   )}
-                  <span className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-slate-600 group-hover:text-slate-900">
-                    Detay & Sepete ekle{" "}
-                    <ChevronRight className="w-3.5 h-3.5" />
+
+                  <span className="mt-auto inline-flex items-center gap-1 pt-3 text-xs font-black text-slate-500 transition group-hover:text-[#0057d9]">
+                    Detayları Gör
+                    <ChevronRight className="h-4 w-4 transition group-hover:translate-x-1" />
                   </span>
                 </div>
               </motion.button>

@@ -5,34 +5,18 @@ export const revalidate = 300;
 
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
+    const rows = await prisma.category.findMany({
       where: {
         isActive: true,
         parentId: null,
       },
-      orderBy: [
-        { isFeatured: "desc" },
-        { sortOrder: "asc" },
-        { name: "asc" },
-      ],
-      include: {
-        children: {
-          where: {
-            isActive: true,
-          },
-          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            icon: true,
-            color: true,
-            path: true,
-            level: true,
-            description: true,
-            keywords: true,
-          },
-        },
+      orderBy: [{ isFeatured: "desc" }, { sortOrder: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        description: true,
+        imageUrl: true,
         _count: {
           select: {
             businesscategory: true,
@@ -41,25 +25,27 @@ export async function GET() {
       },
     });
 
-    const formatted = categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      slug: category.slug,
-      icon: category.icon,
-      color: category.color,
-      path: category.path,
-      level: category.level,
-      description: category.description,
-      keywords: category.keywords,
-      count: category._count.businesscategory,
-      children: category.children,
+    const categories = rows.map((item) => ({
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      count: item._count.businesscategory,
     }));
 
-    return NextResponse.json({ categories: formatted }, { status: 200 });
-  } catch (e) {
-    console.error("Public categories API error:", e);
+    return NextResponse.json({
+      success: true,
+      categories,
+    });
+  } catch (error) {
+    console.error("Public categories error:", error);
+
     return NextResponse.json(
-      { message: "Kategoriler alınırken hata oluştu." },
+      {
+        success: false,
+        categories: [],
+      },
       { status: 500 }
     );
   }

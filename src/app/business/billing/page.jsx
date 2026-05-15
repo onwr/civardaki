@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import BillingClient from "./BillingClient";
+import { canCallBusinessApi } from "@/lib/session-business-access";
 
 export const metadata = {
     title: "Abonelik ve Ödeme | Civardaki",
@@ -12,7 +13,7 @@ export const metadata = {
 export default async function BillingPage({ searchParams }) {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!session?.user || !canCallBusinessApi(session.user)) {
         redirect("/user/login");
     }
 

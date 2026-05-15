@@ -1,63 +1,124 @@
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
-import { Apple, Play } from "lucide-react";
+import {
+  Smartphone,
+  MapPin,
+  Bell,
+  Heart,
+  ShieldCheck,
+  Apple,
+  Play,
+  Tag,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
-export default function AppCTA() {
-   return (
-      <section className="py-16 overflow-hidden">
-         <div className="container mx-auto px-4 max-w-6xl">
-            <div className="flex flex-col md:flex-row items-center">
+const features = [
+  { title: "Yakındaki İşletmeleri Bul", icon: MapPin },
+  { title: "Fırsatları Kaçırma", icon: Tag },
+  { title: "Favorilerini Kaydet", icon: Heart },
+  { title: "Anlık Bildirimler", icon: Bell },
+];
 
-               {/* Left Side: Content */}
-               <div className="w-full md:w-1/2 flex flex-col justify-center mb-16 md:mb-0 md:pr-12 relative z-10">
-                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#1e293b] leading-tight mb-5 tracking-tight">
-                     Hemen indir, <br className="hidden md:block" />
-                     işlerini kolaylaştır!
-                  </h2>
-
-                  <p className="text-slate-600 text-base md:text-lg mb-10 leading-relaxed max-w-lg">
-                     Civardaki uygulamasını ücretsiz indir, konumuna en yakın işletmeleri anında keşfet. İşletmelerle hemen mesajlaş, teklif al ve aradığın hizmete anında ulaş.
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-4">
-                     {/* App Store Button */}
-                     <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-                        <Apple className="w-8 h-8" fill="currentColor" />
-                        <div className="flex flex-col">
-                           <span className="text-[11px] leading-none text-gray-300 mb-1">App Store'dan</span>
-                           <span className="text-lg font-semibold leading-none">İndirin</span>
-                        </div>
-                     </Link>
-
-                     {/* Google Play Button */}
-                     <Link href="#" className="flex items-center gap-3 bg-black text-white px-6 py-3 rounded-xl hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-                        <Play className="w-7 h-7" fill="currentColor" />
-                        <div className="flex flex-col">
-                           <span className="text-[11px] leading-none text-gray-300 mb-1">Google Play</span>
-                           <span className="text-lg font-semibold leading-none">'DEN ALIN</span>
-                        </div>
-                     </Link>
-                  </div>
-               </div>
-
-               {/* Right Side: Image */}
-               <div className="w-full md:w-1/2 relative flex justify-center md:justify-end">
-                  {/* Decorative circle behind phone */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] md:w-[450px] md:h-[450px] bg-white rounded-full opacity-60 blur-3xl -z-10" />
-
-                  <div className="relative w-full max-w-[320px] md:max-w-[450px] aspect-[4/5] md:aspect-square">
-                     <Image
-                        src="/images/app-cta2.png"
-                        alt="Civardaki Mobil Uygulaması"
-                        fill
-                        className="object-scale-down rounded-xl mix-blend-multiply drop-shadow-2xl md:scale-[1.20]"
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                     />
-                  </div>
-               </div>
-
+export default function MobileAppSection() {
+  return (
+    <section className="bg-white py-10 md:border border-slate-200">
+      <div className="relative overflow-hidden mx-auto container">
+        <div className="relative grid items-center gap-10 px-6 py-5 md:px-10 lg:grid-cols-[0.9fr_1.1fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mb-7 inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-5 py-3 text-sm font-black text-[#0057d9] shadow-sm">
+              <Smartphone className="h-5 w-5" />
+              Mobil Deneyim
             </div>
-         </div>
-      </section>
-   );
+
+            <h2 className="max-w-2xl text-[42px] font-black leading-[1.08] tracking-[-0.045em] text-slate-950 md:text-[60px]">
+              Uygulamayı İndir,{" "}
+              <span className="text-[#0057d9]">
+                Mahalleni
+                <br />
+                Keşfet!
+              </span>
+            </h2>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+              Civardaki uygulaması ile çevrendeki işletmeleri keşfet,
+              kampanyaları kaçırma ve favori yerlerini kolayca kaydet.
+            </p>
+
+            <div className="mt-8 grid grid-cols-2 gap-4 sm:max-w-xl">
+              {features.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_12px_35px_rgba(15,23,42,0.05)]"
+                  >
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50">
+                      <Icon className="h-6 w-6 text-[#0057d9]" strokeWidth={2.5} />
+                    </div>
+                    <p className="text-sm font-black leading-6 text-slate-800">
+                      {item.title}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <Link
+                href="#"
+                className="flex h-16 items-center justify-center gap-4 rounded-2xl bg-black px-7 text-white shadow-lg transition hover:scale-[1.02]"
+              >
+                <Apple className="h-8 w-8 fill-white text-white" />
+                <div>
+                  <p className="text-left text-[11px] font-medium text-white/70">
+                    App Store’dan
+                  </p>
+                  <p className="text-lg font-black">İndir</p>
+                </div>
+              </Link>
+
+              <Link
+                href="#"
+                className="flex h-16 items-center justify-center gap-4 rounded-2xl bg-black px-7 text-white shadow-lg transition hover:scale-[1.02]"
+              >
+                <Play className="h-8 w-8 fill-white text-white" />
+                <div>
+                  <p className="text-left text-[11px] font-medium text-white/70">
+                    Google Play’den
+                  </p>
+                  <p className="text-lg font-black">İndir</p>
+                </div>
+              </Link>
+            </div>
+
+            <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-slate-500">
+              <ShieldCheck className="h-5 w-5 text-[#0057d9]" />
+              Ücretsiz indir • Güvenli kullanım
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 24 }}
+            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="relative flex justify-center lg:justify-end"
+          >
+            <img
+              src="/images/mobil.png"
+              alt="Civardaki mobil uygulama"
+              className="relative z-10 w-full max-w-[620px] object-contain"
+            />
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
 }

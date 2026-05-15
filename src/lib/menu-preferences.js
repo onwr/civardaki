@@ -47,6 +47,49 @@ function migrateNeighborhoodMenuIds(preferences) {
   return next;
 }
 
+/** Eski "Civardaki Araçları" alt menüsünü düz menüye taşır */
+function isCivardakiToolsChildBlock(block) {
+  if (!block?.order?.length) return false;
+  const ids = block.order.map((o) => o?.id).filter(Boolean);
+  return ids.includes("/business/leads") && ids.includes("/business/orders");
+}
+
+function migrateFlattenCivardakiToolsMenu(preferences) {
+  if (!preferences?.children || typeof preferences.children !== "object") {
+    return preferences;
+  }
+
+  const children = { ...preferences.children };
+  let order = Array.isArray(preferences.order) ? [...preferences.order] : [];
+  let hidden = Array.isArray(preferences.hidden) ? [...preferences.hidden] : [];
+
+  for (const parentId of Object.keys(children)) {
+    const block = children[parentId];
+    if (!isCivardakiToolsChildBlock(block)) continue;
+
+    const parentIndex = order.findIndex((o) => o && o.id === parentId);
+    const sortedKids = [...(block.order || [])].sort(
+      (a, b) => (a.index ?? 0) - (b.index ?? 0),
+    );
+
+    order = order.filter((o) => o && o.id !== parentId);
+    hidden = hidden.filter((id) => id !== parentId);
+
+    const toInsert = sortedKids
+      .filter((c) => c?.id && !(block.hidden || []).includes(c.id))
+      .map((c) => ({ id: c.id, name: c.name, index: 0 }));
+
+    const at = parentIndex >= 0 ? parentIndex : order.length;
+    order.splice(at, 0, ...toInsert);
+
+    delete children[parentId];
+  }
+
+  order = order.map((item, index) => ({ ...item, index }));
+
+  return { ...preferences, order, hidden, children };
+}
+
 // Varsayılan menü yapısı - tüm öğeler görünür ve mevcut sırada
 export function getDefaultMenuPreferences(navigation) {
   const order = navigation.map((item, index) => ({
@@ -89,7 +132,9 @@ export function loadMenuPreferences(navigation) {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = migrateNeighborhoodMenuIds(JSON.parse(stored));
+      const parsed = migrateFlattenCivardakiToolsMenu(
+        migrateNeighborhoodMenuIds(JSON.parse(stored)),
+      );
       const defaultPrefs = getDefaultMenuPreferences(navigation);
 
       // Yeni öğeleri mevcut sıraya (order) ekle

@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { processAndSaveMedia } from "@/lib/media";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
+import { canCallBusinessApi } from "@/lib/session-business-access";
 
 export async function POST(req) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-        if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+        if (!canCallBusinessApi(session.user)) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
 
         // --- Rate Limit Check (Uploads) ---
         const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || session.user.id || "unknown-ip";

@@ -5,7 +5,6 @@ const STORAGE_KEY = "business-dashboard-preferences";
 const DEFAULT_WIDGET_IDS = [
   "revenue",
   "expense",
-  "employees",
   "products",
   "orders",
   "leads",
@@ -83,7 +82,6 @@ export function resetDashboardPreferences() {
 export const DEFAULT_WIDGET_LABELS = {
   revenue: "Günlük Ciro",
   expense: "Günlük Masraf",
-  employees: "Çalışan Sayısı",
   products: "Ürün / Stok",
   orders: "Sipariş (Bu Ay)",
   leads: "Müşteri Talepleri",

@@ -6,8 +6,6 @@ import {
   Menu,
   X,
   User,
-  Info,
-  HelpCircle,
   PlusCircle,
   LogIn,
   ChevronRight,
@@ -15,11 +13,21 @@ import {
   LayoutDashboard,
   LogOut,
   Building2,
+  ShieldCheck,
+  Search,
+  Heart,
+  Newspaper,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import PreRegistrationModal from "@/components/modals/PreRegistrationModal";
+import {
+  canAccessBusinessPanel,
+  getPanelHrefForUser,
+  isBusinessPanelUser,
+} from "@/lib/session-business-access";
+import LocationPicker from "@/components/layout/LocationPicker";
+import { isPanelDebugEnabled, logPanelDebug, logPanelDebugTable } from "@/lib/panel-debug";
 
 function getInitials(name, email) {
   if (name && name.trim()) {
@@ -33,16 +41,13 @@ function getInitials(name, email) {
 }
 
 export default function Header() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
-
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isPreRegModalOpen, setIsPreRegModalOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
   const pathname = usePathname();
   const userMenuRef = useRef(null);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAuthenticated = status === "authenticated" && !!session?.user;
   const user = session?.user;
@@ -51,37 +56,82 @@ export default function Header() {
   const userEmail = user?.email || "";
   const userImage = user?.image || "";
   const userRole = user?.role || "USER";
+  const businessId = user?.businessId || null;
   const hasBusiness = !!user?.hasBusiness;
   const businessSlug = user?.businessSlug || null;
 
-  const isBusinessUser = userRole === "BUSINESS" || hasBusiness;
-  const showBusinessLinks = hasBusiness || userRole === "BUSINESS";
-  const isDevelopment = true;
+  const isAdmin = userRole === "ADMIN";
+  const canAccessBusiness = canAccessBusinessPanel(user);
+  const isBusinessPanel = isBusinessPanelUser(user);
+  const showBusinessLinks = canAccessBusiness;
 
-  const isHome = pathname === "/";
-  const isListingPage = pathname.startsWith("/isletme/");
-  const shouldUseTransparentHeader = isHome || isListingPage;
+  const panelHref = useMemo(() => {
+    if (status === "loading") return null;
+    if (status === "unauthenticated") return "/user/login";
+    return getPanelHrefForUser(user);
+  }, [status, user]);
 
-  const dashboardHref = useMemo(() => {
-    if (userRole === "ADMIN") return "/admin";
-    if (isBusinessUser) return "/business/dashboard";
-    return "/user";
-  }, [userRole, isBusinessUser]);
+  useEffect(() => {
+    if (status !== "authenticated" || !user?.id || isAdmin) return;
+    if (businessId || hasBusiness) return;
+    logPanelDebug("Header → session.update(refreshBusiness)", { userId: user.id });
+    void update({ refreshBusiness: true });
+  }, [status, user?.id, businessId, hasBusiness, isAdmin, update]);
+
+  useEffect(() => {
+    if (!isPanelDebugEnabled()) return;
+    if (status === "loading") {
+      logPanelDebug("Header — oturum yükleniyor (panelHref henüz kesin değil)", {
+        status,
+      });
+      return;
+    }
+
+    logPanelDebugTable("Header — panel kararı (oturum hazır)", [
+      { alan: "status", deger: status },
+      { alan: "user.id", deger: user?.id ?? "(yok)" },
+      { alan: "user.email", deger: userEmail || "(yok)" },
+      { alan: "user.role", deger: userRole },
+      { alan: "hasBusiness", deger: String(hasBusiness) },
+      { alan: "businessId", deger: businessId ?? "(yok)" },
+      { alan: "businessSlug", deger: businessSlug ?? "(yok)" },
+      { alan: "canAccessBusiness", deger: String(canAccessBusiness) },
+      { alan: "isBusinessPanel", deger: String(isBusinessPanel) },
+      { alan: "panelHref", deger: panelHref ?? "(bekle)" },
+      { alan: "isAdmin", deger: String(isAdmin) },
+    ]);
+
+    if (status !== "authenticated") return;
+
+    fetch("/api/debug/panel-access")
+      .then((r) => r.json())
+      .then((data) => {
+        logPanelDebug("Header — sunucu /api/debug/panel-access", data);
+        if (data?.diagnosis) {
+          console.warn("[Civardaki Panel Debug] Teşhis:", data.diagnosis);
+        }
+      })
+      .catch((err) => {
+        logPanelDebug("Header — debug API hatası", { message: String(err) });
+      });
+  }, [
+    status,
+    user?.id,
+    userEmail,
+    userRole,
+    hasBusiness,
+    businessId,
+    businessSlug,
+    canAccessBusiness,
+    isBusinessPanel,
+    panelHref,
+    isAdmin,
+  ]);
 
   const businessProfileHref = useMemo(() => {
     if (businessSlug) return `/isletme/${businessSlug}`;
     return "/business/dashboard";
   }, [businessSlug]);
-  const businessDashboardHref = "/business/dashboard";
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -99,279 +149,206 @@ export default function Header() {
     setIsUserMenuOpen(false);
   }, [pathname]);
 
-  const headerClass = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${!shouldUseTransparentHeader
-    ? "bg-[#004aad] border-[#003d8f] py-3 shadow-md"
-    : isScrolled
-      ? "bg-gray-900/90 backdrop-blur-xl border-gray-800 py-3 shadow-lg"
-      : "bg-gray-900 border-transparent py-2"
-    }`;
-
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
     setIsMenuOpen(false);
     await signOut({ callbackUrl: "/" });
   };
 
-  const handleBecomeAdmin = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch(`/api/admin/users/${user.id}/role`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "ADMIN" }),
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.error || "Rol güncellenemedi.");
-      }
-
-      setIsUserMenuOpen(false);
-      setIsMenuOpen(false);
-      router.refresh();
-    } catch (error) {
-      console.error("Admin rolüne geçiş hatası:", error);
-      window.alert("Admin rolüne geçiş sırasında bir hata oluştu.");
-    }
-  };
+  const navItems = [
+    { href: "/", label: "Keşfet", icon: Search },
+    { href: "/kampanyalar", label: "Kampanyalar", icon: Sparkles },
+    { href: "/favorilerim", label: "Favorilerim", icon: Heart },
+    { href: "/blog", label: "Blog", icon: Newspaper },
+    { href: "/about", label: "Hakkımızda", icon: User },
+  ];
 
   return (
     <>
-      <header className={headerClass}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-between h-16">
-            <div className="flex-shrink-0 z-20">
-              <Link href="/" className="flex items-center gap-2 group">
-                <img
-                  src="/logo.png"
-                  className="w-32 md:w-40 transition-all brightness-0 invert"
-                  alt="Civardaki Logo"
-                />
-              </Link>
-            </div>
+      <header className="fixed left-0 right-0 top-0 z-50 px-4 pt-5 sm:px-6 lg:px-8">
+        <div className="mx-auto container">
+          <div className="flex h-[88px] items-center justify-between rounded-[28px] border border-white/80 bg-white/90 px-7 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+            <Link href="/" className="flex items-center">
+              <img
+                src="/logo.png"
+                alt="Civardaki"
+                className="w-[175px] object-contain"
+              />
+            </Link>
 
-            <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-              <nav className="flex items-center space-x-1">
-                {[
-                  { href: "/about", label: "Hakkımızda", icon: Info },
-                  {
-                    href: "/how-it-works",
-                    label: "Nasıl Çalışır",
-                    icon: HelpCircle,
-                  },
-                ].map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="relative px-4 py-2 rounded-lg text-sm font-medium text-white/90 transition-all duration-300 hover:text-white group flex items-center gap-2 overflow-hidden"
-                  >
-                    <motion.span
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"
-                    />
-                    <link.icon className="w-4 h-4 text-white/70 group-hover:text-white transition-colors relative z-10" />
-                    <span className="relative z-10">{link.label}</span>
-                  </Link>
-                ))}
-              </nav>
-            </div>
+            <nav className="hidden items-center gap-10 lg:flex">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`text-[15px] font-bold transition ${
+                    pathname === item.href
+                      ? "text-[#0057d9]"
+                      : "text-slate-900 hover:text-[#0057d9]"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
 
-            <div className="flex items-center gap-3 z-20">
-              <div className="hidden md:flex items-center gap-3">
-                {status === "loading" ? (
-                  <div className="h-11 w-40 rounded-full bg-white/10 animate-pulse" />
-                ) : isAuthenticated ? (
-                  <>
-                    <Link href={dashboardHref}>
-                      <motion.div
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white/90 hover:text-white hover:bg-white/10 transition-all duration-300"
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        Panel
-                      </motion.div>
-                    </Link>
+            <div className="hidden items-center gap-4 md:flex">
+              <LocationPicker />
 
-                    <div className="relative" ref={userMenuRef}>
-                      <motion.button
-                        whileHover={{ scale: 1.03, y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                        className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-full bg-white text-slate-900 shadow-lg hover:bg-slate-50 transition-all duration-300"
-                      >
-                        {userImage ? (
-                          <img
-                            src={userImage}
-                            alt={userName}
-                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                          />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-[#004aad] text-white flex items-center justify-center text-xs font-bold">
-                            {getInitials(userName, userEmail)}
-                          </div>
-                        )}
-
-                        <div className="text-left leading-tight">
-                          <p className="text-sm font-bold max-w-[140px] truncate">
-                            {userName}
-                          </p>
-                          <p className="text-[11px] text-slate-500 max-w-[140px] truncate">
-                            {userRole === "ADMIN"
-                              ? "Yönetici"
-                              : isBusinessUser
-                                ? "İşletme Hesabı"
-                                : "Üye"}
-                          </p>
-                        </div>
-                      </motion.button>
-
-                      <AnimatePresence>
-                        {isUserMenuOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                            className="absolute right-0 mt-3 w-72 rounded-3xl bg-white shadow-2xl border border-slate-100 overflow-hidden"
-                          >
-                            <div className="p-4 border-b bg-slate-50">
-                              <div className="flex items-center gap-3">
-                                {userImage ? (
-                                  <img
-                                    src={userImage}
-                                    alt={userName}
-                                    className="w-12 h-12 rounded-full object-cover border border-slate-200"
-                                  />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-full bg-[#004aad] text-white flex items-center justify-center text-sm font-bold">
-                                    {getInitials(userName, userEmail)}
-                                  </div>
-                                )}
-
-                                <div className="min-w-0">
-                                  <p className="font-bold text-slate-900 truncate">
-                                    {userName}
-                                  </p>
-                                  <p className="text-sm text-slate-500 truncate">
-                                    {userEmail}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-2">
-                              <Link
-                                href={dashboardHref}
-                                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-50 text-slate-700 transition-colors"
-                              >
-                                <LayoutDashboard className="w-5 h-5 text-slate-400" />
-                                <span className="font-medium">
-                                  {userRole === "ADMIN" ? "Admin Paneline Git" : "Panele Git"}
-                                </span>
-                              </Link>
-
-                              {showBusinessLinks && (
-                                <Link
-                                  href={userRole === "ADMIN" ? businessDashboardHref : businessProfileHref}
-                                  className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-50 text-slate-700 transition-colors"
-                                >
-                                  <Building2 className="w-5 h-5 text-slate-400" />
-                                  <span className="font-medium">
-                                    {userRole === "ADMIN" ? "İşletme Paneline Git" : "İşletme Profili"}
-                                  </span>
-                                </Link>
-                              )}
-
-                              {isDevelopment && showBusinessLinks && userRole !== "ADMIN" && (
-                                <button
-                                  onClick={handleBecomeAdmin}
-                                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-amber-50 text-amber-700 transition-colors"
-                                >
-                                  <Sparkles className="w-5 h-5" />
-                                  <span className="font-medium">Admin Ol (Dev)</span>
-                                </button>
-                              )}
-
-                              <Link
-                                href="/user"
-                                className="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-slate-50 text-slate-700 transition-colors"
-                              >
-                                <User className="w-5 h-5 text-slate-400" />
-                                <span className="font-medium">Hesabım</span>
-                              </Link>
-
-                              <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-rose-50 text-rose-600 transition-colors"
-                              >
-                                <LogOut className="w-5 h-5" />
-                                <span className="font-medium">Çıkış Yap</span>
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsPreRegModalOpen(true)}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold shadow-lg transition-all duration-300 bg-emerald-500 text-white shadow-emerald-500/20 hover:bg-emerald-600"
+              {status === "loading" ? (
+                <div className="h-12 w-48 animate-pulse rounded-full bg-slate-100" />
+              ) : isAuthenticated ? (
+                <>
+                  <Link href={panelHref ?? "/user"}>
+                    <motion.div
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="flex h-12 items-center gap-2 rounded-full border border-slate-200 bg-white px-6 text-[15px] font-black text-slate-800 transition hover:border-blue-200 hover:text-[#0057d9]"
                     >
-                      <Sparkles className="w-4 h-4" />
-                      Ön Kayıt Ol
+                      <LayoutDashboard className="h-4 w-4" />
+                      {isBusinessPanel ? "İşletmem" : "Panel"}
+                    </motion.div>
+                  </Link>
+
+                  <div className="relative" ref={userMenuRef}>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                      className="flex h-12 items-center gap-3 rounded-full border border-slate-200 bg-white pl-2 pr-4 shadow-sm"
+                    >
+                      {userImage ? (
+                        <img
+                          src={userImage}
+                          alt={userName}
+                          className="h-9 w-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0057d9] text-xs font-black text-white">
+                          {getInitials(userName, userEmail)}
+                        </div>
+                      )}
+
+                      <div className="text-left leading-tight">
+                        <p className="max-w-[130px] truncate text-sm font-black text-slate-900">
+                          {userName}
+                        </p>
+                        <p className="max-w-[130px] truncate text-[11px] font-semibold text-slate-500">
+                          {isAdmin
+                            ? "Yönetici"
+                            : isBusinessPanel
+                              ? "İşletme Hesabı"
+                              : "Üye"}
+                        </p>
+                      </div>
                     </motion.button>
 
-                    <Link href="/user/login">
-                      <motion.div
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white/90 hover:text-white hover:bg-white/10 transition-all duration-300"
-                      >
-                        <LogIn className="w-4 h-4" />
-                        Giriş Yap
-                      </motion.div>
-                    </Link>
+                    <AnimatePresence>
+                      {isUserMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                          className="absolute right-0 mt-4 w-72 overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-2xl"
+                        >
+                          <div className="border-b border-slate-100 bg-slate-50 p-4">
+                            <p className="font-black text-slate-900">
+                              {userName}
+                            </p>
+                            <p className="truncate text-sm text-slate-500">
+                              {userEmail}
+                            </p>
+                          </div>
 
-                    <Link href="/business/register">
-                      <motion.div
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold shadow-lg transition-all duration-300 bg-white text-[#004aad] shadow-black/10 hover:bg-gray-50"
-                      >
-                        <PlusCircle className="w-4 h-4" />
-                        İşletmeni Ekle
-                      </motion.div>
-                    </Link>
-                  </>
-                )}
-              </div>
+                          <div className="p-2">
+                            {isAdmin && (
+                              <Link
+                                href="/admin"
+                                onClick={() => setIsUserMenuOpen(false)}
+                                className="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-[#0057d9] hover:bg-blue-50"
+                              >
+                                <ShieldCheck className="h-5 w-5 text-[#0057d9]" />
+                                Admin Paneli
+                              </Link>
+                            )}
 
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 rounded-full text-white hover:bg-white/10"
-                aria-label="Menu"
-              >
-                {isMenuOpen ? (
-                  <X className="h-6 w-6" />
-                ) : (
-                  <Menu className="h-6 w-6" />
-                )}
-              </button>
+                            <Link
+                              href={panelHref ?? "/user"}
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              <LayoutDashboard className="h-5 w-5 text-slate-400" />
+                              {isBusinessPanel ? "İşletme Paneline Git" : "Panele Git"}
+                            </Link>
+
+                            {showBusinessLinks && (
+                              <Link
+                                href={businessProfileHref}
+                                className="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                <Building2 className="h-5 w-5 text-slate-400" />
+                                İşletme Profili
+                              </Link>
+                            )}
+
+                            {!isBusinessPanel && (
+                              <Link
+                                href="/user"
+                                onClick={() => setIsUserMenuOpen(false)}
+                                className="flex items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                <User className="h-5 w-5 text-slate-400" />
+                                Hesabım
+                              </Link>
+                            )}
+
+                            <button
+                              onClick={handleLogout}
+                              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 font-semibold text-rose-600 hover:bg-rose-50"
+                            >
+                              <LogOut className="h-5 w-5" />
+                              Çıkış Yap
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Link href="/user/login">
+                    <motion.div
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-8 text-[15px] font-black text-[#0057d9] transition hover:bg-blue-50"
+                    >
+                      Giriş Yap
+                    </motion.div>
+                  </Link>
+
+                  <Link href="/business/register">
+                    <motion.div
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="flex h-12 items-center justify-center rounded-2xl bg-[#0057d9] px-8 text-[15px] font-black text-white shadow-[0_14px_34px_rgba(0,87,217,0.28)] transition hover:bg-[#004cc2]"
+                    >
+                      İşletme Hesabı Aç
+                    </motion.div>
+                  </Link>
+                </>
+              )}
             </div>
+
+            <button
+              onClick={() => setIsMenuOpen(true)}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-900 lg:hidden"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
           </div>
         </div>
       </header>
-
-      <PreRegistrationModal
-        isOpen={isPreRegModalOpen}
-        onClose={() => setIsPreRegModalOpen(false)}
-      />
 
       <AnimatePresence>
         {isMenuOpen && (
@@ -381,167 +358,111 @@ export default function Header() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMenuOpen(false)}
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] md:hidden"
+              className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-sm lg:hidden"
             />
 
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-[80%] max-w-sm bg-white shadow-2xl md:hidden flex flex-col"
+              transition={{ type: "spring", damping: 28, stiffness: 220 }}
+              className="fixed bottom-0 right-0 top-0 z-[60] flex w-[86%] max-w-sm flex-col bg-white shadow-2xl lg:hidden"
             >
-              <div className="p-5 border-b flex justify-between items-center bg-gray-50">
-                <span className="font-bold text-xl text-[#004aad]">
-                  Civardaki
-                </span>
+              <div className="flex items-center justify-between border-b border-slate-100 p-5">
+                <img src="/logo.png" alt="Civardaki" className="w-36" />
                 <button
                   onClick={() => setIsMenuOpen(false)}
-                  className="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                  className="rounded-full bg-slate-100 p-2 text-slate-600"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto py-4 px-4 space-y-2">
-                {status === "loading" ? (
-                  <div className="h-24 rounded-3xl bg-slate-100 animate-pulse mb-6" />
-                ) : isAuthenticated ? (
-                  <div className="mb-6 rounded-3xl bg-slate-50 border border-slate-100 p-4">
-                    <div className="flex items-center gap-3">
-                      {userImage ? (
-                        <img
-                          src={userImage}
-                          alt={userName}
-                          className="w-14 h-14 rounded-full object-cover border border-slate-200"
-                        />
-                      ) : (
-                        <div className="w-14 h-14 rounded-full bg-[#004aad] text-white flex items-center justify-center font-bold">
-                          {getInitials(userName, userEmail)}
-                        </div>
+              <motion.div className="flex-1 overflow-y-auto p-4">
+                <div className="mb-4">
+                  <LocationPicker variant="mobile" />
+                </div>
+
+                <div className="mb-5 rounded-[28px] bg-gradient-to-br from-blue-50 to-slate-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#0057d9]">
+                    Civardaki
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black text-slate-950">
+                    Mahallendeki en iyi işletmeleri keşfet.
+                  </h3>
+                </div>
+
+                <div className="space-y-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-between rounded-2xl px-4 py-4 font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      <span className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5 text-[#0057d9]" />
+                        {item.label}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-slate-300" />
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {isAuthenticated ? (
+                    <>
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setIsMenuOpen(false)}
+                          className="flex items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 font-black text-[#0057d9]"
+                        >
+                          <ShieldCheck className="h-5 w-5" />
+                          Admin Paneli
+                        </Link>
                       )}
 
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-900 truncate">
-                          {userName}
-                        </p>
-                        <p className="text-sm text-slate-500 truncate">
-                          {userEmail}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mt-4">
                       <Link
-                        href={dashboardHref}
+                        href={panelHref ?? "/user"}
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[#004aad] text-white hover:bg-blue-700 transition-colors gap-2 shadow-lg shadow-blue-200"
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-[#0057d9] px-5 py-4 font-black text-white"
                       >
-                        <LayoutDashboard className="w-6 h-6" />
-                        <span className="font-semibold text-sm">Panel</span>
+                        <LayoutDashboard className="h-5 w-5" />
+                        {isBusinessPanel ? "İşletme Paneline Git" : "Panele Git"}
                       </Link>
 
                       <button
                         onClick={handleLogout}
-                        className="flex flex-col items-center justify-center p-4 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors gap-2"
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-50 px-5 py-4 font-black text-rose-600"
                       >
-                        <LogOut className="w-6 h-6" />
-                        <span className="font-semibold text-sm">Çıkış Yap</span>
+                        <LogOut className="h-5 w-5" />
+                        Çıkış Yap
                       </button>
-                    </div>
-
-                    {showBusinessLinks && (
-                      <Link
-                        href={userRole === "ADMIN" ? businessDashboardHref : businessProfileHref}
-                        onClick={() => setIsMenuOpen(false)}
-                        className="mt-3 flex items-center justify-center p-4 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors gap-2"
-                      >
-                        <Building2 className="w-5 h-5" />
-                        <span className="font-semibold text-sm">
-                          {userRole === "ADMIN" ? "İşletme Paneline Git" : "İşletme Profili"}
-                        </span>
-                      </Link>
-                    )}
-
-                    {isDevelopment && showBusinessLinks && userRole !== "ADMIN" && (
-                      <button
-                        onClick={handleBecomeAdmin}
-                        className="mt-3 w-full flex items-center justify-center p-4 rounded-2xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors gap-2"
-                      >
-                        <Sparkles className="w-5 h-5" />
-                        <span className="font-semibold text-sm">Admin Ol (Dev)</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3 mb-6">
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setIsPreRegModalOpen(true);
-                      }}
-                      className="flex items-center justify-center p-4 rounded-2xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors gap-2 shadow-lg shadow-emerald-200"
-                    >
-                      <Sparkles className="w-6 h-6" />
-                      <span className="font-semibold text-sm">Ön Kayıt Ol</span>
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-3">
+                    </>
+                  ) : (
+                    <>
                       <Link
                         href="/user/login"
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[#004aad]/5 text-blue-700 hover:bg-blue-100 transition-colors gap-2"
+                        className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 font-black text-[#0057d9]"
                       >
-                        <User className="w-6 h-6" />
-                        <span className="font-semibold text-sm">Giriş Yap</span>
+                        <LogIn className="h-5 w-5" />
+                        Giriş Yap
                       </Link>
 
                       <Link
                         href="/business/register"
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[#004aad] text-white hover:bg-blue-700 transition-colors gap-2 shadow-lg shadow-blue-200"
+                        className="flex items-center justify-center gap-2 rounded-2xl bg-[#0057d9] px-5 py-4 font-black text-white"
                       >
-                        <PlusCircle className="w-6 h-6" />
-                        <span className="font-semibold text-sm">
-                          İşletme Ekle
-                        </span>
+                        <PlusCircle className="h-5 w-5" />
+                        İşletme Hesabı Aç
                       </Link>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <p className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    Menü
-                  </p>
-
-                  {[
-                    { href: "/about", label: "Hakkımızda", icon: Info },
-                    {
-                      href: "/how-it-works",
-                      label: "Nasıl Çalışır",
-                      icon: HelpCircle,
-                    },
-                  ].map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 text-gray-700 transition-all font-medium group"
-                    >
-                      <span className="flex items-center gap-3">
-                        <item.icon className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                        {item.label}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500" />
-                    </Link>
-                  ))}
+                    </>
+                  )}
                 </div>
-              </div>
-
-              <div className="p-5 border-t bg-gray-50 text-center text-xs text-gray-400">
-                &copy; 2024 Civardaki. Tüm hakları saklıdır.
-              </div>
+              </motion.div>
             </motion.div>
           </>
         )}

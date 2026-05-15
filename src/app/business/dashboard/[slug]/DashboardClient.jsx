@@ -7,20 +7,15 @@ import {
   MessageSquare,
   BarChart3,
   ShieldCheck,
-  Banknote,
-  CalendarDays,
   Settings,
   Megaphone,
   ExternalLink,
   ChevronDown,
   Store,
   ArrowRight,
-  Wallet,
   BellRing,
-  Clock3,
-  ReceiptText,
   CircleUser,
-  ClipboardList,
+  CalendarDays,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useSocket } from "@/components/providers/SocketProvider";
@@ -50,20 +45,6 @@ function SurfaceCard({ children, className = "" }) {
   );
 }
 
-function MiniStat({ label, value, icon: Icon }) {
-  return (
-    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-          {label}
-        </p>
-        <Icon className="h-4 w-4 text-slate-400" />
-      </div>
-      <p className="text-lg font-bold text-slate-900 tabular-nums">{value}</p>
-    </div>
-  );
-}
-
 function QuickLinkCard({ href, title, desc, icon: Icon, iconClassName }) {
   return (
     <Link
@@ -87,58 +68,6 @@ function QuickLinkCard({ href, title, desc, icon: Icon, iconClassName }) {
   );
 }
 
-function SidebarListCard({
-  title,
-  tone = "green",
-  icon: Icon,
-  emptyText,
-  items = [],
-}) {
-  const headTone = {
-    green: "from-emerald-600 to-emerald-500",
-    blue: "from-blue-600 to-indigo-600",
-    red: "from-rose-600 to-red-600",
-  };
-
-  return (
-    <SurfaceCard className="overflow-hidden">
-      <div className={`bg-gradient-to-r ${headTone[tone]} px-4 py-3 text-white`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 opacity-90" />
-            <span className="text-sm font-bold">{title}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-70" />
-        </div>
-      </div>
-
-      <div className="p-4">
-        {items.length === 0 ? (
-          <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm text-slate-500">
-            {emptyText}
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {items.map((row) => (
-              <li
-                key={row.id}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-3 py-3"
-              >
-                <span className="truncate text-sm font-medium text-slate-700">
-                  {row.title}
-                </span>
-                <span className="shrink-0 text-sm font-bold text-slate-900 tabular-nums">
-                  {formatMoney(row.amount)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </SurfaceCard>
-  );
-}
-
 function DashboardOverview({ business, m, isConnected }) {
   return (
     <div className="space-y-6">
@@ -158,7 +87,7 @@ function DashboardOverview({ business, m, isConnected }) {
           <div className="border-t border-white/10 px-6 pb-8 pt-2 md:px-8">
             <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
               <CircleUser className="h-3.5 w-3.5 text-cyan-300/90" />
-              Hesap
+              İşletme profili
             </p>
             <div className="w-full rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md md:p-5">
               <div className="flex min-h-0 min-w-0 flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -203,23 +132,22 @@ function DashboardOverview({ business, m, isConnected }) {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Varlıklar
+                    Sipariş cirosu
                   </p>
                   <h3 className="mt-1 text-sm font-semibold text-slate-700">
-                    İşletme finansal gücü
+                    Bu ay (Civardaki)
                   </h3>
                 </div>
                 <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
-                  <Wallet className="h-5 w-5" />
+                  <ShoppingCart className="h-5 w-5" />
                 </div>
               </div>
 
               <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
-                {formatMoney(m?.assetsTotal ?? 0)}
+                {formatMoney(m?.revenueCalendarMonth ?? 0)}
               </p>
               <p className="mt-4 text-xs leading-5 text-slate-500">
-                Nakit, hesap bakiyesi ve tanımlı diğer finansal varlıkların
-                toplam özeti.
+                Takvim ayı içindeki platform siparişlerinin toplam tutarı.
               </p>
             </SurfaceCard>
 
@@ -227,53 +155,46 @@ function DashboardOverview({ business, m, isConnected }) {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Borçlar
+                    Sipariş adedi
                   </p>
                   <h3 className="mt-1 text-sm font-semibold text-slate-700">
-                    Kısa ve orta vadeli yükümlülükler
-                  </h3>
-                </div>
-                <div className="rounded-2xl bg-rose-50 p-3 text-rose-600">
-                  <ReceiptText className="h-5 w-5" />
-                </div>
-              </div>
-
-              <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
-                {formatMoney(m?.debtsTotal ?? 0)}
-              </p>
-              <p className="mt-4 text-xs leading-5 text-slate-500">
-                Tedarikçi, kredi ve diğer kayıtlı finansal yükümlülüklerin
-                toplam görünümü.
-              </p>
-            </SurfaceCard>
-
-            <SurfaceCard className="p-5 lg:col-span-1">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                    Günlük Akış
-                  </p>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-700">
-                    Anlık operasyon özeti
+                    Bugün
                   </h3>
                 </div>
                 <div className="rounded-2xl bg-sky-50 p-3 text-sky-600">
-                  <Clock3 className="h-5 w-5" />
+                  <ShoppingCart className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="grid gap-3">
-                <MiniStat
-                  label="Bugünkü Satış"
-                  value={formatMoney(m?.revenueToday ?? 0)}
-                  icon={ShoppingCart}
-                />
-                <MiniStat
-                  label="Bugünkü Tahsilat"
-                  value={formatMoney(m?.collectionToday ?? 0)}
-                  icon={Banknote}
-                />
+              <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+                {m?.orderCountToday ?? 0}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Bugün oluşturulan sipariş kayıtları (iptaller dahil sayım).
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard className="p-5 lg:col-span-1">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                    Talepler
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-700">
+                    Son 30 gün
+                  </h3>
+                </div>
+                <div className="rounded-2xl bg-violet-50 p-3 text-violet-600">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
               </div>
+
+              <p className="border-b border-dashed border-slate-200 pb-4 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">
+                {m?.leadCount30Days ?? 0}
+              </p>
+              <p className="mt-4 text-xs leading-5 text-slate-500">
+                Görünür kategorilerdeki hizmet talepleri.
+              </p>
             </SurfaceCard>
           </section>
         </div>
@@ -303,22 +224,6 @@ function DashboardOverview({ business, m, isConnected }) {
               </div>
             </div>
           </SurfaceCard>
-
-          <SidebarListCard
-            title="Yaklaşan Masraflar"
-            tone="blue"
-            icon={CalendarDays}
-            items={m?.upcomingExpenses ?? []}
-            emptyText="Yaklaşan ödeme kaydınız bulunmuyor."
-          />
-
-          <SidebarListCard
-            title="Yaklaşan Kredi Ödemeleri"
-            tone="red"
-            icon={ReceiptText}
-            items={m?.upcomingLoans ?? []}
-            emptyText="Yaklaşan kredi ödemesi kaydınız bulunmuyor."
-          />
         </aside>
       </div>
     </div>
@@ -501,10 +406,10 @@ export default function DashboardClient({ slug }) {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <QuickLinkCard
-            href="/business/planning"
-            title="İş Planlama"
-            desc="Projeler, görevler ve operasyon planını tek yerden takip edin."
-            icon={ClipboardList}
+            href="/business/leads"
+            title="Hizmet Talepleri"
+            desc="Yeni talepleri görüntüleyin ve hızlıca yanıtlayın."
+            icon={MessageSquare}
             iconClassName="bg-amber-50 text-amber-800"
           />
           <QuickLinkCard
@@ -516,8 +421,8 @@ export default function DashboardClient({ slug }) {
           />
           <QuickLinkCard
             href="/business/products"
-            title="Ürünler"
-            desc="Ürün kataloğu, stok yapısı ve içerik düzenlemelerini yönetin."
+            title="Ürün ve Hizmetler"
+            desc="Vitrin ürün ve hizmet kartlarınızı ekleyin veya güncelleyin."
             icon={BarChart3}
             iconClassName="bg-violet-50 text-violet-700"
           />

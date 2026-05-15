@@ -2,12 +2,14 @@
 
 import {
   ArrowLeft,
-  Clock,
-  Utensils,
-  CheckCircle,
+  Clock3,
   Minus,
   Plus,
+  Check,
+  ShoppingBag,
+  Sparkles,
 } from "lucide-react";
+
 import { motion } from "framer-motion";
 
 export default function ProductDetailSheet({
@@ -27,376 +29,358 @@ export default function ProductDetailSheet({
   if (!product) return null;
 
   const hasVariants = product.variants?.length > 0;
-  const basePrice = Number(product.basePrice ?? product.price) || 0;
+
+  const basePrice =
+    Number(product.basePrice ?? product.price) || 0;
+
   const variantExtra =
-    hasVariants && selectedVariant ? Number(selectedVariant.price) || 0 : 0;
+    hasVariants && selectedVariant
+      ? Number(selectedVariant.price) || 0
+      : 0;
+
   const unitPrice = basePrice + variantExtra;
-  const unitTotal = unitPrice + (calculateExtrasPrice?.() || 0);
-  const displayTotal = unitTotal * productQuantity;
+  const extrasPrice = calculateExtrasPrice?.() || 0;
+  const total = (unitPrice + extrasPrice) * productQuantity;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: "100%" }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: "100%" }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      className="fixed inset-0 z-[99999] bg-white flex flex-col lg:flex-row overflow-hidden h-[100dvh] w-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[999999] bg-black/60 backdrop-blur-md"
     >
-      {/* Desktop: left image */}
-      <div className="hidden lg:block lg:w-1/2 relative bg-slate-900 h-full">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="w-full h-full object-cover opacity-90"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-8 left-8 text-white/80 hover:text-white flex items-center gap-2 transition-colors z-20"
-        >
-          <ArrowLeft className="w-6 h-6" /> Kapat
-        </button>
-        <div className="absolute bottom-12 left-12 right-12 text-white">
-          {product.allergens?.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {product.allergens.map((a) => (
-                <span
-                  key={a}
-                  className="bg-red-500/90 text-sm px-3 py-1.5 rounded-lg font-semibold"
-                >
-                  {a}
-                </span>
-              ))}
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{
+          type: "spring",
+          damping: 26,
+          stiffness: 220,
+        }}
+        className="absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-[#f8fafc] lg:left-auto lg:w-[720px]"
+      >
+        {/* HEADER */}
+        <div className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+          <div className="flex items-center justify-between px-5 py-4 lg:px-7">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
+            <div className="text-center">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+                Ürün Detayı
+              </p>
+
+              <h2 className="mt-1 text-sm font-black text-slate-900">
+                {product.name}
+              </h2>
             </div>
-          )}
-          {product.prepTime && (
-            <span className="inline-flex items-center gap-2 bg-slate-700/80 text-sm px-3 py-1.5 rounded-lg font-semibold mr-2">
-              <Clock className="w-4 h-4" /> {product.prepTime}
-            </span>
-          )}
-          {product.calories && (
-            <span className="inline-flex items-center gap-2 bg-slate-700/80 text-sm px-3 py-1.5 rounded-lg font-semibold">
-              <Utensils className="w-4 h-4" /> {product.calories} kcal
-            </span>
-          )}
-          <h2 className="text-4xl font-bold mt-4 leading-tight">
-            {product.name}
-          </h2>
-          <p className="text-slate-300 text-lg mt-2 line-clamp-3">
-            {product.description}
-          </p>
-        </div>
-      </div>
 
-      {/* Right / Mobile content */}
-      <div className="flex-1 flex flex-col bg-white h-full relative">
-        {/* Mobile header */}
-        <div className="lg:hidden relative h-56 shrink-0">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-4 left-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div className="absolute bottom-4 left-4 right-4 text-white">
-            <h2 className="text-2xl font-bold drop-shadow-md">
-              {product.name}
-            </h2>
+            <div className="w-11" />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 lg:p-8 pb-36">
-          <div className="hidden lg:block mb-6 pb-6 border-b border-slate-100">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
-              {product.name}
-            </h2>
-            <span className="text-2xl font-bold text-slate-900">
-              {unitPrice}₺
-            </span>
+        {/* CONTENT */}
+        <div className="h-[calc(100%-96px)] overflow-y-auto pb-[160px]">
+          {/* IMAGE */}
+          <div className="relative h-[300px] overflow-hidden bg-slate-100 lg:h-[360px]">
+            <img
+              src={product.image}
+              alt={product.name}
+              className="h-full w-full object-cover"
+            />
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+            <div className="absolute bottom-6 left-6 right-6">
+              <div className="mb-3 flex flex-wrap gap-2">
+                {product.prepTime && (
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-black text-white backdrop-blur-xl">
+                    <Clock3 className="h-4 w-4" />
+                    {product.prepTime}
+                  </span>
+                )}
+
+                {product.allergens?.map((a) => (
+                  <span
+                    key={a}
+                    className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-black text-white"
+                  >
+                    {a}
+                  </span>
+                ))}
+              </div>
+
+              <h1 className="text-3xl font-black tracking-[-0.03em] text-white">
+                {product.name}
+              </h1>
+
+              <p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-7 text-white/80">
+                {product.description}
+              </p>
+            </div>
           </div>
 
-          <div className="lg:hidden mb-6">
-            <p className="text-slate-600 leading-relaxed">
-              {product.description}
-            </p>
-          </div>
+          <div className="space-y-7 px-5 py-6 lg:px-7">
+            {/* PRICE */}
+            <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">
+                    Başlangıç fiyatı
+                  </p>
 
-          <div className="space-y-6">
+                  <h3 className="mt-2 text-4xl font-black tracking-[-0.03em] text-slate-950">
+                    {unitPrice}₺
+                  </h3>
+                </div>
+
+                <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50">
+                  <ShoppingBag className="h-8 w-8 text-[#0057d9]" />
+                </div>
+              </div>
+            </div>
+
+            {/* VARIANTS */}
             {hasVariants && (
-              <div className="space-y-3">
-                <h4 className="font-semibold text-slate-900">
-                  Boyut / Varyant
-                </h4>
-                <div className="space-y-2">
-                  <label
-                    className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors ${
-                      selectedVariant == null
-                        ? "border-slate-900 bg-slate-50"
-                        : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
-                    }`}
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50">
+                    <Sparkles className="h-6 w-6 text-[#0057d9]" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-950">
+                      Boyut Seçimi
+                    </h3>
+
+                    <p className="text-sm text-slate-500">
+                      Bir varyant seçin
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVariant?.(null)}
+                    className={`flex w-full items-center justify-between rounded-2xl border p-4 transition ${selectedVariant == null
+                        ? "border-[#0057d9] bg-blue-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          selectedVariant == null
-                            ? "border-slate-900"
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${selectedVariant == null
+                            ? "border-[#0057d9] bg-[#0057d9]"
                             : "border-slate-300"
-                        }`}
+                          }`}
                       >
                         {selectedVariant == null && (
-                          <div className="w-2 h-2 rounded-full bg-slate-900" />
+                          <Check className="h-3.5 w-3.5 text-white" />
                         )}
                       </div>
-                      <input
-                        type="radio"
-                        name="variant"
-                        className="hidden"
-                        onChange={() => setSelectedVariant?.(null)}
-                        checked={selectedVariant == null}
-                      />
-                      <span
-                        className={`text-sm font-medium ${
-                          selectedVariant == null
-                            ? "text-slate-900"
-                            : "text-slate-600"
-                        }`}
-                      >
-                        Stabil
-                      </span>
+
+                      <div className="text-left">
+                        <p className="font-black text-slate-900">
+                          Standart
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          Normal seçenek
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-xs font-semibold text-slate-600">
+
+                    <span className="text-lg font-black text-slate-950">
                       {basePrice}₺
                     </span>
-                  </label>
+                  </button>
+
                   {product.variants.map((v) => {
-                    const isSelected = selectedVariant?.id === v.id;
+                    const isSelected =
+                      selectedVariant?.id === v.id;
+
                     return (
-                      <label
+                      <button
                         key={v.id}
-                        className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors ${
-                          isSelected
-                            ? "border-slate-900 bg-slate-50"
-                            : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
-                        }`}
+                        type="button"
+                        onClick={() =>
+                          setSelectedVariant?.({
+                            id: v.id,
+                            name: v.name,
+                            price: v.price,
+                          })
+                        }
+                        className={`flex w-full items-center justify-between rounded-2xl border p-4 transition ${isSelected
+                            ? "border-[#0057d9] bg-blue-50"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              isSelected
-                                ? "border-slate-900"
+                            className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${isSelected
+                                ? "border-[#0057d9] bg-[#0057d9]"
                                 : "border-slate-300"
-                            }`}
+                              }`}
                           >
                             {isSelected && (
-                              <div className="w-2 h-2 rounded-full bg-slate-900" />
+                              <Check className="h-3.5 w-3.5 text-white" />
                             )}
                           </div>
-                          <input
-                            type="radio"
-                            name="variant"
-                            className="hidden"
-                            onChange={() =>
-                              setSelectedVariant?.({
-                                id: v.id,
-                                name: v.name,
-                                price: v.price,
-                                discountPrice: v.discountPrice,
-                              })
-                            }
-                            checked={isSelected}
-                          />
-                          <span
-                            className={`text-sm font-medium ${
-                              isSelected ? "text-slate-900" : "text-slate-600"
-                            }`}
-                          >
-                            {v.name}
-                          </span>
+
+                          <div className="text-left">
+                            <p className="font-black text-slate-900">
+                              {v.name}
+                            </p>
+
+                            <p className="text-xs text-slate-500">
+                              Premium seçenek
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-xs font-semibold text-slate-600">
-                          {basePrice + (Number(v.price) || 0)}₺
+
+                        <span className="text-lg font-black text-slate-950">
+                          {basePrice + Number(v.price || 0)}₺
                         </span>
-                      </label>
+                      </button>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             )}
 
-            {product.options?.map((opt, idx) => (
-              <div key={idx} className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-slate-900">{opt.title}</h4>
-                  <span className="text-[10px] font-semibold text-white bg-red-500 px-2 py-0.5 rounded-full">
-                    Zorunlu
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {opt.choices?.map((choice, i) => {
-                    const isSelected =
-                      productOptions[opt.title]?.[0]?.name === choice.name;
+            {/* EXTRAS */}
+            {product.extras?.length > 0 && (
+              <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="mb-5 text-xl font-black text-slate-950">
+                  Ekstralar
+                </h3>
+
+                <div className="space-y-3">
+                  {product.extras.map((extra, i) => {
+                    const isChecked =
+                      productOptions["Ekstralar"]?.some(
+                        (e) => e.name === extra.name
+                      );
+
                     return (
                       <label
                         key={i}
-                        className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors ${
-                          isSelected
-                            ? "border-slate-900 bg-slate-50"
-                            : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/50"
-                        }`}
+                        className={`flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition ${isChecked
+                            ? "border-[#0057d9] bg-blue-50"
+                            : "border-slate-200 bg-white"
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              isSelected
-                                ? "border-slate-900"
+                            className={`flex h-6 w-6 items-center justify-center rounded-xl border-2 ${isChecked
+                                ? "border-[#0057d9] bg-[#0057d9]"
                                 : "border-slate-300"
-                            }`}
+                              }`}
                           >
-                            {isSelected && (
-                              <div className="w-2 h-2 rounded-full bg-slate-900" />
+                            {isChecked && (
+                              <Check className="h-3.5 w-3.5 text-white" />
                             )}
                           </div>
-                          <input
-                            type="radio"
-                            name={opt.title}
-                            className="hidden"
-                            onChange={() =>
-                              handleOptionChange(opt.title, choice, "radio")
-                            }
-                            checked={isSelected}
-                          />
-                          <span
-                            className={`text-sm font-medium ${
-                              isSelected ? "text-slate-900" : "text-slate-600"
-                            }`}
-                          >
-                            {choice.name}
-                          </span>
-                        </div>
-                        {choice.price > 0 && (
-                          <span className="text-xs font-semibold text-slate-500">
-                            +{choice.price}₺
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
 
-            {product.extras?.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-semibold text-slate-900">Ekstralar</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {product.extras.map((extra, i) => {
-                    const isChecked = productOptions["Ekstralar"]?.some(
-                      (e) => e.name === extra.name,
-                    );
-                    return (
-                      <label
-                        key={i}
-                        className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors ${
-                          isChecked
-                            ? "border-slate-900 bg-slate-50"
-                            : "border-slate-100 hover:bg-slate-50/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                              isChecked
-                                ? "border-slate-900 bg-slate-900 text-white"
-                                : "border-slate-300"
-                            }`}
-                          >
-                            {isChecked && <CheckCircle className="w-3 h-3" />}
-                          </div>
                           <input
                             type="checkbox"
                             className="hidden"
+                            checked={isChecked || false}
                             onChange={(e) =>
                               handleOptionChange(
                                 "Ekstralar",
                                 extra,
                                 "check",
-                                e.target.checked,
+                                e.target.checked
                               )
                             }
-                            checked={isChecked || false}
                           />
-                          <span
-                            className={`text-sm font-medium ${
-                              isChecked ? "text-slate-900" : "text-slate-700"
-                            }`}
-                          >
+
+                          <span className="font-bold text-slate-800">
                             {extra.name}
                           </span>
                         </div>
-                        <span className="text-xs font-semibold text-slate-600">
+
+                        <span className="text-sm font-black text-[#0057d9]">
                           +{extra.price}₺
                         </span>
                       </label>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             )}
 
-            <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900">Sipariş notu</h4>
+            {/* NOTE */}
+            <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-xl font-black text-slate-950">
+                Sipariş Notu
+              </h3>
+
               <textarea
                 placeholder="Özel isteklerinizi yazabilirsiniz..."
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:border-slate-400 focus:ring-2 focus:ring-slate-200 outline-none transition-all min-h-[100px] resize-none text-sm"
+                className="min-h-[120px] w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm outline-none transition focus:border-[#0057d9] focus:bg-white"
                 value={productNote}
                 onChange={(e) => setProductNote(e.target.value)}
               />
-            </div>
+            </section>
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 border-t border-slate-100 bg-white absolute bottom-0 left-0 right-0 z-10 flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
+        {/* BOTTOM BAR */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-5 backdrop-blur-xl">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setProductQuantity(
+                    Math.max(1, productQuantity - 1)
+                  )
+                }
+                className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-700 transition hover:bg-slate-100"
+              >
+                <Minus className="h-5 w-5" />
+              </button>
+
+              <span className="w-16 text-center text-xl font-black text-slate-950">
+                {productQuantity}
+              </span>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setProductQuantity(productQuantity + 1)
+                }
+                className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-700 transition hover:bg-slate-100"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() =>
-                setProductQuantity(Math.max(1, productQuantity - 1))
-              }
-              className="w-12 h-12 flex items-center justify-center bg-white rounded-lg border border-slate-200 hover:text-slate-900 transition-colors"
+              onClick={addToCart}
+              className="flex h-14 flex-1 items-center justify-between rounded-2xl bg-[#0057d9] px-6 text-white shadow-[0_18px_40px_rgba(0,87,217,0.26)] transition hover:bg-[#004cc2]"
             >
-              <Minus className="w-5 h-5" />
-            </button>
-            <span className="w-14 text-center font-bold text-lg text-slate-900">
-              {productQuantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => setProductQuantity(productQuantity + 1)}
-              className="w-12 h-12 flex items-center justify-center bg-white rounded-lg border border-slate-200 hover:text-slate-900 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
+              <span className="text-sm font-black">
+                Sepete Ekle
+              </span>
+
+              <span className="rounded-xl bg-white/15 px-4 py-2 text-sm font-black">
+                {total}₺
+              </span>
             </button>
           </div>
-          <button
-            type="button"
-            onClick={addToCart}
-            className="w-full sm:flex-1 h-14 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-colors flex items-center justify-between px-6"
-          >
-            <span>Sepete ekle</span>
-            <span className="bg-white/20 px-3 py-1 rounded-lg text-sm">
-              {displayTotal}₺
-            </span>
-          </button>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

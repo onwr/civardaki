@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-async function requireBusiness() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { err: NextResponse.json({ message: "Unauthorized" }, { status: 401 })};
-  if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 })};
-  const businessId = session.user.businessId;
-  if (!businessId) return { err: NextResponse.json({ message: "Business not found" }, { status: 404 })};
-  return { businessId };
-}
+import { requireBusinessSession } from "@/lib/require-business-api";
 
 /** GET - mevcut açık/kapalı durumu */
 export async function GET() {
-  const auth = await requireBusiness();
+  const auth = await requireBusinessSession();
   if (auth.err) return auth.err;
 
   const business = await prisma.business.findUnique({
@@ -28,7 +18,7 @@ export async function GET() {
 
 /** PATCH - açık/kapalı durumunu güncelle. Body: { isOpen: boolean } */
 export async function PATCH(request) {
-  const auth = await requireBusiness();
+  const auth = await requireBusinessSession();
   if (auth.err) return auth.err;
 
   let body;

@@ -1,11 +1,57 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { calculateDistance } from "@/lib/geo";
+import { calculateDistance, formatDistance } from "@/lib/geo";
+import {
+    filterBusinessesByLocation,
+    sortByNearbyRelevance,
+} from "@/lib/location-match";
 
-export const revalidate = 30; // ISR cache for 30s
+export const revalidate = 30;
 
 function toStr(v) {
     return (v ?? "").toString().trim();
+}
+
+function pickMediaUrls(media) {
+    const list = Array.isArray(media) ? media : [];
+    const cover = list.find((m) => m.type === "COVER")?.url || null;
+    const logo = list.find((m) => m.type === "LOGO")?.url || null;
+    return { coverUrl: cover || logo, logoUrl: logo || cover };
+}
+
+function mapBusinessRow(b, userLat, userLng) {
+    const distance =
+        userLat && userLng && b.latitude && b.longitude
+            ? calculateDistance(userLat, userLng, b.latitude, b.longitude)
+            : null;
+
+    const { coverUrl, logoUrl } = pickMediaUrls(b.media);
+
+    return {
+        id: b.id,
+        slug: b.slug,
+        name: b.name,
+        description: b.description,
+        services: b.services,
+        city: b.city,
+        district: b.district,
+        category: b.category,
+        latitude: b.latitude,
+        longitude: b.longitude,
+        rating: b.rating,
+        reviewCount: b.reviewCount,
+        avgResponseMinutes: b.avgResponseMinutes,
+        isVerified: b.isVerified,
+        isOpen: b.isOpen !== false,
+        distance,
+        distanceText: distance != null ? formatDistance(distance) : null,
+        monthlyLeadCount: b._count?.lead || 0,
+        reviewsCount: b._count?.review || 0,
+        productsCount: b._count?.product || 0,
+        coverUrl,
+        logoUrl,
+        createdAt: b.createdAt,
+    };
 }
 
 export async function GET(req) {
@@ -20,25 +66,32 @@ export async function GET(req) {
     const limit = Math.min(24, Math.max(6, parseInt(searchParams.get("limit") || "12", 10)));
     const skip = (page - 1) * limit;
 
-    // User coordinates for distance calculation
     const userLat = parseFloat(searchParams.get("lat"));
     const userLng = parseFloat(searchParams.get("lng"));
+    const hasCoords =
+        Number.isFinite(userLat) && Number.isFinite(userLng);
 
-    // Optional filters from query
     const statusFilter = toStr(searchParams.get("status"));
     const isOpenOnly = statusFilter === "open";
     const minRatingParam = searchParams.get("minRating");
-    const minRating = minRatingParam != null && minRatingParam !== "" ? Math.min(5, Math.max(0, parseFloat(minRatingParam))) : null;
+    const minRating =
+        minRatingParam != null && minRatingParam !== ""
+            ? Math.min(5, Math.max(0, parseFloat(minRatingParam)))
+            : null;
 
-    // Sorting logic
+    const useLocationFilter = Boolean(city || district);
+    const isNearbySort = sort === "nearby";
+    const isDistanceSort = sort === "distance" || (isNearbySort && hasCoords);
+    const needsPostProcess = useLocationFilter || isNearbySort || isDistanceSort;
+
     const orderBy =
         sort === "popular"
             ? [
-                { rating: "desc" },
-                { ratingSum: "desc" },
-                { responseCount: "desc" },
-                { createdAt: "desc" },
-            ]
+                  { rating: "desc" },
+                  { ratingSum: "desc" },
+                  { responseCount: "desc" },
+                  { createdAt: "desc" },
+              ]
             : [{ createdAt: "desc" }];
 
     try {
@@ -58,15 +111,24 @@ export async function GET(req) {
             });
 
             const categoryNames = Array.from(
-                new Set([category, ...matchedCategories.map((item) => item.name).filter(Boolean)])
+                new Set([
+                    category,
+                    ...matchedCategories.map((item) => item.name).filter(Boolean),
+                ]),
             );
             const categoryIds = matchedCategories.map((item) => item.id).filter(Boolean);
 
-            const legacyCategoryClauses = categoryNames.map((name) => ({ category: name }));
+            const legacyCategoryClauses = categoryNames.map((name) => ({
+                category: name,
+            }));
             const relationClauses = categoryIds.length
                 ? [
                       { primaryCategoryId: { in: categoryIds } },
-                      { businesscategory: { some: { categoryId: { in: categoryIds } } } },
+                      {
+                          businesscategory: {
+                              some: { categoryId: { in: categoryIds } },
+                          },
+                      },
                   ]
                 : [];
 
@@ -91,96 +153,82 @@ export async function GET(req) {
 
         const where = {
             isActive: true,
-            ...(city ? { city } : {}),
-            ...(district ? { district } : {}),
+            ...(!useLocationFilter && city ? { city } : {}),
+            ...(!useLocationFilter && district ? { district } : {}),
             ...(isOpenOnly ? { isOpen: true } : {}),
-            ...(minRating != null && !Number.isNaN(minRating) ? { rating: { gte: minRating } } : {}),
+            ...(minRating != null && !Number.isNaN(minRating)
+                ? { rating: { gte: minRating } }
+                : {}),
             ...(andConditions.length ? { AND: andConditions } : {}),
         };
 
-        const [items, total] = await Promise.all([
-            prisma.business.findMany({
-                where,
-                orderBy,
-                skip: sort === "distance" ? 0 : skip,
-                take: sort === "distance" ? 100 : limit,
-                select: {
-                    id: true,
-                    slug: true,
-                    name: true,
-                    description: true,
-                    city: true,
-                    district: true,
-                    category: true,
-                    latitude: true,
-                    longitude: true,
-                    rating: true,
-                    reviewCount: true,
-                    avgResponseMinutes: true,
-                    isVerified: true,
-                    isOpen: true,
-                    createdAt: true,
+        const fetchTake = needsPostProcess ? 100 : limit;
+        const fetchSkip = needsPostProcess ? 0 : skip;
 
-                    // Count relations correctly - use singular names
-                    _count: {
-                        select: {
-                            lead: true, // Changed from 'leads' to 'lead' (singular)
-                            review: true,
-                            product: true,
-                        },
-                    },
-
-                    // Get media/images
-                    media: {
-                        where: { type: "LOGO" },
-                        select: { url: true },
-                        take: 1,
+        const items = await prisma.business.findMany({
+            where,
+            orderBy,
+            skip: fetchSkip,
+            take: fetchTake,
+            select: {
+                id: true,
+                slug: true,
+                name: true,
+                description: true,
+                services: true,
+                city: true,
+                district: true,
+                category: true,
+                latitude: true,
+                longitude: true,
+                rating: true,
+                reviewCount: true,
+                avgResponseMinutes: true,
+                isVerified: true,
+                isOpen: true,
+                createdAt: true,
+                _count: {
+                    select: {
+                        lead: true,
+                        review: true,
+                        product: true,
                     },
                 },
-            }),
-            prisma.business.count({ where }),
-        ]);
-
-        // Calculate distance and transform
-        let processedItems = items.map((b) => {
-            const distance =
-                userLat && userLng && b.latitude && b.longitude
-                    ? calculateDistance(userLat, userLng, b.latitude, b.longitude)
-                    : null;
-
-            return {
-                id: b.id,
-                slug: b.slug,
-                name: b.name,
-                description: b.description,
-                city: b.city,
-                district: b.district,
-                category: b.category,
-                latitude: b.latitude,
-                longitude: b.longitude,
-                rating: b.rating,
-                reviewCount: b.reviewCount,
-                avgResponseMinutes: b.avgResponseMinutes,
-                isVerified: b.isVerified,
-                isOpen: b.isOpen !== false,
-                distance,
-                monthlyLeadCount: b._count?.lead || 0,
-                reviewsCount: b._count?.review || 0,
-                productsCount: b._count?.product || 0,
-                logoUrl: b.media?.[0]?.url || null,
-                createdAt: b.createdAt,
-            };
+                media: {
+                    where: { type: { in: ["COVER", "LOGO"] } },
+                    select: { url: true, type: true },
+                    take: 4,
+                },
+            },
         });
 
-        // Haversine sorting if requested
-        if (sort === "distance" && userLat && userLng) {
+        let processedItems = items.map((b) =>
+            mapBusinessRow(b, hasCoords ? userLat : null, hasCoords ? userLng : null),
+        );
+
+        if (useLocationFilter) {
+            processedItems = filterBusinessesByLocation(
+                processedItems,
+                city,
+                district,
+            );
+        }
+
+        if (isDistanceSort && hasCoords) {
             processedItems.sort((a, b) => {
                 if (a.distance === null) return 1;
                 if (b.distance === null) return -1;
                 return a.distance - b.distance;
             });
+        } else if (isNearbySort) {
+            processedItems = sortByNearbyRelevance(processedItems, city, district);
+        }
 
-            // Manual pagination after app-side sorting
+        const total = needsPostProcess
+            ? processedItems.length
+            : await prisma.business.count({ where });
+
+        if (needsPostProcess) {
             processedItems = processedItems.slice(skip, skip + limit);
         }
 
@@ -191,10 +239,10 @@ export async function GET(req) {
                     page,
                     limit,
                     total,
-                    totalPages: Math.ceil(total / limit),
+                    totalPages: Math.max(1, Math.ceil(total / limit)),
                 },
             },
-            { status: 200 }
+            { status: 200 },
         );
     } catch (error) {
         console.error("Error fetching businesses:", error);
@@ -203,7 +251,7 @@ export async function GET(req) {
                 error: "Failed to fetch businesses",
                 message: error.message,
             },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }

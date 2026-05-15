@@ -1,64 +1,151 @@
+"use client";
+
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowRight, Store } from "lucide-react";
+import {
+  Store,
+  CheckCircle2,
+  ArrowRight,
+  PlayCircle,
+  Users,
+  Megaphone,
+  BadgePercent,
+  BarChart3,
+  ShieldCheck,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
-export default function BusinessCTA() {
-   return (
-      <section className="py-12 bg-white">
-         <div className="container mx-auto px-4">
-            <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl md:rounded-[2rem] overflow-hidden flex flex-col md:flex-row min-h-[360px] md:min-h-[460px] shadow-sm relative">
+const features = [
+  {
+    title: "Daha Fazla Müşteri",
+    desc: "Bölgenizdeki binlerce kişiye ulaşın.",
+    icon: Users,
+  },
+  {
+    title: "Hizmetlerinizi Tanıtın",
+    desc: "Fotoğraflarınızı ve hizmetlerinizi sergileyin.",
+    icon: Megaphone,
+  },
+  {
+    title: "Fırsatlar Yayınlayın",
+    desc: "Kampanya ve indirimlerle öne çıkın.",
+    icon: BadgePercent,
+  },
+  {
+    title: "İstatistikleri Takip Edin",
+    desc: "Görüntülenme ve tıklama verilerinizi görün.",
+    icon: BarChart3,
+  },
+  {
+    title: "Güven Rozeti",
+    desc: "Doğrulanmış işletme profiliyle güven kazanın.",
+    icon: ShieldCheck,
+  },
+];
 
-               {/* Left Side: Image */}
-               <div className="relative w-full md:w-1/2 min-h-[280px] md:min-h-full">
-                  <Image
-                     src="/images/business-cta.png"
-                     alt="Civardaki İşle  tme Hesabı"
-                     fill
-                     className="object-top object-cover"
-                     sizes="(max-width: 768px) 100vw, 50vw"
-                  />
-                  {/* Subtle Blue Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-blue-50/50 hidden md:block" />
+export default function BusinessCTASection() {
+  return (
+    <section className="bg-white py-10 md:border border-slate-200">
+      <div className="relative overflow-hidden  mx-auto container">
 
-                  {/* Floating Badge */}
-                  <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg flex items-center gap-3">
-                     <div className="w-10 h-10 bg-[#004aad]/10 rounded-full flex items-center justify-center text-[#004aad]">
-                        <Store className="w-5 h-5" />
-                     </div>
-                     <div>
-                        <div className="text-xs text-gray-500 font-medium">Civardaki</div>
-                        <div className="text-sm font-bold text-gray-900">İşletme Hesabı</div>
-                     </div>
-                  </div>
-               </div>
-
-               {/* Right Side: Content */}
-               <div className="w-full md:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-20 py-12 md:py-0 relative z-10">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/50 text-[#004aad] font-bold text-xs tracking-wider mb-6 w-fit">
-                     BÜYÜMEYE BAŞLA
-                  </div>
-
-                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight mb-5 tracking-tight">
-                     İşletmeni <br className="hidden md:block" />
-                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#004aad] to-blue-600">Mahalleliye</span> Tanıt
-                  </h2>
-
-                  <p className="text-gray-600 text-base md:text-lg mb-8 leading-relaxed">
-                     Profilini oluştur, menünü veya hizmetlerini sergile. Yakınındaki binlerce yeni müşteriye anında ulaş ve işini hemen büyüt.
-                  </p>
-
-                  <div>
-                     <Link
-                        href="/business/register"
-                        className="inline-flex items-center gap-2 px-7 py-4 bg-[#004aad] hover:bg-[#003d8f] shadow-lg shadow-[#004aad]/20 hover:shadow-[#004aad]/40 hover:-translate-y-0.5 text-white font-bold rounded-xl transition-all duration-200"
-                     >
-                        İşletme Hesabı Aç <ArrowRight className="w-5 h-5" />
-                     </Link>
-                  </div>
-               </div>
-
+        <div className="relative grid items-center gap-10 px-6 py-5 md:px-10 lg:grid-cols-[0.9fr_1.1fr]">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="mb-7 inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-5 py-3 text-sm font-black text-[#0057d9] shadow-sm">
+              <Store className="h-5 w-5" />
+              İşletmeler İçin
             </div>
-         </div>
-      </section>
-   );
+
+            <h2 className="max-w-2xl text-[42px] font-black leading-[1.08] tracking-[-0.045em] text-slate-950 md:text-[60px]">
+              İşletmeni{" "}
+              <span className="text-[#0057d9]">Civardaki’ye</span> Ekle
+            </h2>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+              Mahallendeki müşterilere ulaş, ücretsiz profilini oluştur,
+              hizmetlerini tanıt ve fırsatlarını yayınla.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-5">
+              {["Daha fazla görünürlük", "Yeni müşteriler", "Kolay yönetim"].map(
+                (item) => (
+                  <span
+                    key={item}
+                    className="inline-flex items-center gap-2 text-base font-bold text-slate-600"
+                  >
+                    <CheckCircle2 className="h-5 w-5 fill-[#0057d9] text-white" />
+                    {item}
+                  </span>
+                )
+              )}
+            </div>
+
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <Link
+                href="/business/register"
+                className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-[#0057d9] px-8 text-base font-black text-white shadow-[0_16px_36px_rgba(0,87,217,0.28)] transition hover:bg-[#004cc2]"
+              >
+                Ücretsiz Kaydol
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+
+              <Link
+                href="/how-it-works"
+                className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 text-base font-black text-[#0057d9] transition hover:bg-blue-50"
+              >
+                <PlayCircle className="h-5 w-5" />
+                Nasıl Çalışır?
+              </Link>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 24 }}
+            whileInView={{ opacity: 1, scale: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="relative flex justify-center lg:justify-end"
+          >
+
+            <img
+              src="/images/kayitol.png"
+              alt="Civardaki işletme profili"
+              className="relative z-10 w-full max-w-[620px] object-contain "
+            />
+          </motion.div>
+        </div>
+
+        <div className="relative border-t border-slate-100 bg-white/75 px-6 py-8 backdrop-blur-xl md:px-10 lg:px-14">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            {features.map((item, index) => {
+              const Icon = item.icon;
+
+              return (
+                <div
+                  key={item.title}
+                  className={`text-center ${
+                    index !== features.length - 1
+                      ? "lg:border-r lg:border-slate-200"
+                      : ""
+                  }`}
+                >
+                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+                    <Icon className="h-8 w-8 text-[#0057d9]" />
+                  </div>
+
+                  <h3 className="font-black text-slate-950">{item.title}</h3>
+                  <p className="mx-auto mt-2 max-w-[220px] text-sm leading-6 text-slate-500">
+                    {item.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

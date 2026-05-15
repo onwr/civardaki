@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { canAccessBusinessPanel } from "@/lib/session-business-access";
 
 export default function BusinessDashboardEntry() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function BusinessDashboardEntry() {
       return;
     }
 
-    if (!["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!canAccessBusinessPanel(session.user)) {
       router.replace("/user/dashboard");
       return;
     }

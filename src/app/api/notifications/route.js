@@ -34,7 +34,7 @@ const mockNotifications = [
     message: "Abonelik ödemeniz yakında sona erecek.",
     relatedId: null,
     relatedType: "subscription",
-    actionUrl: "/business/cash/accounts",
+    actionUrl: "/business/billing",
     isRead: false,
     readAt: null,
     createdAt: new Date(Date.now() - 3600000),

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireBusinessSession } from "@/lib/require-business-api";
 import { prisma } from "@/lib/prisma";
 import { unlink } from "fs/promises";
 import { join } from "path";
@@ -33,17 +32,8 @@ function parseCountryCode(v) {
     return COUNTRY_IDS.has(s) ? s : null;
 }
 
-async function requireBusiness() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return { err: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
-    if (!["BUSINESS", "ADMIN"].includes(session.user.role)) return { err: NextResponse.json({ message: "Forbidden" }, { status: 403 }) };
-    const businessId = session.user.businessId;
-    if (!businessId) return { err: NextResponse.json({ message: "Business not found" }, { status: 404 }) };
-    return { businessId };
-}
-
 export async function PATCH(req, { params }) {
-    const auth = await requireBusiness();
+    const auth = await requireBusinessSession();
     if (auth.err) return auth.err;
 
     const resolved = await params;
@@ -265,7 +255,7 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-    const auth = await requireBusiness();
+    const auth = await requireBusinessSession();
     if (auth.err) return auth.err;
 
     const resolved = await params;

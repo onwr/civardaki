@@ -378,7 +378,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-6 px-4 md:px-6 pb-24 max-w-[1400px] mx-auto font-sans space-y-6">
+    <div className="min-h-screen  py-6 px-4 md:px-6 pb-24 max-w-[1400px] mx-auto font-sans space-y-6">
       <OrdersHero
         stats={stats}
         onOpenReport={() => {

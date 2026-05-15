@@ -1,3 +1,4 @@
+import { canCallBusinessApi } from "@/lib/session-business-access";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -19,7 +20,7 @@ function safeStr(val) {
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!session?.user || !canCallBusinessApi(session.user)) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
     const businessId = session.user.businessId;
@@ -56,7 +57,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !["BUSINESS", "ADMIN"].includes(session.user.role)) {
+    if (!session?.user || !canCallBusinessApi(session.user)) {
       return NextResponse.json({ success: false, error: "Yetkisiz." }, { status: 401 });
     }
     const businessId = session.user.businessId;

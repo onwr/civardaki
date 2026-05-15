@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   Check,
   Undo2,
@@ -9,8 +8,6 @@ import {
   Banknote,
   List,
   Image as ImageIcon,
-  GitBranch,
-  Link2,
   Loader2,
   X,
   HelpCircle,
@@ -148,8 +145,6 @@ const TABS = [
   { id: "pricing", label: "FİYATLANDIRMA", Icon: Banknote },
   { id: "other", label: "DİĞER BİLGİLER", Icon: List },
   { id: "images", label: "RESİMLER", Icon: ImageIcon },
-  { id: "variant", label: "VARYANT", Icon: GitBranch },
-  { id: "linked", label: "BAĞLI ÜRÜNLER", Icon: Link2 },
 ];
 
 const PRODUCT_TYPE_LABELS = {
@@ -1180,80 +1175,9 @@ export default function ProductFormWizard({
                     ) : null}
 
                     <p className="mt-4 text-center text-sm text-slate-500">
-                      Ürünlerinize resim eklerseniz teklif ve satış ekranlarında
+                      Ürünlerinize resim eklerseniz Civardaki vitrin ve mağazada
                       daha güçlü görünür.
                     </p>
-                  </div>
-                </SectionCard>
-              )}
-
-              {activeTab === "variant" && (
-                <SectionCard title="Varyant Yönetimi" icon={GitBranch}>
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                      Varyantlı ürün tanımlamak için aşağıdaki varyant tanımlarından
-                      seçim yapabilirsiniz. Detaylı düzenleme için varyant sayfasını
-                      kullanın.
-                    </div>
-
-                    <div>
-                      <label className={label}>Varyantlar</label>
-                      <select className={inp} disabled={!prodForm.id}>
-                        <option value="">
-                          {prodForm.id
-                            ? "Varyant seçin…"
-                            : "Önce ürünü kaydedin"}
-                        </option>
-                      </select>
-                    </div>
-
-                    {prodForm.id ? (
-                      <Link
-                        href={`/business/products/variants?productId=${prodForm.id}`}
-                        className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700"
-                      >
-                        Varyantları yönet
-                      </Link>
-                    ) : (
-                      <p className="text-sm text-slate-500">
-                        Kayıt sonrası varyant ekleyebilirsiniz.
-                      </p>
-                    )}
-                  </div>
-                </SectionCard>
-              )}
-
-              {activeTab === "linked" && (
-                <SectionCard title="Bağlı Ürünler" icon={Link2}>
-                  <div className="space-y-4">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-relaxed text-emerald-900">
-                      Bu ürün her satıldığında dilerseniz başka ürünleri de stoktan
-                      otomatik düşebilirsiniz. Kombin ürünler için bu özelliği
-                      kullanabilirsiniz.
-                    </div>
-
-                    <div>
-                      <label className={label}>Ürün ara (yakında)</label>
-                      <input
-                        type="search"
-                        value={prodForm.linkedSearch}
-                        onChange={(e) =>
-                          setProdForm((p) => ({
-                            ...p,
-                            linkedSearch: e.target.value,
-                          }))
-                        }
-                        className={inp}
-                        placeholder="Ürün isminden arayın ya da barkod okutun..."
-                        disabled={!prodForm.id}
-                      />
-                    </div>
-
-                    {!prodForm.id ? (
-                      <p className="text-sm text-amber-700">
-                        Bağlı ürün eklemek için önce ürünü kaydedin.
-                      </p>
-                    ) : null}
                   </div>
                 </SectionCard>
               )}

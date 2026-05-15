@@ -33,8 +33,8 @@ export default function DashboardModuleSummaries({ navModules = [], businessType
           Sol menüdeki bölümler — hızlı metrikler
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          Menüde gizlediğiniz modüller burada da görünmez. İş planlama, talepler, siparişler ve diğer araçlar için özet
-          sayılar API üzerinden gelir; satış ve alış tutarları sipariş / alış belgeleri üzerinden hesaplanır.
+          Menüde gizlediğiniz modüller burada da görünmez. Özet sayılar Civardaki platform verilerinden gelir (talepler,
+          siparişler, vitrin ve araçlar).
         </p>
       </div>
 

@@ -41,15 +41,13 @@ export default function HomePage() {
         <HeroSection />
       </div>
 
-      <CategorySlider />
-      <FeaturesSection />
+
       <HowItWorksSection />
 
-      <div className="container mx-auto px-4 py-4">
+      <div className="">
         <AdSlot placement="BANNER" />
       </div>
 
-      <FeaturedListings />
       <BusinessCTA />
       <UserCTA />
       <AppCTA />

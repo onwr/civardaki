@@ -1,12 +1,9 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
-  FileSpreadsheet,
-  RefreshCw,
-  Images,
   Trash2,
   Edit,
   Loader2,
@@ -20,8 +17,6 @@ import {
   Search,
   FolderPlus,
   Check,
-  Download,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { parseTrMoney } from "@/lib/tr-money";
@@ -60,27 +55,26 @@ function formatStock(p) {
 }
 
 function StatCard({ title, value, sub, icon: Icon, tone = "blue" }) {
-  const tones = {
-    blue: "from-blue-600 to-indigo-700 text-white",
-    emerald: "from-emerald-500 to-emerald-700 text-white",
-    amber: "from-amber-400 to-orange-500 text-white",
-    slate: "from-slate-800 to-slate-900 text-white",
+  const iconTones = {
+    blue: "bg-blue-50 text-[#0057d9]",
+    emerald: "bg-emerald-50 text-emerald-600",
+    amber: "bg-amber-50 text-amber-600",
+    slate: "bg-slate-100 text-slate-600",
   };
 
   return (
     <div
-      className={`relative overflow-hidden rounded-[24px] bg-gradient-to-br ${tones[tone]} p-5 shadow-[0_12px_30px_rgba(15,23,42,0.14)]`}
+      className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-[0_12px_40px_rgba(15,23,42,0.06)]"
     >
-      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-      <div className="relative flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
             {title}
           </p>
-          <p className="mt-3 text-2xl font-bold tracking-tight">{value}</p>
-          {sub ? <p className="mt-2 text-xs text-white/75">{sub}</p> : null}
+          <p className="mt-2 text-2xl font-black tracking-tight text-slate-900">{value}</p>
+          {sub ? <p className="mt-1.5 text-xs font-medium text-slate-500">{sub}</p> : null}
         </div>
-        <div className="rounded-2xl border border-white/15 bg-white/10 p-3">
+        <div className={`rounded-2xl p-3 ${iconTones[tone] || iconTones.blue}`}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
@@ -106,6 +100,8 @@ function ActionButton({
     dark: "bg-slate-900 hover:bg-slate-800 border-slate-900 text-white",
     white:
       "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 shadow-sm",
+    primary:
+      "bg-[#0057d9] hover:bg-[#004cc2] border-[#0057d9] text-white shadow-[0_8px_24px_rgba(0,87,217,0.28)]",
   };
 
   return (
@@ -118,6 +114,74 @@ function ActionButton({
       {Icon ? <Icon className="h-4 w-4" /> : null}
       {children}
     </button>
+  );
+}
+
+function ProductRowCell({ product, onEdit, onDelete }) {
+  const code = productDisplayCode(product);
+  return (
+    <>
+      <td className="px-4 py-4 md:px-5">
+        <div className="flex items-center gap-3">
+          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-slate-400">
+                <Package className="h-5 w-5" />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-bold text-slate-900 leading-snug">{product.name}</p>
+            {product.category?.name ? (
+              <p className="mt-0.5 text-xs font-medium text-slate-500">
+                {product.category.name}
+              </p>
+            ) : null}
+            {code ? (
+              <span className="mt-1.5 inline-flex rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                {code}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-4 text-right md:px-5">
+        <span className="inline-flex rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-bold tabular-nums text-[#0057d9]">
+          {formatSalePrice(product)}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-right md:px-5">
+        <span className="inline-flex rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold tabular-nums text-slate-700">
+          {formatStock(product)}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-center md:px-5">
+        <div className="flex justify-center gap-2">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-xl border border-slate-200 bg-white p-2.5 text-[#0057d9] transition hover:border-blue-200 hover:bg-blue-50"
+            title="Düzenle"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-xl border border-slate-200 bg-white p-2.5 text-rose-600 transition hover:border-rose-200 hover:bg-rose-50"
+            title="Sil"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </td>
+    </>
   );
 }
 
@@ -172,27 +236,6 @@ export default function ProductManager() {
   const [brandDraft, setBrandDraft] = useState("");
   const [isShelfModalOpen, setIsShelfModalOpen] = useState(false);
   const [shelfDraft, setShelfDraft] = useState("");
-  const [uploadingBulkImages, setUploadingBulkImages] = useState(false);
-  const bulkImageInputRef = useRef(null);
-  const [uploadingBulkUpdate, setUploadingBulkUpdate] = useState(false);
-  const bulkUpdateInputRef = useRef(null);
-  const [uploadingExcelCreate, setUploadingExcelCreate] = useState(false);
-  const excelCreateImportRef = useRef(null);
-
-  const [mainTab, setMainTab] = useState("list");
-  const [bulkDelProducts, setBulkDelProducts] = useState([]);
-  const [bulkDelLoading, setBulkDelLoading] = useState(false);
-  const [bulkDelPage, setBulkDelPage] = useState(1);
-  const [bulkDelTotalPages, setBulkDelTotalPages] = useState(1);
-  const [bulkDelQ, setBulkDelQ] = useState("");
-  const [bulkDelStatus, setBulkDelStatus] = useState("all");
-  const [bulkDelStock, setBulkDelStock] = useState("");
-  const [bulkDelCat, setBulkDelCat] = useState("");
-  const [bulkDelBrand, setBulkDelBrand] = useState("");
-  const [bulkDelWarehouse, setBulkDelWarehouse] = useState("");
-  const [warehouses, setWarehouses] = useState([]);
-  const [bulkSelected, setBulkSelected] = useState(() => new Set());
-  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -267,108 +310,6 @@ export default function ProductManager() {
   }, [fetchProductOptions]);
 
   useEffect(() => {
-    if (mainTab !== "bulk-delete") return;
-    (async () => {
-      try {
-        const res = await fetch("/api/business/warehouses");
-        if (res.ok) {
-          const data = await res.json();
-          setWarehouses(Array.isArray(data) ? data : []);
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [mainTab]);
-
-  const runBulkList = async (p) => {
-    setBulkDelLoading(true);
-    setBulkDelPage(p);
-    try {
-      const q = new URLSearchParams({
-        page: String(p),
-        limit: "100",
-        status: bulkDelStatus,
-        sort: "order",
-        bulk: "1",
-      });
-      if (bulkDelCat) q.set("categoryId", bulkDelCat);
-      if (bulkDelBrand) q.set("brand", bulkDelBrand);
-      if (bulkDelStock) q.set("stockFilter", bulkDelStock);
-      if (bulkDelWarehouse) q.set("warehouseId", bulkDelWarehouse);
-      if (bulkDelQ.trim().length >= 2) q.set("q", bulkDelQ.trim());
-
-      const res = await fetch(`/api/business/products?${q.toString()}`);
-      if (!res.ok) {
-        toast.error("Ürünler yüklenemedi.");
-        return;
-      }
-      const data = await res.json();
-      setBulkDelProducts(data.items || []);
-      setBulkDelTotalPages(data.pagination?.totalPages || 1);
-    } catch (e) {
-      console.error(e);
-      toast.error("Ürünler yüklenemedi.");
-    } finally {
-      setBulkDelLoading(false);
-    }
-  };
-
-  const toggleBulkOne = (id) => {
-    setBulkSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  };
-
-  const toggleBulkPage = () => {
-    const pageIds = bulkDelProducts.map((x) => x.id);
-    const allOn =
-      pageIds.length > 0 && pageIds.every((id) => bulkSelected.has(id));
-    setBulkSelected((prev) => {
-      const n = new Set(prev);
-      if (allOn) pageIds.forEach((id) => n.delete(id));
-      else pageIds.forEach((id) => n.add(id));
-      return n;
-    });
-  };
-
-  const deleteBulkSelected = async () => {
-    const ids = [...bulkSelected];
-    if (ids.length === 0) return;
-    if (
-      !confirm(
-        `${ids.length} ürün kalıcı olarak silinsin mi? Bu işlem geri alınamaz.`,
-      )
-    ) {
-      return;
-    }
-    setBulkDeleting(true);
-    try {
-      const res = await fetch("/api/business/products/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.message || "Silinemedi.");
-        return;
-      }
-      toast.success(data.message || "Silindi.");
-      setBulkSelected(new Set());
-      await runBulkList(bulkDelPage);
-      fetchProducts();
-    } catch {
-      toast.error("Silinemedi.");
-    } finally {
-      setBulkDeleting(false);
-    }
-  };
-
-  useEffect(() => {
     if (!isProdModalOpen) return;
     const b = prodForm.brand?.trim();
     if (b) {
@@ -428,194 +369,13 @@ export default function ProductManager() {
       toast.error("Marka en az 2 karakter olmalı.");
       return;
     }
-    try {
-      const res = await fetch("/api/business/masterdata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "PRODUCT_BRAND", name: t }),
-      });
-      if (!res.ok && res.status !== 409) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Marka kaydedilemedi.");
-        return;
-      }
-      await fetchProductOptions();
-      setProdForm((p) => ({ ...p, brand: t }));
-      setIsBrandModalOpen(false);
-      setBrandDraft("");
-      toast.success(
-        res.status === 409
-          ? "Bu marka zaten tanımlıydı; seçildi."
-          : "Marka tanımlara kaydedildi ve seçildi.",
-      );
-    } catch {
-      toast.error("Marka kaydedilemedi.");
-    }
-  };
-
-  const downloadProductImageList = async () => {
-    try {
-      const res = await fetch("/api/business/products/export-images");
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Liste indirilemedi.");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `urun-resim-listesi-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Ürün listesi indirildi.");
-    } catch {
-      toast.error("İndirme başarısız.");
-    }
-  };
-
-  const downloadProductUpdateList = async () => {
-    try {
-      const res = await fetch("/api/business/products/export-update");
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Liste indirilemedi.");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `urun-toplu-guncelleme-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Ürün listesi indirildi.");
-    } catch {
-      toast.error("İndirme başarısız.");
-    }
-  };
-
-  const onBulkUpdateFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setUploadingBulkUpdate(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/business/products/import-update", {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.message || "Yükleme başarısız.");
-        return;
-      }
-      toast.success(data.message || "Tamamlandı.");
-      if (Array.isArray(data.errors) && data.errors.length > 0) {
-        data.errors.slice(0, 8).forEach((err) =>
-          toast.message(`Satır ${err.row}: ${err.message}`),
-        );
-        if (data.errors.length > 8) {
-          toast.message(`…ve ${data.errors.length - 8} satır daha.`);
-        }
-      }
-      fetchProducts();
-    } catch {
-      toast.error("Yükleme başarısız.");
-    } finally {
-      setUploadingBulkUpdate(false);
-    }
-  };
-
-  const downloadExcelCreateTemplate = async () => {
-    try {
-      const res = await fetch("/api/business/products/import-create");
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Şablon indirilemedi.");
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `urun-yukleme-sablonu-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Şablon indirildi.");
-    } catch {
-      toast.error("İndirme başarısız.");
-    }
-  };
-
-  const onExcelCreateImport = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setUploadingExcelCreate(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/business/products/import-create", {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.message || "Yükleme başarısız.");
-        return;
-      }
-      toast.success(data.message || "Tamamlandı.");
-      if (Array.isArray(data.errors) && data.errors.length > 0) {
-        data.errors.slice(0, 8).forEach((err) =>
-          toast.message(`Satır ${err.row}: ${err.message}`),
-        );
-        if (data.errors.length > 8) {
-          toast.message(`…ve ${data.errors.length - 8} satır daha.`);
-        }
-      }
-      fetchProducts();
-    } catch {
-      toast.error("Yükleme başarısız.");
-    } finally {
-      setUploadingExcelCreate(false);
-    }
-  };
-
-  const onBulkImageFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setUploadingBulkImages(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/business/products/import-images", {
-        method: "POST",
-        body: fd,
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.message || "Yükleme başarısız.");
-        return;
-      }
-      toast.success(data.message || "Tamamlandı.");
-      if (Array.isArray(data.errors) && data.errors.length > 0) {
-        data.errors.slice(0, 8).forEach((err) =>
-          toast.message(`Satır ${err.row}: ${err.message}`),
-        );
-        if (data.errors.length > 8) {
-          toast.message(`…ve ${data.errors.length - 8} satır daha.`);
-        }
-      }
-      fetchProducts();
-    } catch {
-      toast.error("Yükleme başarısız.");
-    } finally {
-      setUploadingBulkImages(false);
-    }
+    setBrandOptions((prev) =>
+      prev.includes(t) ? prev : [...prev, t].sort((a, x) => a.localeCompare(x, "tr")),
+    );
+    setProdForm((p) => ({ ...p, brand: t }));
+    setIsBrandModalOpen(false);
+    setBrandDraft("");
+    toast.success("Marka seçildi.");
   };
 
   const handleShelfModalSubmit = async (e) => {
@@ -625,29 +385,13 @@ export default function ProductManager() {
       toast.error("Raf yeri en az 2 karakter olmalı.");
       return;
     }
-    try {
-      const res = await fetch("/api/business/masterdata", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "SHELF_LOCATION", name: t }),
-      });
-      if (!res.ok && res.status !== 409) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.message || "Raf yeri kaydedilemedi.");
-        return;
-      }
-      await fetchProductOptions();
-      setProdForm((p) => ({ ...p, shelfLocation: t }));
-      setIsShelfModalOpen(false);
-      setShelfDraft("");
-      toast.success(
-        res.status === 409
-          ? "Bu raf yeri zaten tanımlıydı; seçildi."
-          : "Raf yeri tanımlara kaydedildi ve seçildi.",
-      );
-    } catch {
-      toast.error("Raf yeri kaydedilemedi.");
-    }
+    setShelfOptions((prev) =>
+      prev.includes(t) ? prev : [...prev, t].sort((a, x) => a.localeCompare(x, "tr")),
+    );
+    setProdForm((p) => ({ ...p, shelfLocation: t }));
+    setIsShelfModalOpen(false);
+    setShelfDraft("");
+    toast.success("Raf yeri seçildi.");
   };
 
   const handleCatSubmit = async (e) => {
@@ -860,67 +604,25 @@ export default function ProductManager() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] space-y-6 bg-slate-100/80 p-4 text-[13px] text-slate-800 antialiased md:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="relative overflow-hidden rounded-[30px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-[0_24px_50px_rgba(15,23,42,0.22)]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.20),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" />
-          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+    <div className="min-h-[calc(100vh-8rem)] p-4 text-[13px] text-slate-800 antialiased md:p-6">
+      <div className="mx-auto max-w-[1480px] space-y-6">
+        <section className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-[0_24px_80px_rgba(15,23,42,0.06)] md:p-8">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#0057d9]">
                 <Package className="h-4 w-4" />
                 Ürün Yönetimi
               </div>
-
-              <h1 className="text-2xl font-bold tracking-tight md:text-4xl">
-                Ürünler / Hizmetler
+              <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+                Ürünler & Hizmetler
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 md:text-base">
-                Ürün ve hizmetlerinizi yönetin, fiyat ve stok bilgilerini takip edin,
-                kategori bazlı filtreleyin ve içerikleri düzenleyin.
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500 md:text-base">
+                İşletmenize ait ürün ve hizmetleri yönetin, fiyat ve stok bilgilerini güncelleyin.
               </p>
             </div>
-
             <div className="flex flex-wrap items-center gap-3">
-              <ActionButton
-                onClick={openNewProduct}
-                icon={Plus}
-                tone="green"
-              >
-                Yeni Ürün/Hizmet Ekle
-              </ActionButton>
-
-                <div className="flex flex-col items-stretch gap-1.5">
-                <input
-                  ref={excelCreateImportRef}
-                  type="file"
-                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="sr-only"
-                  onChange={onExcelCreateImport}
-                />
-                <ActionButton
-                  onClick={() => excelCreateImportRef.current?.click()}
-                  icon={FileSpreadsheet}
-                  tone="orange"
-                  disabled={uploadingExcelCreate}
-                >
-                  {uploadingExcelCreate ? "Yükleniyor…" : "Excel'den Ürün Yükle"}
-                </ActionButton>
-                <button
-                  type="button"
-                  onClick={downloadExcelCreateTemplate}
-                  className="text-center text-[11px] font-semibold text-white/70 underline-offset-2 hover:text-white hover:underline"
-                >
-                  Boş Excel şablonu indir
-                </button>
-              </div>
-
-              <ActionButton
-                type="button"
-                onClick={() => setMainTab("bulk-update")}
-                icon={RefreshCw}
-                tone="blue"
-              >
-                Toplu Güncelleme
+              <ActionButton onClick={openNewProduct} icon={Plus} tone="primary">
+                Yeni Ürün / Hizmet Ekle
               </ActionButton>
             </div>
           </div>
@@ -957,68 +659,7 @@ export default function ProductManager() {
           />
         </section>
 
-        <div className="flex flex-wrap gap-2 rounded-[24px] border border-slate-200 bg-white p-2 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setMainTab("list")}
-            className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              mainTab === "list"
-                ? "bg-slate-900 text-white"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Ürün listesi
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainTab("bulk-images")}
-            className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              mainTab === "bulk-images"
-                ? "bg-slate-900 text-white"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Images className="h-4 w-4" />
-              Toplu resim güncelleme
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainTab("bulk-update")}
-            className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              mainTab === "bulk-update"
-                ? "bg-slate-900 text-white"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              Toplu ürün güncelleme
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainTab("bulk-delete")}
-            className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              mainTab === "bulk-delete"
-                ? "bg-slate-900 text-white"
-                : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-            }`}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Trash2 className="h-4 w-4" />
-              Toplu ürün silme
-            </span>
-          </button>
-        </div>
-
-        {mainTab === "list" && (
-          <>
-        <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-5">
+        <section className="rounded-[28px] border border-slate-100 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] md:p-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
@@ -1039,7 +680,7 @@ export default function ProductManager() {
                   }}
                   className={`rounded-lg px-3 py-2 transition-colors ${
                     filterStatus === "active"
-                      ? "bg-slate-900 text-white"
+                      ? "bg-[#0057d9] text-white shadow-sm"
                       : "text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -1054,7 +695,7 @@ export default function ProductManager() {
                   }}
                   className={`rounded-lg px-3 py-2 transition-colors ${
                     filterStatus === "all"
-                      ? "bg-slate-900 text-white"
+                      ? "bg-[#0057d9] text-white shadow-sm"
                       : "text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -1085,8 +726,8 @@ export default function ProductManager() {
                   type="search"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="arama... (en az 3 karakter)"
-                  className="min-w-[220px] rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none placeholder:text-slate-400 focus:border-slate-400 md:w-72"
+                  placeholder="Ürün veya kod ara (en az 3 karakter)"
+                  className="min-w-[220px] rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm font-medium outline-none placeholder:text-slate-400 focus:border-[#0057d9] focus:ring-4 focus:ring-blue-500/10 md:w-80"
                 />
               </div>
 
@@ -1104,7 +745,7 @@ export default function ProductManager() {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+        <section className="overflow-hidden rounded-[28px] border border-slate-100 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
             <div>
               <h3 className="text-base font-bold text-slate-900">Ürün Listesi</h3>
@@ -1123,34 +764,34 @@ export default function ProductManager() {
             </div>
           </div>
 
-          <div className="max-h-[min(70vh,720px)] overflow-auto">
-            <table className="w-full border-collapse text-left text-[13px]">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-900 text-white">
-                  <th className="border-b border-slate-800 px-4 py-3 font-semibold md:px-5">
-                    Ürün Hizmet Adı
+          <div className="max-h-[min(70vh,720px)] overflow-x-auto">
+            <table className="min-w-[640px] w-full border-collapse text-left text-[13px]">
+              <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide md:px-5">
+                    Ürün / Hizmet
                   </th>
-                  <th className="w-40 border-b border-slate-800 px-4 py-3 text-right font-semibold md:px-5">
+                  <th className="w-40 px-4 py-3 text-right text-xs font-bold uppercase tracking-wide md:px-5">
                     <button
                       type="button"
                       onClick={cyclePriceSort}
-                      className="inline-flex w-full items-center justify-end gap-1 hover:opacity-90"
+                      className="inline-flex w-full items-center justify-end gap-1 text-slate-500 hover:text-slate-800"
                     >
                       Satış Fiyatı
                       {priceSortIcon}
                     </button>
                   </th>
-                  <th className="w-40 border-b border-slate-800 px-4 py-3 text-right font-semibold md:px-5">
+                  <th className="w-40 px-4 py-3 text-right text-xs font-bold uppercase tracking-wide md:px-5">
                     <button
                       type="button"
                       onClick={cycleStockSort}
-                      className="inline-flex w-full items-center justify-end gap-1 hover:opacity-90"
+                      className="inline-flex w-full items-center justify-end gap-1 text-slate-500 hover:text-slate-800"
                     >
                       Stok Miktarı
                       {stockSortIcon}
                     </button>
                   </th>
-                  <th className="w-28 border-b border-slate-800 px-4 py-3 text-center font-semibold md:px-5">
+                  <th className="w-32 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide md:px-5">
                     İşlem
                   </th>
                 </tr>
@@ -1164,58 +805,19 @@ export default function ProductManager() {
                     </td>
                   </tr>
                 ) : (
-                  products.map((p, index) => (
+                  products.map((p) => (
                     <tr
                       key={p.id}
-                      className={`border-b border-slate-100 transition hover:bg-sky-50/70 ${
-                        index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-                      }`}
+                      className="border-b border-slate-100 bg-white transition hover:bg-slate-50/80"
                     >
-                      <td className="px-4 py-3.5 md:px-5">
-                        <div className="flex min-h-[2.75rem] items-center justify-between gap-2 rounded-md bg-sky-100 px-3 py-2 text-slate-900">
-                          <span className="min-w-0 flex-1 font-medium leading-snug">
-                            {p.name}
-                          </span>
-                          {productDisplayCode(p) && (
-                            <span className="shrink-0 rounded bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">
-                              {productDisplayCode(p)}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3.5 text-right font-medium tabular-nums md:px-5">
-                        {formatSalePrice(p)}
-                      </td>
-
-                      <td className="px-4 py-3.5 text-right font-medium tabular-nums md:px-5">
-                        {formatStock(p)}
-                      </td>
-
-                      <td className="px-4 py-3.5 text-center md:px-5">
-                        <div className="flex justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProdForm(productToForm(p));
-                              setIsProdModalOpen(true);
-                            }}
-                            className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50"
-                            title="Düzenle"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteProd(p.id)}
-                            className="rounded-lg p-2 text-rose-600 transition hover:bg-rose-50"
-                            title="Sil"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+                      <ProductRowCell
+                        product={p}
+                        onEdit={() => {
+                          setProdForm(productToForm(p));
+                          setIsProdModalOpen(true);
+                        }}
+                        onDelete={() => deleteProd(p.id)}
+                      />
                     </tr>
                   ))
                 )}
@@ -1251,441 +853,6 @@ export default function ProductManager() {
             </button>
           </div>
         )}
-          </>
-        )}
-
-        {mainTab === "bulk-images" && (
-        <section
-          id="toplu-resim"
-          className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-6"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
-                Toplu resim güncelleme
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Önce ürün listenizi indirin; resim URL’lerini Excel’de doldurup
-                yükleyin.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={downloadProductImageList}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              <Download className="h-4 w-4" />
-              Ürün Listesi İndir
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm leading-relaxed text-amber-950">
-            <p className="font-semibold text-amber-900">Nasıl kullanılır?</p>
-            <ul className="mt-2 list-inside list-disc space-y-1.5 text-amber-950/90">
-              <li>
-                Önce ürünlerinizi indirin, resim adreslerini dosyada güncelleyin,
-                ardından yükleme düğmesini kullanın.
-              </li>
-              <li>
-                Sütun sırasını değiştirmeyin ve sütun silmeyin. Yeni satır
-                eklemeyin; yalnızca mevcut ürünler güncellenir.
-              </li>
-              <li>
-                Resim adresleri <strong>https://</strong> ile başlamalıdır; SSL
-                olmayan adresler işlenmez.
-              </li>
-              <li>
-                Uzantı: yalnızca <strong>.jpg</strong>, <strong>.jpeg</strong>,{" "}
-                <strong>.gif</strong>, <strong>.png</strong>
-              </li>
-              <li>
-                Yükleme, ilgili ürünlerin mevcut resimlerini bu dosyadaki
-                adreslerle değiştirir (en fazla 6 resim / ürün).
-              </li>
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/80 p-4">
-            <p className="text-sm font-medium text-emerald-950">
-              Hazır dosyayı aşağıdaki düğme ile yükleyin.
-            </p>
-            <input
-              ref={bulkImageInputRef}
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              className="sr-only"
-              onChange={onBulkImageFileChange}
-            />
-            <button
-              type="button"
-              disabled={uploadingBulkImages}
-              onClick={() => bulkImageInputRef.current?.click()}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60 sm:w-auto"
-            >
-              {uploadingBulkImages ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              Excel Dosyası Yükleyin
-            </button>
-            <p className="mt-3 text-xs leading-relaxed text-red-800/90">
-              İşlem sırasında çözemediğiniz bir sorun olursa Excel dosyanızı{" "}
-              <a
-                href="mailto:destek@bizimhesap.com"
-                className="font-semibold underline underline-offset-2"
-              >
-                destek@bizimhesap.com
-              </a>{" "}
-              adresine gönderebilirsiniz.
-            </p>
-          </div>
-        </section>
-        )}
-
-        {mainTab === "bulk-update" && (
-        <section
-          id="toplu-urun-guncelleme"
-          className="space-y-4 rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-6"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
-                Toplu ürün güncelleme
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Ürün fiyatlarını ve diğer alanları toplu güncellemek için önce
-                mevcut ürün listenizi indirin; Excel’de düzenleyip kaydettikten
-                sonra kırmızı düğme ile yükleyin.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={downloadProductUpdateList}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-700 bg-[#5cb85c] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              <Download className="h-4 w-4" />
-              Ürün Listesi İndir
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-amber-200/80 bg-[#fffbeb] p-4 text-sm leading-relaxed text-amber-950 shadow-sm">
-            <p className="text-amber-950/95">
-              Önce yeşil <strong>Ürün Listesi İndir</strong> düğmesiyle
-              güncel ürünlerinizi bilgisayarınıza indirin. Fiyat ve diğer
-              alanları dosyada güncelleyip kaydettikten sonra kırmızı{" "}
-              <strong>Excel Dosyası Yükleyin</strong> düğmesiyle sisteme
-              yükleyin.
-            </p>
-            <ul className="mt-3 list-inside list-disc space-y-1.5 text-amber-950/90">
-              <li>Sütun sırasını değiştirmeyin ve sütun silmeyin.</li>
-              <li>
-                <span className="font-bold text-red-700">
-                  Ürün isimlerini değiştirmeyin.
-                </span>{" "}
-                Diğer sütunları güncelleyebilirsiniz.
-              </li>
-              <li>
-                Para birimi için TL, USD, EUR vb. kullanın (ürün kartında
-                gördüğünüz gibi). Boş bırakırsanız varsayılan TL kabul edilir.
-              </li>
-              <li>
-                Satış birimi için adet, kg, metre vb. sistemdeki ifadeleri
-                kullanın.
-              </li>
-              <li>
-                Pasifleştirmek istediğiniz ürünler için{" "}
-                <strong>Aktif/Pasif</strong> sütununda <strong>P</strong>{" "}
-                yazın; aktif için <strong>A</strong>.
-              </li>
-              <li>
-                Eşdeğer ürün kodlarını <strong>Etiketler</strong> sütununda
-                virgülle ayırarak güncelleyin.
-              </li>
-              <li>
-                <span className="font-bold text-red-700">
-                  Dosyaya yeni satır eklemeyin.
-                </span>{" "}
-                Bu dosya yalnızca mevcut ürünleri güncellemek içindir.
-              </li>
-            </ul>
-          </div>
-
-          <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/90 p-4 shadow-sm">
-            <p className="text-sm font-medium text-emerald-950">
-              Doldurduğunuz Excel dosyasını aşağıdaki düğme ile sisteme
-              yükleyin.
-            </p>
-            <input
-              ref={bulkUpdateInputRef}
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              className="sr-only"
-              onChange={onBulkUpdateFileChange}
-            />
-            <button
-              type="button"
-              disabled={uploadingBulkUpdate}
-              onClick={() => bulkUpdateInputRef.current?.click()}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-700 bg-[#d9534f] px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60 sm:w-auto"
-            >
-              {uploadingBulkUpdate ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4" />
-              )}
-              Excel Dosyası Yükleyin
-            </button>
-            <p className="mt-3 text-xs leading-relaxed text-red-900/95">
-              İşlem esnasında çözemediğiniz bir problem olursa Excel dosyanızı{" "}
-              <a
-                href="mailto:destek@bizimhesap.com"
-                className="font-semibold underline underline-offset-2"
-              >
-                destek@bizimhesap.com
-              </a>{" "}
-              adresine gönderin.
-            </p>
-          </div>
-        </section>
-        )}
-
-        {mainTab === "bulk-delete" && (
-        <div className="space-y-4">
-          <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)] md:p-6">
-            <div className="mb-4 rounded-xl bg-[#004aad] px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-white">
-              Toplu ürün silme
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              <div>
-                <label className={label}>Ürün</label>
-                <input
-                  type="search"
-                  value={bulkDelQ}
-                  onChange={(e) => setBulkDelQ(e.target.value)}
-                  placeholder="Ürün adı, kodu veya barkod"
-                  className={inp}
-                />
-              </div>
-              <div>
-                <label className={label}>Ürün durumu</label>
-                <select
-                  value={bulkDelStatus}
-                  onChange={(e) => setBulkDelStatus(e.target.value)}
-                  className={inp}
-                >
-                  <option value="all">Tüm ürünler</option>
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Pasif</option>
-                </select>
-              </div>
-              <div>
-                <label className={label}>Stok durumu</label>
-                <select
-                  value={bulkDelStock}
-                  onChange={(e) => setBulkDelStock(e.target.value)}
-                  className={inp}
-                >
-                  <option value="">Tümü</option>
-                  <option value="positive">Stok &gt; 0</option>
-                  <option value="zero">Stok = 0</option>
-                  <option value="negative">Stok &lt; 0</option>
-                  <option value="unset">Stok tanımsız</option>
-                </select>
-              </div>
-              <div>
-                <label className={label}>Kategori</label>
-                <select
-                  value={bulkDelCat}
-                  onChange={(e) => setBulkDelCat(e.target.value)}
-                  className={inp}
-                >
-                  <option value="">Tüm kategoriler</option>
-                  <option value="null">Kategorisiz</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={label}>Marka</label>
-                <select
-                  value={bulkDelBrand}
-                  onChange={(e) => setBulkDelBrand(e.target.value)}
-                  className={inp}
-                >
-                  <option value="">Tüm markalar</option>
-                  {brandOptions.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={label}>Depo</label>
-                <select
-                  value={bulkDelWarehouse}
-                  onChange={(e) => setBulkDelWarehouse(e.target.value)}
-                  className={inp}
-                >
-                  <option value="">Tüm depolar</option>
-                  {warehouses.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setBulkSelected(new Set());
-                  void runBulkList(1);
-                }}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-700 bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700"
-              >
-                Ürün Listele
-              </button>
-            </div>
-          </section>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              disabled={bulkDeleting || bulkSelected.size === 0}
-              onClick={deleteBulkSelected}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-800 bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              Seçilenleri Sil ({bulkSelected.size})
-            </button>
-          </div>
-
-          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-            <div className="max-h-[min(70vh,720px)] overflow-auto">
-              <table className="w-full border-collapse text-left text-[13px]">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-700 text-white">
-                    <th className="w-10 border-b border-slate-600 px-2 py-3 text-center md:px-3">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300"
-                        checked={
-                          bulkDelProducts.length > 0 &&
-                          bulkDelProducts.every((p) => bulkSelected.has(p.id))
-                        }
-                        onChange={toggleBulkPage}
-                        title="Sayfadaki tümünü seç"
-                      />
-                    </th>
-                    <th className="border-b border-slate-600 px-4 py-3 font-semibold md:px-5">
-                      Ürün adı
-                    </th>
-                    <th className="w-28 border-b border-slate-600 px-4 py-3 font-semibold md:px-5">
-                      Barkod
-                    </th>
-                    <th className="w-28 border-b border-slate-600 px-4 py-3 font-semibold md:px-5">
-                      Ürün kodu
-                    </th>
-                    <th className="w-32 border-b border-slate-600 px-4 py-3 font-semibold md:px-5">
-                      Marka
-                    </th>
-                    <th className="w-32 border-b border-slate-600 px-4 py-3 font-semibold md:px-5">
-                      Kategori
-                    </th>
-                    <th className="w-24 border-b border-slate-600 px-4 py-3 text-right font-semibold md:px-5">
-                      Stok
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bulkDelLoading ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
-                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
-                      </td>
-                    </tr>
-                  ) : bulkDelProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-14 text-center text-slate-500">
-                        Ürünleri görmek için filtreleri seçip{" "}
-                        <strong>Ürün Listele</strong>ye basın.
-                      </td>
-                    </tr>
-                  ) : (
-                    bulkDelProducts.map((p, index) => (
-                      <tr
-                        key={p.id}
-                        className={`border-b border-slate-100 ${
-                          index % 2 === 0 ? "bg-white" : "bg-slate-50/60"
-                        }`}
-                      >
-                        <td className="px-2 py-2 text-center md:px-3">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-slate-300"
-                            checked={bulkSelected.has(p.id)}
-                            onChange={() => toggleBulkOne(p.id)}
-                          />
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-slate-900 md:px-5">
-                          {p.name}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-slate-700 md:px-5">
-                          {p.barcode || "—"}
-                        </td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-slate-700 md:px-5">
-                          {p.productCode || productDisplayCode(p)}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-600 md:px-5">
-                          {p.brand || "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-600 md:px-5">
-                          {p.category?.name || "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-right tabular-nums text-slate-800 md:px-5">
-                          {formatStock(p)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          {bulkDelTotalPages > 1 && (
-            <div className="flex justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-              <button
-                type="button"
-                disabled={bulkDelPage === 1 || bulkDelLoading}
-                onClick={() => void runBulkList(bulkDelPage - 1)}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 disabled:opacity-40"
-              >
-                Önceki
-              </button>
-              <span className="px-4 py-2 text-sm font-bold text-slate-900">
-                {bulkDelPage} / {bulkDelTotalPages}
-              </span>
-              <button
-                type="button"
-                disabled={
-                  bulkDelPage === bulkDelTotalPages || bulkDelLoading
-                }
-                onClick={() => void runBulkList(bulkDelPage + 1)}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 disabled:opacity-40"
-              >
-                Sonraki
-              </button>
-            </div>
-          )}
-        </div>
-        )}
       </div>
 
       <AnimatePresence>
@@ -1697,14 +864,14 @@ export default function ProductManager() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
             >
-              <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-900 px-5 py-4 text-white">
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                       Kategori
                     </p>
-                    <h3 className="mt-1 flex items-center gap-2 text-lg font-bold">
-                      <FolderPlus className="h-5 w-5 opacity-90" />
+                    <h3 className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900">
+                      <FolderPlus className="h-5 w-5 text-[#0057d9]" />
                       {catForm.id ? "Kategori düzenle" : "Yeni kategori ekle"}
                     </h3>
                   </div>
@@ -1715,7 +882,7 @@ export default function ProductManager() {
                       setIsCatModalOpen(false);
                       setCatForm({ id: null, name: "" });
                     }}
-                    className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-100"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1753,7 +920,7 @@ export default function ProductManager() {
 
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0046b0]"
                   >
                     <Check className="h-4 w-4" />
                     {catForm.id ? "Güncelle" : "Kaydet"}
@@ -1799,10 +966,10 @@ export default function ProductManager() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
             >
-              <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-900 px-5 py-4 text-white">
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                       Marka
                     </p>
                     <h3 className="mt-1 flex items-center gap-2 text-lg font-bold">
@@ -1816,7 +983,7 @@ export default function ProductManager() {
                       setIsBrandModalOpen(false);
                       setBrandDraft("");
                     }}
-                    className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-100"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1850,7 +1017,7 @@ export default function ProductManager() {
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0046b0]"
                   >
                     <Check className="h-4 w-4" />
                     Seç ve uygula
@@ -1869,14 +1036,14 @@ export default function ProductManager() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.22)]"
             >
-              <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-white">
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/65">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                       Depo / raf
                     </p>
-                    <h3 className="mt-1 flex items-center gap-2 text-lg font-bold">
-                      <Boxes className="h-5 w-5 opacity-90" />
+                    <h3 className="mt-1 flex items-center gap-2 text-lg font-bold text-slate-900">
+                      <Boxes className="h-5 w-5 text-[#0057d9]" />
                       Yeni raf yeri ekle
                     </h3>
                   </div>
@@ -1886,7 +1053,7 @@ export default function ProductManager() {
                       setIsShelfModalOpen(false);
                       setShelfDraft("");
                     }}
-                    className="rounded-xl border border-white/10 bg-white/10 p-2 text-white transition hover:bg-white/15"
+                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-100"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1920,7 +1087,7 @@ export default function ProductManager() {
                   </button>
                   <button
                     type="submit"
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#0057d9] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0046b0]"
                   >
                     <Check className="h-4 w-4" />
                     Seç ve uygula

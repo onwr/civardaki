@@ -48,7 +48,7 @@ export default async function PopularBusinesses({ categoryId, categoryDisplayNam
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {popular.map(b => (
-                            <Link key={b.slug} href={`/business/${b.slug}`} className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 group flex items-start gap-4">
+                            <Link key={b.slug} href={`/isletme/${b.slug}`} className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 group flex items-start gap-4">
                                 <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 overflow-hidden shrink-0">
                                     {b.logoUrl ? (
                                         <Image src={b.logoUrl} alt={b.name} width={64} height={64} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />

@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Banknote, BarChart3, Gavel, ShoppingCart, Sparkles, Tag, TrendingUp, Wallet } from "lucide-react";
+import { BarChart3, MessageSquare, ShoppingCart, Sparkles } from "lucide-react";
 
 const MONTHS_TR = [
   "Ocak",
@@ -106,8 +106,6 @@ function ChartCard({ title, subtitle, children }) {
 export default function DashboardTopSummarySection({ business, m, isConnected, series }) {
   const now = new Date();
   const monthLabel = MONTHS_TR[now.getMonth()];
-  const usd = m?.fxTryPerUsd != null ? Number(m.fxTryPerUsd).toFixed(2) : "—";
-  const eur = m?.fxTryPerEur != null ? Number(m.fxTryPerEur).toFixed(2) : "—";
 
   const chartData =
     Array.isArray(series) && series.length > 0
@@ -116,18 +114,15 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
           label: `${i + 1}`,
           date: "",
           revenue: 0,
-          expense: 0,
-          collection: 0,
+          leads: 0,
         }));
-
-  const netWorth = (m?.assetsTotal ?? 0) - (m?.debtsTotal ?? 0);
 
   return (
     <div className="relative p-6 md:p-8">
       <div className="mb-6 flex w-full flex-col gap-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-8">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <StatusPill label="İşletme özeti" />
+            <StatusPill label="Civardaki özeti" />
             <StatusPill
               label={isConnected ? "Canlı senkron aktif" : "Canlı bağlantı yok"}
               tone={isConnected ? "success" : "warning"}
@@ -135,17 +130,11 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-            {business?.name ? `${business.name} - İşletme Özeti` : "İşletme Özeti"}
+            {business?.name ? `${business.name} — Panel özeti` : "Panel özeti"}
           </h1>
           <p className="mt-2 w-full max-w-none text-sm leading-6 text-slate-300 md:text-base">
-            Aylık ciro ve giderler, günlük tahsilat ve net varlık tek bakışta. Aşağıdaki grafikler son 7 günün sipariş
-            cirosu, kayıtlı giderleri ve tahsilat hareketlerini gösterir.
+            Platform siparişleri ve talepler — son 7 günün sipariş cirosu ile günlük talep sayısı aşağıdadır.
           </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <StatusPill label={`USD/TL ${usd}`} />
-            <StatusPill label={`EUR/TL ${eur}`} />
-          </div>
         </div>
 
         <div className="w-full shrink-0 lg:w-[min(100%,320px)] lg:max-w-sm">
@@ -158,16 +147,16 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
               <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                   <ShoppingCart className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  Bugünkü satış
+                  Bugünkü sipariş tutarı
                 </p>
                 <p className="mt-2 text-sm font-bold tabular-nums text-white">{formatMoney(m?.revenueToday ?? 0)}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                 <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  <Banknote className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  Bugünkü tahsilat
+                  <MessageSquare className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  Bugünkü talep
                 </p>
-                <p className="mt-2 text-sm font-bold tabular-nums text-white">{formatMoney(m?.collectionToday ?? 0)}</p>
+                <p className="mt-2 text-sm font-bold tabular-nums text-white">{m?.leadCountToday ?? 0}</p>
               </div>
             </div>
           </div>
@@ -176,47 +165,43 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
-          title={`${monthLabel} cirosu`}
+          title={`${monthLabel} sipariş cirosu`}
           value={formatMoney(m?.revenueCalendarMonth ?? 0)}
-          subtitle="Takvim ayı sipariş toplamı"
-          icon={Gavel}
+          subtitle="Bu takvim ayı — Civardaki siparişleri"
+          icon={ShoppingCart}
           tone="blue"
         />
         <MetricCard
-          title={`${monthLabel} giderleri`}
-          value={formatMoney(m?.expenseCalendarMonth ?? 0)}
-          subtitle="Kayıtlı gider hareketleri"
-          icon={Tag}
-          tone="rose"
+          title="Son 7 gün sipariş cirosu"
+          value={formatMoney(m?.revenueWeek ?? 0)}
+          subtitle="Platform sipariş toplamı"
+          icon={ShoppingCart}
+          tone="emerald"
         />
         <MetricCard
-          title="Bugünkü tahsilat"
-          value={formatMoney(m?.collectionToday ?? 0)}
-          subtitle="Gelir (tahsilat) kayıtları — bugün"
-          icon={Wallet}
+          title="Yıllık sipariş cirosu"
+          value={formatMoney(m?.revenueYear ?? 0)}
+          subtitle="Civardaki siparişleri (yıl başından)"
+          icon={ShoppingCart}
           tone="cyan"
         />
         <MetricCard
-          title="Net varlık görünümü"
-          value={formatMoney(netWorth)}
-          subtitle="Kasa toplamı eksi kayıtlı borçlar"
-          icon={TrendingUp}
-          tone="emerald"
+          title="30 günde talep"
+          value={String(m?.leadCount30Days ?? 0)}
+          subtitle="Görünür kategorilerdeki talepler"
+          icon={MessageSquare}
+          tone="rose"
         />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Son 7 gün" subtitle="Ciro (sipariş) ve gider trendi">
+        <ChartCard title="Son 7 gün" subtitle="Günlük sipariş cirosu (platform)">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="dashRevFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="dashExpFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -249,41 +234,23 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
               <Area
                 type="monotone"
                 dataKey="revenue"
-                name="Ciro"
+                name="Sipariş cirosu"
                 stroke="#2563eb"
                 strokeWidth={2}
                 fill="url(#dashRevFill)"
-              />
-              <Area
-                type="monotone"
-                dataKey="expense"
-                name="Gider"
-                stroke="#e11d48"
-                strokeWidth={2}
-                fill="url(#dashExpFill)"
               />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Son 7 gün" subtitle="Günlük tahsilat (gelir kayıtları)">
+        <ChartCard title="Son 7 gün" subtitle="Günlük yeni talep sayısı">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={{ stroke: "#cbd5e1" }} />
-              <YAxis
-                tick={{ fill: "#64748b", fontSize: 11 }}
-                axisLine={false}
-                tickFormatter={(v) =>
-                  new Intl.NumberFormat("tr-TR", {
-                    notation: "compact",
-                    compactDisplay: "short",
-                    maximumFractionDigits: 1,
-                  }).format(Number(v) || 0)
-                }
-              />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} allowDecimals={false} />
               <Tooltip
-                formatter={formatMoneyTooltip}
+                formatter={(v) => String(Math.round(Number(v) || 0))}
                 labelFormatter={(label, payload) => {
                   const p = payload?.[0]?.payload;
                   if (p?.date) return `${label} · ${p.date}`;
@@ -296,7 +263,7 @@ export default function DashboardTopSummarySection({ business, m, isConnected, s
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="collection" name="Tahsilat" fill="#0891b2" radius={[8, 8, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="leads" name="Talep" fill="#8b5cf6" radius={[8, 8, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
